@@ -225,3 +225,30 @@ export async function getOrdersByStoreAction(storeId: string) {
     return [];
   }
 }
+
+export async function deleteStoreAction(storeId: string) {
+  try {
+    await prisma.store.delete({
+      where: { id: storeId }
+    });
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error deleting store:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateStoreAction(storeId: string, data: any) {
+  try {
+    const updatedStore = await prisma.store.update({
+      where: { id: storeId },
+      data,
+    });
+    revalidatePath('/admin');
+    return { success: true, store: updatedStore };
+  } catch (error: any) {
+    console.error('Error updating store:', error);
+    return { success: false, error: error.message };
+  }
+}

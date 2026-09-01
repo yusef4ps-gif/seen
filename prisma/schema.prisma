@@ -40,6 +40,28 @@ model Store {
   products          Product[]
   orders            Order[]
   abandonedCarts    AbandonedCart[]
+  
+  ownerId           String?
+  owner             User?     @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  phone         String?
+  password      String
+  role          String   @default("CUSTOMER") // SUPER_ADMIN, STORE_OWNER, STORE_STAFF, CUSTOMER
+  staffTitle    String?
+  status        String   @default("active")
+  avatarUrl     String?  @db.Text
+  totalSpent    Float    @default(0)
+  ordersCount   Int      @default(0)
+  lastLoginAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  stores        Store[]
 }
 
 model Product {

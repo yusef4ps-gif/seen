@@ -6,14 +6,15 @@ import Link from 'next/link';
 import { 
   ShieldCheck, Store as StoreIcon, DollarSign, ShoppingBag, 
   TrendingUp, Users, Radio, Search, ExternalLink, KeyRound, 
-  ArrowRight, Sparkles, Edit, Check, Crown, Lock, LogOut, X, AlertCircle, CheckCircle2, Menu, Trash2
+  ArrowRight, Sparkles, Edit, Check, Crown, Lock, LogOut, X, AlertCircle, CheckCircle2, Menu, Trash2, Settings, Activity, Shield, Plus, Zap
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
-import { getStoresAction, getPlatformStatsAction } from '@/app/actions/store';
+import { getStoresAction, getPlatformStatsAction, deleteStoreAction, updateStoreAction } from '@/app/actions/store';
 import { authEngine } from '@/lib/auth-engine';
-import { Store, SubscriptionPlan, PlatformStats, SystemBroadcast, SubscriptionPlanTier, User as AuthUser } from '@/lib/types';
+import { Store, SubscriptionPlan, PlatformStats, SystemBroadcast, SubscriptionPlanTier, User as AuthUser, User } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
 import BrandLogo from '@/components/BrandLogo';
+import { getUserAction, updateUserAction } from '@/app/actions/user';
 
 export default function SuperAdminPage() {
   const router = useRouter();
@@ -59,17 +60,34 @@ export default function SuperAdminPage() {
   const [passwordSuccess, setPasswordSuccess] = useState('');
 
   useEffect(() => {
-    const user = authEngine.getCurrentUser();
-    if (!user || user.role !== 'SUPER_ADMIN') {
+    const session = authEngine.getCurrentSession();
+    const localUser = session?.user || null;
+    if (!localUser || localUser.role !== 'SUPER_ADMIN') {
       router.push('/admin/login');
       return;
     }
-    setCurrentUser(user);
+    setCurrentUser(localUser);
+    
+    // CLOUD SYNC: Fetch the latest user profile from the cloud to sync cross-device (Phone <-> PC)
+    if (localUser?.id) {
+      getUserAction(localUser.id).then(cloudUser => {
+        if (cloudUser) {
+          const parsedUser = {
+            ...cloudUser,
+            createdAt: cloudUser.createdAt.toISOString(),
+            updatedAt: cloudUser.updatedAt.toISOString(),
+            lastLoginAt: cloudUser.lastLoginAt.toISOString(),
+          } as unknown as User;
+          setCurrentUser(parsedUser);
+          authEngine.updateUser(parsedUser.id, parsedUser as Partial<User>);
+        }
+      }).catch(console.error);
+    }
+    
     refreshData();
   }, [router]);
 
   const refreshData = async () => {
-    setCurrentUser(authEngine.getCurrentUser());
     const fetchedStores = await getStoresAction();
     const fetchedStats = await getPlatformStatsAction();
     setStores(fetchedStores as any);
@@ -102,30 +120,46 @@ export default function SuperAdminPage() {
     }
   };
 
-  // Toggle store status
-  const handleToggleStoreStatus = (storeId: string, currentStatus: string) => {
+  const handleToggleStoreStatus = async (storeId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' || currentStatus === 'trial' ? 'suspended' : 'active';
     storeEngine.updateStore(storeId, { planStatus: newStatus as any });
+    try {
+      await updateStoreAction(storeId, { planStatus: newStatus });
+    } catch (e) {
+      console.error(e);
+    }
     refreshData();
   };
 
-  // Delete Store
-  const handleDeleteStore = (storeId: string) => {
+  const handleDeleteStore = async (storeId: string) => {
     if (confirm('هل أنت متأكد من حذف هذا المتجر نهائياً؟ سيتم مسح كافة بياناته ومنتجاته، وهذا الإجراء لا يمكن التراجع عنه.')) {
       storeEngine.deleteStore(storeId);
+      try {
+        await deleteStoreAction(storeId);
+      } catch (e) {
+        console.error(e);
+      }
       refreshData();
     }
   };
 
-  // Change store plan
-  const handleUpgradePlan = (storeId: string, planTier: SubscriptionPlanTier) => {
+  const handleUpgradePlan = async (storeId: string, planTier: SubscriptionPlanTier) => {
     storeEngine.updateStore(storeId, { planTier });
+    try {
+      await updateStoreAction(storeId, { planTier });
+    } catch (e) {
+      console.error(e);
+    }
     refreshData();
   };
 
-  // Change custom commission for store
-  const handleUpdateStoreCommission = (storeId: string, commission: number) => {
+  const handleUpdateStoreCommission = async (storeId: string, commission: number) => {
     storeEngine.updateStore(storeId, { customCommissionRate: commission });
+    try {
+      await updateStoreAction(storeId, { customCommissionRate: commission });
+    } catch (e) {
+      console.error(e);
+    }
     refreshData();
   };
 
@@ -182,16 +216,33 @@ export default function SuperAdminPage() {
     setIsEditingProfile(true);
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
-    authEngine.updateUser(currentUser.id, {
+    
+    const updates = {
       name: editProfileName,
       email: editProfileEmail,
       phone: editProfilePhone,
       avatarUrl: editProfileAvatar,
-    });
+    };
+    
+    // Update local immediately for fast UI
+    authEngine.updateUser(currentUser.id, updates);
+    setCurrentUser({ ...currentUser, ...updates } as User);
     setIsEditingProfile(false);
+    
+    // Cloud Sync: Push to DB so it appears on other devices (e.g. Phone -> PC)
+    try {
+      await updateUserAction(currentUser.id, {
+        ...updates,
+        role: currentUser.role,
+        password: currentUser.password
+      });
+    } catch (error) {
+      console.error('Error syncing profile to cloud:', error);
+    }
+    
     refreshData();
   };
 
