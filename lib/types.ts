@@ -146,6 +146,7 @@ export interface SubscriptionPlan {
   whatsappAutomation: boolean;
   prioritySupport: boolean;
   badge?: string;
+  trialDays?: number;
 }
 
 // Visual Theme Builder & Customizer Types
@@ -235,6 +236,7 @@ export interface Store {
   planTier: SubscriptionPlanTier;
   planStatus: 'active' | 'trial' | 'expired' | 'suspended';
   trialEndsAt?: string;
+  customCommissionRate?: number;
   customDomain?: string;
   activeVisitorsNow: number;
   totalSalesGMV: number;

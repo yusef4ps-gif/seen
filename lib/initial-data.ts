@@ -16,6 +16,7 @@ export const INITIAL_PLANS: SubscriptionPlan[] = [
     whatsappAutomation: true,
     prioritySupport: true,
     badge: '14 يوماً تجربة مجانية 🎁',
+    trialDays: 14,
   },
   {
     id: 'starter',
