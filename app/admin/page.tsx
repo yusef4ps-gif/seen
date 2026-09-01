@@ -16,6 +16,43 @@ import { formatCurrency } from '@/lib/currency-engine';
 import BrandLogo from '@/components/BrandLogo';
 import { getUserAction, updateUserAction } from '@/app/actions/user';
 
+const CSSDonutChart = ({ data }: { data: { label: string, value: number, color: string }[] }) => {
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+  if (total === 0) return <div className="text-slate-500 text-xs text-center py-10">لا توجد بيانات</div>;
+
+  let currentPercent = 0;
+  const gradientStops = data.map(item => {
+    const percent = (item.value / total) * 100;
+    const start = currentPercent;
+    currentPercent += percent;
+    return `${item.color} ${start}%, ${item.color} ${currentPercent}%`;
+  }).join(', ');
+
+  return (
+    <div className="flex flex-col items-center gap-6">
+      <div 
+        className="w-40 h-40 sm:w-48 sm:h-48 rounded-full flex items-center justify-center relative shadow-sm"
+        style={{ background: `conic-gradient(${gradientStops})` }}
+      >
+        <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white dark:bg-slateDark-900 rounded-full shadow-[inset_0_2px_10px_rgba(0,0,0,0.05)] dark:shadow-none flex flex-col items-center justify-center">
+          <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">{total}</span>
+          <span className="text-[10px] text-slate-500 font-bold">الإجمالي</span>
+        </div>
+      </div>
+      
+      <div className="flex flex-wrap justify-center gap-4 w-full">
+        {data.map((item, idx) => (
+          <div key={idx} className="flex items-center gap-1.5 text-[11px] sm:text-xs">
+            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color.split(' ')[0] }}></span>
+            <span className="text-slate-600 dark:text-slate-300 font-bold">{item.label}</span>
+            <span className="text-slate-900 dark:text-white font-black">({item.value})</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export default function SuperAdminPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -542,6 +579,34 @@ export default function SuperAdminPage() {
                     <div className="text-xs text-orange-400 mt-3">
                       حركة الزوار الحية
                     </div>
+                  </div>
+                </div>
+
+                {/* Charts Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
+                  {/* Store Status Chart */}
+                  <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slateDark-800 shadow-sm">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white mb-6 text-center">حالة المتاجر</h3>
+                    <CSSDonutChart 
+                      data={[
+                        { label: 'نشطة', value: stores.filter(s => s.planStatus === 'active').length, color: '#10b981' }, // emerald-500
+                        { label: 'تجريبية', value: stores.filter(s => s.planStatus === 'trial').length, color: '#f59e0b' }, // amber-500
+                        { label: 'مجمدة/موقوفة', value: stores.filter(s => s.planStatus === 'suspended').length, color: '#ef4444' }, // red-500
+                      ]}
+                    />
+                  </div>
+
+                  {/* Plan Distribution Chart */}
+                  <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slateDark-800 shadow-sm">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white mb-6 text-center">الباقات الأكثر طلباً</h3>
+                    <CSSDonutChart 
+                      data={[
+                        { label: 'المجانية', value: stores.filter(s => s.planTier === 'free').length, color: '#94a3b8' }, // slate-400
+                        { label: 'الانطلاق', value: stores.filter(s => s.planTier === 'starter').length, color: '#3b82f6' }, // blue-500
+                        { label: 'المحترف', value: stores.filter(s => s.planTier === 'pro').length, color: '#8b5cf6' }, // violet-500
+                        { label: 'المؤسسات', value: stores.filter(s => s.planTier === 'vip').length, color: '#eab308' }, // yellow-500
+                      ].filter(d => d.value > 0)}
+                    />
                   </div>
                 </div>
              </div>
