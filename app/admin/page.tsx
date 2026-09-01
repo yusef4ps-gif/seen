@@ -6,7 +6,9 @@ import Link from 'next/link';
 import { 
   ShieldCheck, Store as StoreIcon, DollarSign, ShoppingBag, 
   TrendingUp, Users, Radio, Search, ExternalLink, KeyRound, 
-  ArrowRight, Sparkles, Edit, Check, Crown, Lock, LogOut, X, AlertCircle, CheckCircle2, Menu, Trash2, Settings, Activity, Shield, Plus, Zap
+  ArrowRight, Sparkles, Edit, Check, Crown, Lock, LogOut, X, 
+  AlertCircle, CheckCircle2, Menu, Trash2, Settings, Activity, 
+  Shield, Plus, Zap, Type, CreditCard, PlusCircle, User as UserIcon, RefreshCw
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
 import { getStoresAction, getPlatformStatsAction, deleteStoreAction, updateStoreAction } from '@/app/actions/store';
@@ -15,6 +17,7 @@ import { Store, SubscriptionPlan, PlatformStats, SystemBroadcast, SubscriptionPl
 import { formatCurrency } from '@/lib/currency-engine';
 import BrandLogo from '@/components/BrandLogo';
 import { getUserAction, updateUserAction } from '@/app/actions/user';
+import { getSiteContentAction, updateSiteContentAction } from '@/app/actions/content';
 
 const CSSDonutChart = ({ data }: { data: { label: string, value: number, color: string }[] }) => {
   const total = data.reduce((sum, item) => sum + item.value, 0);
@@ -62,7 +65,7 @@ export default function SuperAdminPage() {
   const [broadcasts, setBroadcasts] = useState<SystemBroadcast[]>([]);
   
   // Layout State
-  const [activeTab, setActiveTab] = useState<'owner' | 'reports' | 'packages' | 'stores' | 'broadcasts'>('owner');
+  const [activeTab, setActiveTab] = useState<'owner' | 'reports' | 'packages' | 'stores' | 'broadcasts' | 'texts'>('owner');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Search & Filters
@@ -82,6 +85,11 @@ export default function SuperAdminPage() {
   const [editTrialDays, setEditTrialDays] = useState<number>(14);
   const [planSaveSuccess, setPlanSaveSuccess] = useState<string | null>(null);
 
+  // Dynamic CMS Texts State
+  const [siteTexts, setSiteTexts] = useState<Record<string, string>>({});
+  const [isSavingTexts, setIsSavingTexts] = useState(false);
+  const [textsSaveSuccess, setTextsSaveSuccess] = useState<string | null>(null);
+
   // Profile Edit State
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editProfileName, setEditProfileName] = useState('');
@@ -100,7 +108,7 @@ export default function SuperAdminPage() {
     const session = authEngine.getCurrentSession();
     const localUser = session?.user || null;
     if (!localUser || localUser.role !== 'SUPER_ADMIN') {
-      router.push('/admin/login');
+      router.push('/login-admin');
       return;
     }
     setCurrentUser(localUser);
@@ -131,11 +139,18 @@ export default function SuperAdminPage() {
     setStats(fetchedStats);
     setPlans(storeEngine.getPlans());
     setBroadcasts(storeEngine.getBroadcasts());
+
+    // Fetch dynamic texts
+    getSiteContentAction().then(res => {
+      if (res.success && res.dictionary) {
+        setSiteTexts(res.dictionary);
+      }
+    });
   };
 
   const handleLogout = () => {
     authEngine.logout();
-    router.push('/admin/login');
+    router.push('/login-admin');
   };
 
   const handleChangePasswordSubmit = (e: React.FormEvent) => {
@@ -378,6 +393,7 @@ export default function SuperAdminPage() {
              <TabButton id="packages" label="الباقات والاشتراكات" icon={ShoppingBag} />
              <TabButton id="stores" label="مراقبة المتاجر" icon={StoreIcon} />
              <TabButton id="broadcasts" label="التنبيهات العامة" icon={Radio} />
+             <TabButton id="texts" label="نصوص الموقع" icon={Type} />
            </nav>
 
            <div className="pt-8 space-y-3 border-t border-slate-200 dark:border-slateDark-800">
@@ -402,6 +418,266 @@ export default function SuperAdminPage() {
       {/* Main Content Area */}
       <main className="flex-1 p-4 sm:p-8 lg:p-12 overflow-y-auto w-full max-w-[100vw]">
         <div className="max-w-6xl mx-auto space-y-8 animate-fadeIn">
+           
+           {/* Tab: Website Texts (CMS) */}
+           {activeTab === 'texts' && (
+             <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slateDark-800 pb-4">
+                  <div>
+                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                      نصوص الموقع (CMS)
+                    </h1>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      قم بتعديل نصوص واجهات المنصة لتظهر فوراً للمستخدمين
+                    </p>
+                  </div>
+                  {textsSaveSuccess && (
+                    <span className="text-xs font-bold text-emerald-400 bg-emerald-950/60 px-4 py-2 rounded-xl border border-emerald-800 animate-pulse">
+                      {textsSaveSuccess}
+                    </span>
+                  )}
+                </div>
+
+                <div className="bg-white dark:bg-slateDark-900 p-6 rounded-3xl border border-slate-200 dark:border-slateDark-800 shadow-sm space-y-6">
+                  
+                  <div className="space-y-4 border-b border-slate-100 dark:border-slateDark-800 pb-6">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white border-r-2 border-brand-500 pr-3">القسم: الترويسة الرئيسية (Hero Section)</h3>
+                    
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-500">الجملة الترحيبية العلوية (الشارة)</label>
+                      <input
+                        type="text"
+                        value={siteTexts['hero_eyebrow'] || 'منصة سِين (SEEN) • متجرك بضغطة زر واحدة في اليمن'}
+                        onChange={(e) => setSiteTexts({ ...siteTexts, hero_eyebrow: e.target.value })}
+                        className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500 transition-colors"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">العنوان الرئيسي (الجزء الأول باللون العادي)</label>
+                        <input
+                          type="text"
+                          value={siteTexts['hero_title_part1'] || 'جاهز تنظم تجارتك الإلكترونية وتبدأ'}
+                          onChange={(e) => setSiteTexts({ ...siteTexts, hero_title_part1: e.target.value })}
+                          className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500 transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">العنوان الرئيسي (الجزء الثاني باللون المتدرج)</label>
+                        <input
+                          type="text"
+                          value={siteTexts['hero_title_part2'] || 'مرحلة التوسع والنمو'}
+                          onChange={(e) => setSiteTexts({ ...siteTexts, hero_title_part2: e.target.value })}
+                          className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-500">النص الفرعي (الوصف)</label>
+                      <textarea
+                        rows={3}
+                        value={siteTexts['hero_subtitle'] || 'منصة سِين (SEEN) السحابية المتكاملة تمكنك من إطلاق متجر فاخر بهوية بصرية استثنائية، وإدارة المنتجات والمخزون، مع دعم أصيل لمحفظات الدفع والشحن في عدن وصنعاء.'}
+                        onChange={(e) => setSiteTexts({ ...siteTexts, hero_subtitle: e.target.value })}
+                        className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-2 border-b border-slate-100 dark:border-slateDark-800 pb-6">
+                    <button
+                      onClick={async () => {
+                        setIsSavingTexts(true);
+                        const updates = Object.entries(siteTexts).map(([key, value]) => ({ key, value }));
+                        const res = await updateSiteContentAction(updates);
+                        setIsSavingTexts(false);
+                        if (res.success) {
+                          setTextsSaveSuccess('تم حفظ نصوص الموقع بنجاح!');
+                          setTimeout(() => setTextsSaveSuccess(null), 3000);
+                        }
+                      }}
+                      disabled={isSavingTexts}
+                      className="px-8 py-3 rounded-xl bg-brand-600 dark:bg-brand-900 hover:bg-brand-700 text-white font-bold text-sm shadow-xl shadow-brand-500/20 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isSavingTexts ? 'جاري الحفظ...' : 'حفظ جميع التعديلات'}
+                    </button>
+                  </div>
+
+                  <div className="space-y-4 border-b border-slate-100 dark:border-slateDark-800 pb-6">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white border-r-2 border-brand-500 pr-3">القسم: خطط الأسعار والعملات (Pricing & Currencies)</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50/50 dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">سعر الصرف: الدولار مقابل اليمني</label>
+                        <input type="text" value={siteTexts['rate_usd_yer'] || '1910'} onChange={(e) => setSiteTexts({ ...siteTexts, rate_usd_yer: e.target.value })} placeholder="مثال: 1910" className="w-full px-4 py-2.5 text-sm rounded-xl bg-white dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">سعر الصرف: السعودي مقابل اليمني</label>
+                        <input type="text" value={siteTexts['rate_sar_yer'] || '535'} onChange={(e) => setSiteTexts({ ...siteTexts, rate_sar_yer: e.target.value })} placeholder="مثال: 535" className="w-full px-4 py-2.5 text-sm rounded-xl bg-white dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                      <div className="space-y-3 p-4 border border-brand-200 dark:border-brand-900/50 rounded-2xl">
+                        <div className="text-[11px] font-black text-brand-600">الباقة التجارية (Starter)</div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500">السعر (رقم)</label>
+                          <input type="text" value={siteTexts['plan_starter_price'] || '36,000'} onChange={(e) => setSiteTexts({ ...siteTexts, plan_starter_price: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500">العملة والنص الإضافي</label>
+                          <input type="text" value={siteTexts['plan_starter_currency'] || 'ر.ي / 258 ر.س'} onChange={(e) => setSiteTexts({ ...siteTexts, plan_starter_currency: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 p-4 border border-brand-200 dark:border-brand-900/50 rounded-2xl">
+                        <div className="text-[11px] font-black text-brand-600">الباقة التسويقية (Marketing)</div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500">السعر (رقم)</label>
+                          <input type="text" value={siteTexts['plan_marketing_price'] || '72,000'} onChange={(e) => setSiteTexts({ ...siteTexts, plan_marketing_price: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500">العملة والنص الإضافي</label>
+                          <input type="text" value={siteTexts['plan_marketing_currency'] || 'ر.ي / 518 ر.س'} onChange={(e) => setSiteTexts({ ...siteTexts, plan_marketing_currency: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 p-4 border border-brand-200 dark:border-brand-900/50 rounded-2xl">
+                        <div className="text-[11px] font-black text-brand-600">الباقة الاحترافية (Pro)</div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500">السعر (رقم)</label>
+                          <input type="text" value={siteTexts['plan_pro_price'] || '144,000'} onChange={(e) => setSiteTexts({ ...siteTexts, plan_pro_price: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500">العملة والنص الإضافي</label>
+                          <input type="text" value={siteTexts['plan_pro_currency'] || 'ر.ي / 1,035 ر.س'} onChange={(e) => setSiteTexts({ ...siteTexts, plan_pro_currency: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 border-b border-slate-100 dark:border-slateDark-800 pb-6">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white border-r-2 border-brand-500 pr-3">القسم: الأسئلة الشائعة (FAQ)</h3>
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-500">العنوان الرئيسي</label>
+                      <input type="text" value={siteTexts['faq_title'] || 'أسئلة شائعة'} onChange={(e) => setSiteTexts({ ...siteTexts, faq_title: e.target.value })} className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-500">النص الفرعي</label>
+                      <textarea rows={2} value={siteTexts['faq_subtitle'] || 'ستجد معظم أسئلتك وتساؤلاتك هنا. إن لم تجد سؤالك في هذه القائمة رجاء لا تتردد في الاتصال بنا'} onChange={(e) => setSiteTexts({ ...siteTexts, faq_subtitle: e.target.value })} className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                    </div>
+                    
+                    <div className="space-y-3 mt-4">
+                      {[
+                        { q: 'ما هي منصة سِين؟', a: 'سِين هي منصة تجارة إلكترونية سحابية متكاملة تتيح لك إنشاء متجرك الإلكتروني الخاص في اليمن بسهولة، وإدارته بشكل كامل دون الحاجة لأي خبرة برمجية.' },
+                        { q: 'ما هي ميزات منصة سِين؟', a: 'توفر المنصة تصميمات جاهزة، إدارة للمخزون والطلبات، نظام تسعير متعدد العملات (صنعاء، عدن، سعودي)، وربط مع بوابات الدفع المحلية مثل الكريمي وجوالي وون كاش.' },
+                        { q: 'كيف يمكنني إنشاء حساب ومتجر؟', a: 'يمكنك البدء فوراً بالنقر على "أنشئ متجرك مجاناً" وتعبئة بياناتك الأساسية، وسيتم تجهيز متجرك وإطلاقه خلال دقائق معدودة.' },
+                        { q: 'هل يمكنني ربط طرق دفع محلية يمنية؟', a: 'نعم، المنصة مجهزة للربط المباشر مع أشهر طرق الدفع والمحافظ الإلكترونية في اليمن لتسهيل استلام أموالك من عملائك.' },
+                        { q: 'هل أستطيع استخدام اسم نطاق (Domain) خاص بي؟', a: 'بالتأكيد، يمكنك في الباقات المتقدمة ربط متجرك باسم نطاق خاص بك (مثل www.yourstore.com) لتعزيز علامتك التجارية.' },
+                        { q: 'هل تأخذ المنصة عمولة على المبيعات؟', a: 'لا، منصة سِين لا تفرض أي عمولات خفية على مبيعاتك. أنت تدفع فقط قيمة الاشتراك الشهري أو السنوي للباقة التي تختارها.' },
+                        { q: 'ما هي وسائل الدفع المتاحة للاشتراك في المنصة؟', a: 'نوفر خيارات دفع متعددة تناسب الجميع في اليمن، بما في ذلك الحوالات البنكية المباشرة عبر الكريمي، القطيبي، أو عبر المحافظ الإلكترونية.' }
+                      ].map((defaultItem, index) => {
+                        const num = index + 1;
+                        return (
+                          <div key={num} className="p-3 border rounded-xl bg-slate-50/50 dark:bg-slate-800/20">
+                            <div className="text-[10px] font-bold mb-2 flex justify-between">
+                              <span>السؤال والجواب رقم {num}</span>
+                            </div>
+                            <input type="text" placeholder={`السؤال ${num}`} value={siteTexts[`faq_q${num}`] !== undefined ? siteTexts[`faq_q${num}`] : defaultItem.q} onChange={(e) => setSiteTexts({ ...siteTexts, [`faq_q${num}`]: e.target.value })} className="w-full px-3 py-2 text-xs rounded-lg border mb-2 outline-none font-bold text-slate-800 dark:text-white" />
+                            <textarea rows={2} placeholder={`الإجابة ${num}`} value={siteTexts[`faq_a${num}`] !== undefined ? siteTexts[`faq_a${num}`] : defaultItem.a} onChange={(e) => setSiteTexts({ ...siteTexts, [`faq_a${num}`]: e.target.value })} className="w-full px-3 py-2 text-xs rounded-lg border outline-none text-slate-600 dark:text-slate-300" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 border-b border-slate-100 dark:border-slateDark-800 pb-6">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white border-r-2 border-brand-500 pr-3">القسم: مرشد الباقات (Quiz)</h3>
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-500">الشارة (Badge)</label>
+                      <input type="text" value={siteTexts['quiz_badge'] || 'مرشد الباقات السريع'} onChange={(e) => setSiteTexts({ ...siteTexts, quiz_badge: e.target.value })} className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-500">العنوان (Title)</label>
+                      <input type="text" value={siteTexts['quiz_title'] || 'أيّ باقة تناسب حجم تجارتك؟ 🤔'} onChange={(e) => setSiteTexts({ ...siteTexts, quiz_title: e.target.value })} className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-500">النص الفرعي (Subtitle)</label>
+                      <input type="text" value={siteTexts['quiz_subtitle'] || 'أجب على سؤالين وسنرشّح لك الباقة الأنسب فورياً'} onChange={(e) => setSiteTexts({ ...siteTexts, quiz_subtitle: e.target.value })} className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 border-b border-slate-100 dark:border-slateDark-800 pb-6">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white border-r-2 border-brand-500 pr-3">القسم: الخدمات الإضافية (Services)</h3>
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-500">الشارة (Badge)</label>
+                      <input type="text" value={siteTexts['services_badge'] || 'خدمات إضافية عند الطلب'} onChange={(e) => setSiteTexts({ ...siteTexts, services_badge: e.target.value })} className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-500">العنوان (Title)</label>
+                      <input type="text" value={siteTexts['services_title'] || 'تحتاج خدمات خاصة تتجاوز باقة الاشتراك؟'} onChange={(e) => setSiteTexts({ ...siteTexts, services_title: e.target.value })} className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-500">النص الفرعي (Subtitle)</label>
+                      <textarea rows={2} value={siteTexts['services_subtitle'] || 'تصميم هوية مخصصة، نقل بياناتك، أو تطوير برمجيات خاصة بأسعار واضحة وشفافة'} onChange={(e) => setSiteTexts({ ...siteTexts, services_subtitle: e.target.value })} className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {[
+                        { title: 'تصميم قالب مخصص', desc: 'قالب فريد بهويتك الكاملة يصممه خبراؤنا بناءً على طلبك ويسلّم جاهزاً خلال أسبوعين.' },
+                        { title: 'ساعات تطوير مخصصة', desc: 'ربط أنظمة محاسبية، تكاملات مع بوابات دفع بنكية خاصة، وتطوير خصائص حصرية بالساعة.' },
+                        { title: 'تدريب فريقك', desc: 'جلسات تدريبية مباشرة ومكثفة لفريق عملك على إدارة المخازن والشحن وتقارير الأداء.' },
+                        { title: '', desc: '' },
+                        { title: '', desc: '' },
+                        { title: '', desc: '' }
+                      ].map((defaultItem, index) => {
+                        const num = index + 1;
+                        return (
+                          <div key={num} className="p-3 border rounded-xl bg-slate-50/50 dark:bg-slate-800/20">
+                            <div className="text-[10px] font-bold mb-2">الخدمة الإضافية رقم {num}</div>
+                            <input type="text" placeholder={`عنوان الخدمة ${num}`} value={siteTexts[`service_title${num}`] !== undefined ? siteTexts[`service_title${num}`] : defaultItem.title} onChange={(e) => setSiteTexts({ ...siteTexts, [`service_title${num}`]: e.target.value })} className="w-full px-3 py-2 text-xs rounded-lg border mb-2 outline-none font-bold text-slate-800 dark:text-white" />
+                            <textarea rows={2} placeholder={`وصف الخدمة ${num}`} value={siteTexts[`service_desc${num}`] !== undefined ? siteTexts[`service_desc${num}`] : defaultItem.desc} onChange={(e) => setSiteTexts({ ...siteTexts, [`service_desc${num}`]: e.target.value })} className="w-full px-3 py-2 text-xs rounded-lg border outline-none text-slate-600 dark:text-slate-300" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pb-4">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white border-r-2 border-brand-500 pr-3">القسم: المقارنة (Compare)</h3>
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-500">العنوان (Title)</label>
+                      <input type="text" value={siteTexts['compare_title'] || 'مقارنة تفصيلية شاملة لكافة الميزات'} onChange={(e) => setSiteTexts({ ...siteTexts, compare_title: e.target.value })} className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-500">النص الفرعي (Subtitle)</label>
+                      <input type="text" value={siteTexts['compare_subtitle'] || 'تعرف على تفاصيل كل ميزة بدقة في باقات سِين لاختيار ما يلائم طموحك التجاري'} onChange={(e) => setSiteTexts({ ...siteTexts, compare_subtitle: e.target.value })} className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slateDark-800">
+                    <button
+                      onClick={async () => {
+                        setIsSavingTexts(true);
+                        const updates = Object.entries(siteTexts).map(([key, value]) => ({ key, value }));
+                        const res = await updateSiteContentAction(updates);
+                        setIsSavingTexts(false);
+                        if (res.success) {
+                          setTextsSaveSuccess('تم حفظ نصوص الموقع بنجاح!');
+                          setTimeout(() => setTextsSaveSuccess(null), 3000);
+                        }
+                      }}
+                      disabled={isSavingTexts}
+                      className="px-8 py-3 rounded-xl bg-brand-600 dark:bg-brand-900 hover:bg-brand-700 text-white font-bold text-sm shadow-xl shadow-brand-500/20 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isSavingTexts ? 'جاري الحفظ...' : 'حفظ جميع التعديلات ونشرها'}
+                    </button>
+                  </div>
+
+                </div>
+             </div>
+           )}
            
            {/* Tab 1: Owner Data */}
            {activeTab === 'owner' && (

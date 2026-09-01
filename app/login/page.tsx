@@ -1,15 +1,55 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   Lock, Mail, Phone, User as UserIcon, CheckCircle2, 
-  AlertCircle, Eye, EyeOff, ArrowRight, ShieldCheck
+  AlertCircle, Eye, EyeOff, ArrowRight, ShieldCheck, MapPin, Globe2
 } from 'lucide-react';
 import { authEngine } from '@/lib/auth-engine';
 import BrandLogo from '@/components/BrandLogo';
-import GoogleAuthButton from '@/components/GoogleAuthButton';
+
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
+const COUNTRIES = [
+  { 
+    name: 'اليمن', 
+    cities: ['صنعاء', 'عدن', 'تعز', 'حضرموت', 'إب', 'الحديدة', 'مأرب', 'شبوة', 'المهرة', 'أبين', 'الضالع', 'لحج'] 
+  },
+  { 
+    name: 'السعودية', 
+    cities: ['الرياض', 'جدة', 'مكة المكرمة', 'المدينة المنورة', 'الدمام', 'تبوك', 'أبها', 'جازان', 'نجران', 'القصيم', 'حائل'] 
+  },
+  { 
+    name: 'الإمارات', 
+    cities: ['أبوظبي', 'دبي', 'الشارقة', 'عجمان', 'رأس الخيمة', 'الفجيرة', 'أم القيوين', 'العين'] 
+  },
+  { 
+    name: 'الكويت', 
+    cities: ['الكويت', 'الأحمدي', 'حولي', 'الفروانية', 'الجهراء', 'مبارك الكبير'] 
+  },
+  { 
+    name: 'قطر', 
+    cities: ['الدوحة', 'الريان', 'الوكرة', 'الخور', 'أم صلال', 'الشمال'] 
+  },
+  { 
+    name: 'البحرين', 
+    cities: ['المنامة', 'المحرق', 'الرفاع', 'مدينة حمد', 'مدينة عيسى', 'البديع'] 
+  },
+  { 
+    name: 'عُمان', 
+    cities: ['مسقط', 'صلالة', 'صحار', 'نزوى', 'صور', 'الرستاق', 'البريمي'] 
+  },
+  { 
+    name: 'أمريكا', 
+    cities: ['نيويورك', 'واشنطن', 'لوس أنجلوس', 'شيكاغو', 'هيوستن', 'ميامي', 'سان فرانسيسكو', 'سياتل'] 
+  }
+];
 
 function LoginFormContent() {
   const router = useRouter();
@@ -29,11 +69,66 @@ function LoginFormContent() {
   const [regPhone, setRegPhone] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  const [regCountry, setRegCountry] = useState('اليمن');
+  const [regCity, setRegCity] = useState('صنعاء');
 
   // Processing state
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Google Sign-In Initialization
+  useEffect(() => {
+    // Load Google Identity Services script
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE',
+          callback: handleGoogleResponse
+        });
+        window.google.accounts.id.renderButton(
+          document.getElementById('google-signin-button'),
+          { theme: 'outline', size: 'large', text: 'continue_with', width: 300 }
+        );
+      }
+    };
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, []);
+
+  const handleGoogleResponse = (response: any) => {
+    setIsLoading(true);
+    try {
+      // Decode the JWT token returned by Google
+      const payload = JSON.parse(atob(response.credential.split('.')[1]));
+      
+      const result = authEngine.loginWithGoogle({
+        name: payload.name,
+        email: payload.email,
+        avatarUrl: payload.picture
+      });
+
+      if (result.success) {
+        setSuccessMessage('تم تسجيل الدخول عبر جوجل بنجاح!');
+        setTimeout(() => {
+          router.push(redirectParam || result.redirectUrl || '/profile');
+        }, 500);
+      }
+    } catch (e) {
+      setErrorMessage('فشل تسجيل الدخول عبر جوجل.');
+      setIsLoading(false);
+    }
+  };
 
   // Submit Login
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -116,11 +211,13 @@ function LoginFormContent() {
         <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-2xl text-right space-y-5">
           
           {/* Top Google Sign-In Highlight */}
-          <div className="space-y-2">
-            <GoogleAuthButton 
-              buttonText="الدخول الفوري عبر حساب Google"
-              redirectTo={redirectParam || undefined}
-            />
+          <div className="space-y-2 flex flex-col items-center">
+            <div id="google-signin-button" className="w-full flex justify-center"></div>
+            {(!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) && (
+              <p className="text-[10px] text-amber-500 text-center font-bold">
+                * عذراً، يجب إضافة (Google Client ID) في المتغيرات ليعمل تسجيل الدخول الفعلي.
+              </p>
+            )}
             <div className="relative flex items-center justify-center pt-2">
               <div className="border-t border-slate-200 dark:border-slate-700 w-full" />
               <span className="bg-white dark:bg-slate-900 px-3 text-[11px] font-bold text-slate-400 shrink-0">
@@ -264,6 +361,49 @@ function LoginFormContent() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                    الدولة
+                  </label>
+                  <div className="relative">
+                    <Globe2 className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+                    <select
+                      value={regCountry}
+                      onChange={(e) => {
+                        setRegCountry(e.target.value);
+                        // Reset city to the first city of the new country
+                        const countryObj = COUNTRIES.find(c => c.name === e.target.value);
+                        if (countryObj) setRegCity(countryObj.cities[0]);
+                      }}
+                      className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6] appearance-none"
+                    >
+                      {COUNTRIES.map(c => (
+                        <option key={c.name} value={c.name}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                    المدينة
+                  </label>
+                  <div className="relative">
+                    <MapPin className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+                    <select
+                      value={regCity}
+                      onChange={(e) => setRegCity(e.target.value)}
+                      className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6] appearance-none"
+                    >
+                      {COUNTRIES.find(c => c.name === regCountry)?.cities.map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               <button
                 type="submit"
                 disabled={isLoading}
@@ -275,16 +415,7 @@ function LoginFormContent() {
             </form>
           )}
 
-          {/* Admin Direct Gateway Link */}
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
-            <Link
-              href="/admin/login"
-              className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-[#0f2b48] dark:hover:text-[#5eead4] transition-colors"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-[#14b8a6]" />
-              <span>بوابة دخول مديري المنصة (Executive Admins)</span>
-            </Link>
-          </div>
+
 
         </div>
 

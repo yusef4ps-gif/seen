@@ -149,3 +149,12 @@ model SystemBroadcast {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 }
+
+model SiteContent {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  group     String   @default("general")
+  label     String   @default("")
+  updatedAt DateTime @updatedAt
+}

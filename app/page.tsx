@@ -15,6 +15,7 @@ import {
 import { storeEngine } from '@/lib/store-engine';
 import { Store, SubscriptionPlan, PlatformStats } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
+import { getSiteContentAction } from '@/app/actions/content';
 
 export default function HomePage() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -24,13 +25,28 @@ export default function HomePage() {
   const [activeMockupTab, setActiveMockupTab] = useState<'dashboard' | 'products' | 'storefront' | 'theme'>('dashboard');
 
   // Interactive Pricing Quiz State
-  const [quizStep1, setQuizStep1] = useState<'growing' | 'scale'>('growing');
-  const [quizStep2, setQuizStep2] = useState<'essentials' | 'growth'>('growth');
+  const [quizStep1, setQuizStep1] = useState<'growing' | 'scale' | null>(null);
+  const [quizStep2, setQuizStep2] = useState<'essentials' | 'growth' | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+
+
+  // Dynamic Site Content
+  const [content, setContent] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setStores(storeEngine.getStores());
     setStats(storeEngine.getPlatformStats());
+    
+    // Fetch dynamic texts
+    getSiteContentAction().then(res => {
+      if (res.success && res.dictionary) {
+        setContent(res.dictionary);
+      }
+    });
   }, []);
+
+  const t = (key: string, fallback: string) => content[key] || fallback;
 
   // Compute recommended plan from quiz
   const recommendedPlan = (quizStep1 === 'scale' || quizStep2 === 'growth') 
@@ -88,23 +104,23 @@ export default function HomePage() {
             </div>
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#14b8a6]/25 bg-[#14b8a6]/10 dark:bg-[#14b8a6]/15 text-[#0f2b48] dark:text-[#5eead4] text-xs font-bold shadow-sm backdrop-blur-md">
               <Sparkles className="w-3.5 h-3.5 text-[#14b8a6] animate-spin" style={{ animationDuration: '8s' }} />
-              <span>منصة سِين (SEEN) • متجرك بضغطة زر واحدة في اليمن</span>
+              <span>{t('hero_eyebrow', 'منصة سِين (SEEN) • متجرك بضغطة زر واحدة في اليمن')}</span>
             </div>
           </div>
 
           {/* Main Hero Heading */}
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.15] text-[#0f2b48] dark:text-white max-w-4xl mx-auto text-balance">
-            جاهز تنظم تجارتك الإلكترونية وتبدأ{' '}
+            {t('hero_title_part1', 'جاهز تنظم تجارتك الإلكترونية وتبدأ')}{' '}
             <span className="relative inline-block mt-1 sm:mt-0">
               <span className="bg-gradient-to-r from-[#0f2b48] via-[#14b8a6] to-[#2dd4bf] dark:from-[#5eead4] dark:via-[#2dd4bf] dark:to-[#38bdf8] bg-clip-text text-transparent drop-shadow-sm">
-                مرحلة التوسع والنمو
+                {t('hero_title_part2', 'مرحلة التوسع والنمو')}
               </span>
             </span>
           </h1>
 
           {/* Subtitle */}
           <p className="mt-6 text-sm sm:text-base lg:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed font-medium">
-            منصة <strong className="text-slate-900 dark:text-white font-bold">سِين (SEEN)</strong> السحابية المتكاملة تمكنك من إطلاق متجر فاخر بهوية بصرية استثنائية، وإدارة المنتجات والمخزون، مع دعم أصيل لمحفظات الدفع والشحن في عدن وصنعاء.
+            {t('hero_subtitle', 'منصة سِين (SEEN) السحابية المتكاملة تمكنك من إطلاق متجر فاخر بهوية بصرية استثنائية، وإدارة المنتجات والمخزون، مع دعم أصيل لمحفظات الدفع والشحن في عدن وصنعاء.')}
           </p>
 
           {/* Hero CTAs */}
@@ -351,14 +367,13 @@ export default function HomePage() {
           <div className="text-center max-w-3xl mx-auto mb-14">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-brand-500/25 bg-brand-500/10 text-brand-700 dark:text-brand-300 text-xs font-bold mb-3">
               <CreditCard className="w-3.5 h-3.5 text-accent" />
-              <span>خطط الأسعار الشفافة</span>
+              <span>{t('pricing_badge', 'خطط الأسعار الشفافة')}</span>
             </div>
             <h2 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-              خطط مرنة مصممة خصيصاً لتناسب حجم أعمالك{' '}
-              <span className="text-brand-600 dark:text-brand-400">وتنمو معك</span>
+              {t('pricing_title', 'خطط مرنة مصممة خصيصاً لتناسب حجم أعمالك وتنمو معك')}
             </h2>
             <p className="mt-3 text-xs sm:text-sm text-slate-500">
-              اختر الباقة المثالية لمتجرك وابدأ البيع فوراً. بدون أي رسوم خفية أو عقود معقدة.
+              {t('pricing_subtitle', 'اختر الباقة المثالية لمتجرك وابدأ البيع فوراً. بدون أي رسوم خفية أو عقود معقدة.')}
             </p>
           </div>
 
@@ -379,7 +394,7 @@ export default function HomePage() {
 
                 <div className="py-3 border-y border-slate-100 dark:border-slate-800">
                   <div className="text-3xl font-black text-slate-900 dark:text-white font-mono">
-                    ٣٦٬٠٠٠ <span className="text-xs font-normal text-slate-500">ر.ي / 258 ر.س</span>
+                    {t('plan_starter_price', '36,000')} <span className="text-xs font-normal text-slate-500">{t('plan_starter_currency', 'ر.ي / 258 ر.س')}</span>
                   </div>
                   <div className="text-xs text-slate-400 font-bold mt-1">لمدة ثلاثة أشهر</div>
                 </div>
@@ -430,7 +445,7 @@ export default function HomePage() {
 
                 <div className="py-3 border-y border-slate-100 dark:border-slate-800">
                   <div className="text-3xl font-black text-slate-900 dark:text-white font-mono">
-                    ٧٢٬٠٠٠ <span className="text-xs font-normal text-slate-500">ر.ي / 518 ر.س</span>
+                    {t('plan_marketing_price', '72,000')} <span className="text-xs font-normal text-slate-500">{t('plan_marketing_currency', 'ر.ي / 518 ر.س')}</span>
                   </div>
                   <div className="text-xs text-slate-400 font-bold mt-1">لمدة ستة أشهر</div>
                 </div>
@@ -492,7 +507,7 @@ export default function HomePage() {
 
                 <div className="py-3 border-y border-slate-700">
                   <div className="text-3xl font-black text-white font-mono">
-                    ١٤٤٬٠٠٠ <span className="text-xs font-normal text-slate-300">ر.ي / 1,035 ر.س</span>
+                    {t('plan_pro_price', '144,000')} <span className="text-xs font-normal text-slate-300">{t('plan_pro_currency', 'ر.ي / 1,035 ر.س')}</span>
                   </div>
                   <div className="text-xs text-accent font-bold mt-1">لمدة سنة كاملة (أوفر خطة)</div>
                 </div>
@@ -550,12 +565,12 @@ export default function HomePage() {
             <div className="border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
               <div className="inline-flex items-center gap-1.5 text-xs font-bold text-accent mb-1">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>مرشد الباقات السريع</span>
+                <span>{t('quiz_badge', 'مرشد الباقات السريع')}</span>
               </div>
               <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                أيّ باقة تناسب حجم تجارتك؟ 🤔
+                {t('quiz_title', 'أيّ باقة تناسب حجم تجارتك؟ 🤔')}
               </h3>
-              <p className="text-xs text-slate-500">أجب على سؤالين وسنرشّح لك الباقة الأنسب فورياً</p>
+              <p className="text-xs text-slate-500">{t('quiz_subtitle', 'أجب على سؤالين وسنرشّح لك الباقة الأنسب فورياً')}</p>
             </div>
 
             <div className="space-y-6 text-xs font-bold">
@@ -659,84 +674,129 @@ export default function HomePage() {
           <div className="text-center max-w-2xl mx-auto mb-12">
             <div className="inline-flex items-center gap-1.5 text-xs font-bold text-accent mb-2">
               <Package className="w-3.5 h-3.5" />
-              <span>خدمات إضافية عند الطلب</span>
+              <span>{t('services_badge', 'خدمات إضافية عند الطلب')}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-              تحتاج خدمات خاصة تتجاوز باقة الاشتراك؟
+              {t('services_title', 'تحتاج خدمات خاصة تتجاوز باقة الاشتراك؟')}
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              تصميم هوية مخصصة، نقل بياناتك، أو تطوير برمجيات خاصة بأسعار واضحة وشفافة
+              {t('services_subtitle', 'تصميم هوية مخصصة، نقل بياناتك، أو تطوير برمجيات خاصة بأسعار واضحة وشفافة')}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            
-            <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 flex flex-col justify-between">
-              <div className="space-y-2">
-                <div className="w-10 h-10 rounded-2xl bg-brand-50 dark:bg-brand-950 text-brand-600 flex items-center justify-center font-bold">
-                  <Brush className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">تصميم قالب مخصص</h3>
-                <p className="text-xs text-slate-500">
-                  قالب فريد بهويتك الكاملة يصممه خبراؤنا بناءً على طلبك ويسلّم جاهزاً خلال أسبوعين.
-                </p>
-              </div>
-              <Link href="/create-store" className="text-xs font-bold text-brand-600 hover:underline flex items-center gap-1 pt-2">
-                <span>طلب عرض سعر</span>
-                <ArrowLeft className="w-3.5 h-3.5" />
-              </Link>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { title: 'تصميم قالب مخصص', desc: 'قالب فريد بهويتك الكاملة يصممه خبراؤنا بناءً على طلبك ويسلّم جاهزاً خلال أسبوعين.' },
+              { title: 'ساعات تطوير مخصصة', desc: 'ربط أنظمة محاسبية، تكاملات مع بوابات دفع بنكية خاصة، وتطوير خصائص حصرية بالساعة.' },
+              { title: 'تدريب فريقك', desc: 'جلسات تدريبية مباشرة ومكثفة لفريق عملك على إدارة المخازن والشحن وتقارير الأداء.' },
+              { title: '', desc: '' },
+              { title: '', desc: '' },
+              { title: '', desc: '' }
+            ].map((defaultItem, idx) => {
+              const num = idx + 1;
+              const title = t(`service_title${num}`, defaultItem.title);
+              const desc = t(`service_desc${num}`, defaultItem.desc);
+              
+              if (!title) return null;
+              
+              // Assign a different icon/color set based on the index to keep it vibrant
+              const themes = [
+                { icon: Brush, colors: 'bg-brand-50 dark:bg-brand-950 text-brand-600', link: 'text-brand-600' },
+                { icon: Code2, colors: 'bg-teal-50 dark:bg-teal-950 text-teal-600', link: 'text-teal-600' },
+                { icon: GraduationCap, colors: 'bg-purple-50 dark:bg-purple-950 text-purple-600', link: 'text-purple-600' },
+                { icon: Database, colors: 'bg-accent-50 dark:bg-accent-950 text-accent', link: 'text-accent' },
+                { icon: Sparkles, colors: 'bg-amber-50 dark:bg-amber-950 text-amber-500', link: 'text-amber-500' },
+                { icon: Zap, colors: 'bg-rose-50 dark:bg-rose-950 text-rose-500', link: 'text-rose-500' },
+              ];
+              const theme = themes[idx % themes.length];
+              const Icon = theme.icon;
 
-            <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 flex flex-col justify-between">
-              <div className="space-y-2">
-                <div className="w-10 h-10 rounded-2xl bg-accent-50 dark:bg-accent-950 text-accent flex items-center justify-center font-bold">
-                  <Database className="w-5 h-5" />
+              return (
+                <div key={num} className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold ${theme.colors}`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <h3 className="font-bold text-sm text-slate-900 dark:text-white">{title}</h3>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      {desc}
+                    </p>
+                  </div>
+                  <Link href="/create-store" className={`text-xs font-bold hover:underline flex items-center gap-1 pt-2 ${theme.link}`}>
+                    <span>طلب الخدمة</span>
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                  </Link>
                 </div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">هجرة من منصة أخرى</h3>
-                <p className="text-xs text-slate-500">
-                  ننقل جميع منتجاتك وعملاءك وسجل طلباتك من Shopify أو WooCommerce أو سلة بدون فقد بيانات.
-                </p>
-              </div>
-              <Link href="/create-store" className="text-xs font-bold text-accent hover:underline flex items-center gap-1 pt-2">
-                <span>طلب نقل المتجر</span>
-                <ArrowLeft className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 flex flex-col justify-between">
-              <div className="space-y-2">
-                <div className="w-10 h-10 rounded-2xl bg-teal-50 dark:bg-teal-950 text-teal-600 flex items-center justify-center font-bold">
-                  <Code2 className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">ساعات تطوير مخصصة</h3>
-                <p className="text-xs text-slate-500">
-                  ربط أنظمة محاسبية، تكاملات مع بوابات دفع بنكية خاصة، وتطوير خصائص حصرية بالساعة.
-                </p>
-              </div>
-              <Link href="/create-store" className="text-xs font-bold text-teal-600 hover:underline flex items-center gap-1 pt-2">
-                <span>حجز ساعات تطوير</span>
-                <ArrowLeft className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 flex flex-col justify-between">
-              <div className="space-y-2">
-                <div className="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-950 text-purple-600 flex items-center justify-center font-bold">
-                  <GraduationCap className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">تدريب فريقك</h3>
-                <p className="text-xs text-slate-500">
-                  جلسات تدريبية مباشرة ومكثفة لفريق عملك على إدارة المخازن والشحن وتقارير الأداء.
-                </p>
-              </div>
-              <Link href="/create-store" className="text-xs font-bold text-purple-600 hover:underline flex items-center gap-1 pt-2">
-                <span>حجز جلسة تدريب</span>
-                <ArrowLeft className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
+              );
+            })}
           </div>
 
+        </section>
+
+        {/* ========================================================================= */}
+        {/* ❓ 4.5 FAQ SECTION (الأسئلة الشائعة) */}
+        {/* ========================================================================= */}
+        <section className="py-16 sm:py-24 px-4 sm:px-6 max-w-3xl mx-auto text-right">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white mb-3">
+              {t('faq_title', 'أسئلة شائعة')}
+            </h2>
+            <p className="text-sm text-slate-500 max-w-xl mx-auto">
+              {t('faq_subtitle', 'ستجد معظم أسئلتك وتساؤلاتك هنا. إن لم تجد سؤالك في هذه القائمة رجاء لا تتردد في الاتصال بنا')}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {[
+              { q: 'ما هي منصة سِين؟', a: 'سِين هي منصة تجارة إلكترونية سحابية متكاملة تتيح لك إنشاء متجرك الإلكتروني الخاص في اليمن بسهولة، وإدارته بشكل كامل دون الحاجة لأي خبرة برمجية.' },
+              { q: 'ما هي ميزات منصة سِين؟', a: 'توفر المنصة تصميمات جاهزة، إدارة للمخزون والطلبات، نظام تسعير متعدد العملات (صنعاء، عدن، سعودي)، وربط مع بوابات الدفع المحلية مثل الكريمي وجوالي وون كاش.' },
+              { q: 'كيف يمكنني إنشاء حساب ومتجر؟', a: 'يمكنك البدء فوراً بالنقر على "أنشئ متجرك مجاناً" وتعبئة بياناتك الأساسية، وسيتم تجهيز متجرك وإطلاقه خلال دقائق معدودة.' },
+              { q: 'هل يمكنني ربط طرق دفع محلية يمنية؟', a: 'نعم، المنصة مجهزة للربط المباشر مع أشهر طرق الدفع والمحافظ الإلكترونية في اليمن لتسهيل استلام أموالك من عملائك.' },
+              { q: 'هل أستطيع استخدام اسم نطاق (Domain) خاص بي؟', a: 'بالتأكيد، يمكنك في الباقات المتقدمة ربط متجرك باسم نطاق خاص بك (مثل www.yourstore.com) لتعزيز علامتك التجارية.' },
+              { q: 'هل تأخذ المنصة عمولة على المبيعات؟', a: 'لا، منصة سِين لا تفرض أي عمولات خفية على مبيعاتك. أنت تدفع فقط قيمة الاشتراك الشهري أو السنوي للباقة التي تختارها.' },
+              { q: 'ما هي وسائل الدفع المتاحة للاشتراك في المنصة؟', a: 'نوفر خيارات دفع متعددة تناسب الجميع في اليمن، بما في ذلك الحوالات البنكية المباشرة عبر الكريمي، القطيبي، أو عبر المحافظ الإلكترونية.' }
+            ].map((defaultItem, index) => {
+              const num = index + 1;
+              const q = t(`faq_q${num}`, defaultItem.q);
+              const a = t(`faq_a${num}`, defaultItem.a);
+              if (!q || !a) return null;
+              
+              const isOpen = openFaq === num;
+              
+              return (
+                <div key={num} className="border-b border-slate-200 dark:border-slate-800 last:border-0 pb-1">
+                  <button
+                    onClick={() => setOpenFaq(isOpen ? null : num)}
+                    className="w-full py-4 flex items-center justify-between text-right hover:text-brand-600 transition-colors"
+                  >
+                    <span className="font-bold text-slate-900 dark:text-white">{q}</span>
+                    <span className={`transform transition-transform duration-200 ${isOpen ? 'rotate-180 text-brand-600' : 'text-slate-400'}`}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </span>
+                  </button>
+                  <div
+                    className={`overflow-hidden transition-all duration-300 ${
+                      isOpen ? 'max-h-96 opacity-100 pb-4' : 'max-h-0 opacity-0'
+                    }`}
+                  >
+                    <p className="text-sm text-slate-500 leading-relaxed pr-2">
+                      {a}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-12 text-center">
+            <Link
+              href="https://wa.me/967777777777"
+              target="_blank"
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-sm shadow-xl hover:shadow-2xl transition-all"
+            >
+              <span>إتصل بنا</span>
+            </Link>
+          </div>
         </section>
 
         {/* ========================================================================= */}
@@ -746,10 +806,10 @@ export default function HomePage() {
           
           <div className="text-center max-w-3xl mx-auto mb-12">
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-              مقارنة تفصيلية شاملة لكافة الميزات
+              {t('compare_title', 'مقارنة تفصيلية شاملة لكافة الميزات')}
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              تعرف على تفاصيل كل ميزة بدقة في باقات سِين لاختيار ما يلائم طموحك التجاري
+              {t('compare_subtitle', 'تعرف على تفاصيل كل ميزة بدقة في باقات سِين لاختيار ما يلائم طموحك التجاري')}
             </p>
           </div>
 
