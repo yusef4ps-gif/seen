@@ -195,6 +195,49 @@ export default function SuperAdminPage() {
     refreshData();
   };
 
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // Create canvas to compress/resize the image before saving to base64
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 300;
+        const MAX_HEIGHT = 300;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // Convert to high-quality compressed JPEG base64
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+        setEditProfileAvatar(compressedBase64);
+      };
+      if (event.target?.result) {
+        img.src = event.target.result as string;
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Filtered Stores
   const filteredStores = stores.filter((s) => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -299,14 +342,12 @@ export default function SuperAdminPage() {
                     <form onSubmit={handleSaveProfile} className="space-y-4">
                       <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
                         <div className="space-y-2">
-                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">رابط الصورة الشخصية</label>
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">الصورة الشخصية</label>
                           <input 
-                            type="url" 
-                            required 
-                            value={editProfileAvatar} 
-                            onChange={(e) => setEditProfileAvatar(e.target.value)}
-                            className="w-full md:w-64 px-4 py-3 text-xs rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:ring-2 focus:ring-brand-500" 
-                            dir="ltr"
+                            type="file" 
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                            className="w-full md:w-64 px-4 py-3 text-xs rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 cursor-pointer" 
                           />
                         </div>
                         {editProfileAvatar && (
