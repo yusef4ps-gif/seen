@@ -196,7 +196,7 @@ export default function CustomerStorefrontPage() {
 
       const waMessage = generateWhatsAppOrderMessage({
         storeName: store.name,
-        orderNumber: newOrder.orderNumber,
+        orderNumber: newOrder?.orderNumber || 'Unknown',
         customerName,
         items: formattedItems,
         totalFormatted: formatCurrency(cartTotalConverted, activeCurrency),
@@ -214,7 +214,7 @@ export default function CustomerStorefrontPage() {
         window.open(`https://wa.me/${targetPhone}?text=${waMessage}`, '_blank');
       }
 
-      router.push(`/store/${store.slug}/track/${newOrder.id}`);
+      router.push(`/store/${store.slug}/track/${newOrder?.id}`);
     } else {
       setIsSubmittingOrder(false);
       alert('حدث خطأ أثناء إنشاء الطلب. حاول مرة أخرى.');

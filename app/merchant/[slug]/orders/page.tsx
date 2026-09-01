@@ -31,7 +31,7 @@ export default function MerchantOrdersPage() {
     const ords = await getOrdersByStoreAction(storeId);
     setOrders(ords as any);
     if (selectedOrder) {
-      setSelectedOrder(ords.find((o: any) => o.id === selectedOrder.id) || null);
+      setSelectedOrder((ords.find((o: any) => o.id === selectedOrder.id) as any) || null);
     }
   };
 

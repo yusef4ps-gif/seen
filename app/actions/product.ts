@@ -11,15 +11,13 @@ export async function createProductAction(data: any) {
         name: data.name,
         description: data.description,
         price: data.price,
-        compareAtPrice: data.compareAtPrice,
-        costPrice: data.costPrice,
+        comparePrice: data.comparePrice || data.compareAtPrice,
         stock: data.stock,
         lowStockAlert: data.lowStockAlert,
         images: JSON.stringify(data.images || []),
         category: data.category,
         tags: JSON.stringify(data.tags || []),
         isFeatured: data.isFeatured,
-        status: data.status,
       }
     });
     return { success: true, product };
@@ -37,15 +35,13 @@ export async function updateProductAction(id: string, data: any) {
         name: data.name,
         description: data.description,
         price: data.price,
-        compareAtPrice: data.compareAtPrice,
-        costPrice: data.costPrice,
+        comparePrice: data.comparePrice || data.compareAtPrice,
         stock: data.stock,
         lowStockAlert: data.lowStockAlert,
         images: JSON.stringify(data.images || []),
         category: data.category,
         tags: JSON.stringify(data.tags || []),
         isFeatured: data.isFeatured,
-        status: data.status,
       }
     });
     return { success: true, product };
