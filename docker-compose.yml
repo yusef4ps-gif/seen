@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  mazn-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: seen-ecommerce-platform
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

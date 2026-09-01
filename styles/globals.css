@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #3b7a8b;
+  --primary-hover: #2f6371;
+  --primary-soft: rgba(59, 122, 139, 0.14);
+  --accent: #df7254;
+  --accent-soft: rgba(223, 114, 84, 0.15);
+  --canvas: #f6fafb;
+  --surface: #ffffff;
+  --surface-border: rgba(59, 122, 139, 0.18);
+  --text-main: #0c1a20;
+  --text-muted: #627d89;
+  --font-tajawal: 'Tajawal', sans-serif;
+}
+
+.dark {
+  --canvas: #0a1317;
+  --surface: #0f2a35;
+  --surface-border: rgba(59, 122, 139, 0.28);
+  --text-main: #f6fafb;
+  --text-muted: #8faab5;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  direction: rtl;
+  font-family: var(--font-tajawal);
+  scroll-behavior: smooth;
+  background-color: var(--canvas);
+  color: var(--text-main);
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* Glassmorphism Styles */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(59, 122, 139, 0.15);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 42, 53, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(59, 122, 139, 0.35);
+}
+
+/* Keyframe Animations for Cosmic Canvas & Floating Mockups */
+@keyframes nebulaPulseA {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(30px, -20px) scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes nebulaPulseB {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translate(-35px, 25px) scale(1.1);
+    opacity: 0.95;
+  }
+}
+
+@keyframes nebulaPulseC {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate(25px, 30px) scale(1.08);
+    opacity: 0.9;
+  }
+}
+
+@keyframes gentleFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes heroHighlightSheen {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes starTwinkle {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-nebula-a {
+  animation: nebulaPulseA 24s ease-in-out infinite;
+}
+
+.animate-nebula-b {
+  animation: nebulaPulseB 30s ease-in-out infinite;
+}
+
+.animate-nebula-c {
+  animation: nebulaPulseC 36s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: gentleFloat 7s ease-in-out infinite;
+}
+
+.animate-star-twinkle {
+  animation: starTwinkle 4s ease-in-out infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(59, 122, 139, 0.3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 122, 139, 0.6);
+}

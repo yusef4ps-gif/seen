@@ -1,0 +1,129 @@
+// Prisma Schema for SEEN Multi-Tenant E-Commerce Platform (منصة سِين)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Store {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  name              String
+  description       String?  @default("")
+  category          String   @default("عام")
+  logo              String   @default("")
+  banner            String   @default("")
+  primaryColor      String   @default("#0d9488")
+  phone             String
+  whatsapp          String?  @default("")
+  email             String?  @default("")
+  city              String   @default("عدن")
+  address           String?  @default("")
+  baseCurrency      String   @default("SAR")
+  customRates       String   @default("{\"YER_ADEN\":1910,\"YER_SANAA\":535,\"SAR\":3.75,\"USD\":1}")
+  paymentAccounts   String   @default("[]") // JSON string of payment methods
+  shippingMethods   String   @default("[]") // JSON string of shipping methods
+  planTier          String   @default("starter") // free, starter, pro, vip
+  planStatus        String   @default("active")  // active, suspended
+  activeVisitorsNow Int      @default(8)
+  totalSalesGMV     Float    @default(0)
+  themeConfig       String   @default("{}") // JSON string
+  storeServices     String   @default("[]") // JSON string
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  products          Product[]
+  orders            Order[]
+  abandonedCarts    AbandonedCart[]
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  storeId        String
+  name           String
+  description    String?  @default("")
+  category       String   @default("عام")
+  price          Float
+  comparePrice   Float?
+  baseCurrency   String   @default("SAR")
+  images         String   @default("[]") // JSON array of image URLs
+  stock          Int      @default(0)
+  lowStockAlert  Int      @default(5)
+  isAvailable    Boolean  @default(true)
+  isFeatured     Boolean  @default(false)
+  viewsCount     Int      @default(0)
+  salesCount     Int      @default(0)
+  tags           String   @default("[]") // JSON array of tags
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  variants       ProductVariant[]
+}
+
+model ProductVariant {
+  id            String   @id @default(cuid())
+  productId     String
+  name          String
+  attributes    String   @default("{}") // JSON attributes { color, size }
+  priceOverride Float?
+  stock         Int      @default(0)
+  sku           String?  @default("")
+
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id                 String   @id @default(cuid())
+  orderNumber        String   @unique
+  storeId            String
+  customerName       String
+  customerPhone      String
+  city               String   @default("عدن")
+  address            String?  @default("")
+  deliveryType       String   @default("delivery") // delivery, pickup
+  items              String   @default("[]")       // JSON OrderItem[]
+  subtotal           Float    @default(0)
+  shippingCost       Float    @default(0)
+  discount           Float    @default(0)
+  total              Float    @default(0)
+  currency           String   @default("SAR")
+  paymentMethod      String   @default("cod")
+  paymentProofUrl    String?  @default("")
+  paymentProofStatus String?  @default("unverified") // unverified, verified, rejected
+  status             String   @default("new")        // pending_payment, new, processing, shipped, delivered, cancelled
+  notes              String?  @default("")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  store              Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model AbandonedCart {
+  id             String    @id @default(cuid())
+  storeId        String
+  customerName   String?   @default("")
+  customerPhone  String
+  items          String    @default("[]") // JSON OrderItem[]
+  total          Float     @default(0)
+  currency       String    @default("SAR")
+  abandonedAt    DateTime  @default(now())
+  recoverySentAt DateTime?
+  recovered      Boolean   @default(false)
+
+  store          Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model SystemBroadcast {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  type      String   @default("info") // info, success, warning, alert
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
