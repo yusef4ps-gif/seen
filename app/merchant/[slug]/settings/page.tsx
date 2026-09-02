@@ -146,6 +146,7 @@ export default function MerchantSettingsPage() {
         id: `ship_${Date.now()}`,
         name: newName,
         cost: newCost,
+        currency: baseCurrency,
         estimatedDelivery: '1-2 أيام',
         isActive: true,
         isPickup: false
