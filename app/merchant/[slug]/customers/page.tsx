@@ -9,9 +9,9 @@ import {
   Award, CheckCircle2, UserPlus
 } from 'lucide-react';
 import { authEngine } from '@/lib/auth-engine';
-import { storeEngine } from '@/lib/store-engine';
 import { User, Store } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
+import { getStoreBySlugAction } from '@/app/actions/store';
 
 export default function MerchantCustomersPage() {
   const params = useParams();
@@ -22,11 +22,12 @@ export default function MerchantCustomersPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    if (slug) {
-      const s = storeEngine.getStoreBySlug(slug);
-      if (s) {
-        setStore(s);
-        // Get all customers assigned to this store or registered generally
+    async function init() {
+      if (slug) {
+        const s = await getStoreBySlugAction(slug);
+        if (s) {
+          setStore(s as any);
+          // Get all customers assigned to this store or registered generally
         const custs = authEngine.getUsers(s.id, 'CUSTOMER');
         // If empty, get general customers
         if (custs.length === 0) {
@@ -36,6 +37,8 @@ export default function MerchantCustomersPage() {
         }
       }
     }
+    }
+    init();
   }, [slug]);
 
   if (!store) return null;

@@ -8,8 +8,8 @@ import {
   CheckCircle2, Lock, ArrowLeft, Building2, Eye, ShieldAlert
 } from 'lucide-react';
 import { authEngine } from '@/lib/auth-engine';
-import { storeEngine } from '@/lib/store-engine';
 import { User, Store, StaffPermission } from '@/lib/types';
+import { getStoreBySlugAction } from '@/app/actions/store';
 
 export default function MerchantStaffPage() {
   const params = useParams();
@@ -19,15 +19,18 @@ export default function MerchantStaffPage() {
   const [staffMembers, setStaffMembers] = useState<User[]>([]);
 
   useEffect(() => {
-    if (slug) {
-      const s = storeEngine.getStoreBySlug(slug);
-      if (s) {
-        setStore(s);
-        // Get staff and owner for this store
-        const team = authEngine.getUsers(s.id);
-        setStaffMembers(team.filter((u) => u.role === 'STORE_STAFF' || u.role === 'STORE_OWNER'));
+    async function init() {
+      if (slug) {
+        const s = await getStoreBySlugAction(slug);
+        if (s) {
+          setStore(s as any);
+          // Get staff and owner for this store
+          const team = authEngine.getUsers(s.id);
+          setStaffMembers(team.filter((u) => u.role === 'STORE_STAFF' || u.role === 'STORE_OWNER'));
+        }
       }
     }
+    init();
   }, [slug]);
 
   if (!store) return null;

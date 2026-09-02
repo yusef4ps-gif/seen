@@ -6,8 +6,8 @@ import {
   Settings, Wallet, RefreshCw, Truck, Store as StoreIcon, 
   Save, CheckCircle2, Plus, Trash2, Building2, Phone, MapPin, Image as ImageIcon
 } from 'lucide-react';
-import { storeEngine } from '@/lib/store-engine';
 import { Store, CurrencyCode, PaymentAccountConfig, ShippingMethod } from '@/lib/types';
+import { getStoreBySlugAction, updateStoreAction } from '@/app/actions/store';
 
 export default function MerchantSettingsPage() {
   const params = useParams();
@@ -37,31 +37,36 @@ export default function MerchantSettingsPage() {
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
 
   useEffect(() => {
-    if (slug) {
-      const s = storeEngine.getStoreBySlug(slug);
-      if (s) {
-        setStore(s);
-        setName(s.name);
-        setDescription(s.description);
-        setPhone(s.phone);
-        setWhatsapp(s.whatsapp);
-        setCity(s.city);
-        setAddress(s.address);
-        setLogo(s.logo);
-        setBanner(s.banner);
-        setBaseCurrency(s.baseCurrency);
-        setCustomRates(s.customRates || { YER_ADEN: 1910, YER_SANAA: 535, SAR: 3.75, USD: 1 });
-        setPaymentAccounts(s.paymentAccounts || []);
-        setShippingMethods(s.shippingMethods || []);
+    async function init() {
+      if (slug) {
+        const s = await getStoreBySlugAction(slug);
+        if (s) {
+          setStore(s as any);
+          setName(s.name || '');
+          setDescription(s.description || '');
+          setPhone(s.phone);
+          setWhatsapp(s.whatsapp || '');
+          setCity(s.city || '');
+          setAddress(s.address || '');
+          setLogo(s.logo || '');
+          setBanner(s.banner || '');
+          setBaseCurrency(s.baseCurrency as any);
+          setCustomRates(s.customRates || { YER_ADEN: 1910, YER_SANAA: 535, SAR: 3.75, USD: 1 });
+          setPaymentAccounts(s.paymentAccounts || []);
+          setShippingMethods(s.shippingMethods || []);
+        }
       }
     }
+    init();
   }, [slug]);
 
   if (!store) return null;
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    storeEngine.updateStore(store.id, {
+    if (!store) return;
+    
+    await updateStoreAction(store.id, {
       name,
       description,
       phone,
@@ -71,9 +76,9 @@ export default function MerchantSettingsPage() {
       logo,
       banner,
       baseCurrency,
-      customRates,
-      paymentAccounts,
-      shippingMethods,
+      customRates: JSON.stringify(customRates),
+      paymentAccounts: JSON.stringify(paymentAccounts),
+      shippingMethods: JSON.stringify(shippingMethods),
     });
 
     setIsSaved(true);
@@ -221,26 +226,58 @@ export default function MerchantSettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  رابط شعار المتجر (Logo URL)
+                  شعار المتجر (Logo)
                 </label>
-                <input
-                  type="url"
-                  value={logo}
-                  onChange={(e) => setLogo(e.target.value)}
-                  className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
-                />
+                <div className="flex items-center gap-3">
+                  {logo && logo.trim() !== '' && (
+                    <img src={logo} className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0" alt="Logo" />
+                  )}
+                  <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-all bg-slate-50 dark:bg-slate-800 text-slate-500">
+                    <ImageIcon className="w-4 h-4" />
+                    <span className="text-xs font-bold">رفع شعار...</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => setLogo(reader.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  رابط بانر المتجر (Banner URL)
+                  بانر المتجر (Banner)
                 </label>
-                <input
-                  type="url"
-                  value={banner}
-                  onChange={(e) => setBanner(e.target.value)}
-                  className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
-                />
+                <div className="flex items-center gap-3">
+                  {banner && banner.trim() !== '' && (
+                    <img src={banner} className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0" alt="Banner" />
+                  )}
+                  <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-all bg-slate-50 dark:bg-slate-800 text-slate-500">
+                    <ImageIcon className="w-4 h-4" />
+                    <span className="text-xs font-bold">رفع بانر...</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => setBanner(reader.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
             </div>
           </div>

@@ -6,9 +6,9 @@ import {
   ShoppingCart, MessageSquare, Sparkles, Clock, 
   ArrowLeft, CheckCircle2, DollarSign, Send, Ticket
 } from 'lucide-react';
-import { storeEngine } from '@/lib/store-engine';
 import { Store, AbandonedCart } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
+import { getStoreBySlugAction } from '@/app/actions/store';
 
 export default function MerchantAbandonedCartsPage() {
   const params = useParams();
@@ -20,10 +20,11 @@ export default function MerchantAbandonedCartsPage() {
   const [selectedCart, setSelectedCart] = useState<AbandonedCart | null>(null);
 
   useEffect(() => {
-    if (slug) {
-      const s = storeEngine.getStoreBySlug(slug);
-      if (s) {
-        setStore(s);
+    async function init() {
+      if (slug) {
+        const s = await getStoreBySlugAction(slug);
+        if (s) {
+          setStore(s as any);
         // Realistic mock abandoned carts for demo
         setCarts([
           {
@@ -65,10 +66,12 @@ export default function MerchantAbandonedCartsPage() {
             currency: 'SAR',
             abandonedAt: new Date(Date.now() - 3600000 * 8).toISOString(), // 8 hours ago
             recovered: false,
-          },
+          }
         ]);
       }
     }
+    }
+    init();
   }, [slug]);
 
   if (!store) return null;

@@ -6,8 +6,8 @@ import {
   Bot, Sparkles, Send, Copy, Check, MessageSquare, 
   Lightbulb, TrendingUp, Gift, Zap, Layers, RefreshCw
 } from 'lucide-react';
-import { storeEngine } from '@/lib/store-engine';
 import { Store } from '@/lib/types';
+import { getStoreBySlugAction } from '@/app/actions/store';
 
 export default function MerchantAIAdvisorPage() {
   const params = useParams();
@@ -20,10 +20,13 @@ export default function MerchantAIAdvisorPage() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    if (slug) {
-      const s = storeEngine.getStoreBySlug(slug);
-      if (s) setStore(s);
+    async function init() {
+      if (slug) {
+        const s = await getStoreBySlugAction(slug);
+        if (s) setStore(s as any);
+      }
     }
+    init();
   }, [slug]);
 
   if (!store) return null;

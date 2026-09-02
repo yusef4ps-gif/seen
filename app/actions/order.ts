@@ -5,6 +5,7 @@ import { OrderItem } from '@/lib/types';
 
 export async function createOrderAction(data: any) {
   try {
+    // 1. Create the order
     const order = await prisma.order.create({
       data: {
         id: data.id,
@@ -28,6 +29,31 @@ export async function createOrderAction(data: any) {
         notes: data.notes,
       }
     });
+
+    // 2. Decrement stock & increment sales count for each item
+    if (data.items && Array.isArray(data.items)) {
+      for (const item of data.items) {
+        // Update product stock and sales count
+        await prisma.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: { decrement: item.quantity },
+            salesCount: { increment: item.quantity }
+          }
+        });
+
+        // If the item has a variant, also update the variant's stock
+        if (item.variantId) {
+          await prisma.productVariant.update({
+            where: { id: item.variantId },
+            data: {
+              stock: { decrement: item.quantity }
+            }
+          });
+        }
+      }
+    }
+
     return { success: true, order };
   } catch (error) {
     console.error('Error creating order:', error);
@@ -37,11 +63,37 @@ export async function createOrderAction(data: any) {
 
 export async function updateOrderStatusAction(id: string, status: string) {
   try {
-    const order = await prisma.order.update({
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) return { success: false, error: 'Order not found' };
+
+    // If order is transitioning to cancelled, restore stock
+    if (status === 'cancelled' && order.status !== 'cancelled') {
+      const items = JSON.parse(order.items);
+      for (const item of items) {
+        // Restore product stock and sales count
+        await prisma.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: { increment: item.quantity },
+            salesCount: { decrement: item.quantity }
+          }
+        });
+
+        // Restore variant stock
+        if (item.variantId) {
+          await prisma.productVariant.update({
+            where: { id: item.variantId },
+            data: { stock: { increment: item.quantity } }
+          });
+        }
+      }
+    }
+
+    const updatedOrder = await prisma.order.update({
       where: { id },
       data: { status }
     });
-    return { success: true, order };
+    return { success: true, order: updatedOrder };
   } catch (error) {
     console.error('Error updating order status:', error);
     return { success: false, error };

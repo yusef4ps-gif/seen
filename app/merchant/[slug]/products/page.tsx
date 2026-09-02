@@ -147,6 +147,7 @@ export default function MerchantProductsPage() {
         isFeatured,
         status: 'active',
         tags: [category],
+        variants, // Ensure variants are passed
       });
     } else {
       await createProductAction({
@@ -163,6 +164,7 @@ export default function MerchantProductsPage() {
         isFeatured,
         status: 'active',
         tags: [category],
+        variants, // Ensure variants are passed
       });
     }
 

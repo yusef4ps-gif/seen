@@ -197,6 +197,7 @@ export async function getProductsByStoreAction(storeId: string) {
   try {
     const products = await prisma.product.findMany({
       where: { storeId },
+      include: { variants: true },
       orderBy: { createdAt: 'desc' },
     });
     return products.map(p => ({

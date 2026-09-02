@@ -8,12 +8,12 @@ import {
   Eye, EyeOff, ArrowUp, ArrowDown, Check, Save, RotateCcw, 
   ExternalLink, Type, Sliders, CheckCircle2, ChevronDown, ChevronUp, 
   Flame, ShoppingCart, Star, ShieldCheck, Truck, RefreshCw, Send, 
-  Zap, Cpu, Coffee, Award, Tag, Ticket
+  Zap, Cpu, Coffee, Award, Tag, Ticket, Image as ImageIcon
 } from 'lucide-react';
-import { storeEngine } from '@/lib/store-engine';
 import { Store, ThemeConfig, ThemeSection, ThemePreset } from '@/lib/types';
 import { THEME_PRESETS, DEFAULT_THEME_SECTIONS } from '@/lib/theme-presets';
 import { formatCurrency } from '@/lib/currency-engine';
+import { getStoreBySlugAction, updateStoreAction } from '@/app/actions/store';
 
 export default function ThemeBuilderPage() {
   const params = useParams();
@@ -30,18 +30,21 @@ export default function ThemeBuilderPage() {
   const [isSavedSuccessfully, setIsSavedSuccessfully] = useState(false);
 
   useEffect(() => {
-    if (slug) {
-      const s = storeEngine.getStoreBySlug(slug);
-      if (s) {
-        setStore(s);
-        if (s.themeConfig) {
-          setThemeConfig(s.themeConfig);
-        } else {
-          const matched = THEME_PRESETS.find(p => p.id === (s.category.includes('إلكترونيات') ? 'tech-modern' : s.category.includes('بن') ? 'yemen-roastery' : 'fashion-luxury'));
-          if (matched) setThemeConfig(matched.config);
+    async function init() {
+      if (slug) {
+        const s = await getStoreBySlugAction(slug);
+        if (s) {
+          setStore(s as any);
+          if (s.themeConfig) {
+            setThemeConfig(s.themeConfig as any);
+          } else {
+            const matched = THEME_PRESETS.find(p => p.id === (s.category.includes('إلكترونيات') ? 'tech-modern' : s.category.includes('بن') ? 'yemen-roastery' : 'fashion-luxury'));
+            if (matched) setThemeConfig(matched.config);
+          }
         }
       }
     }
+    init();
   }, [slug]);
 
   if (!store) return null;
@@ -89,8 +92,9 @@ export default function ThemeBuilderPage() {
   };
 
   // Save and publish theme
-  const handleSaveTheme = () => {
-    storeEngine.updateStoreTheme(store.id, themeConfig);
+  const handleSaveTheme = async () => {
+    if (!store) return;
+    await updateStoreAction(store.id, { themeConfig });
     setIsSavedSuccessfully(true);
     setTimeout(() => setIsSavedSuccessfully(false), 3000);
   };
@@ -530,6 +534,52 @@ export default function ThemeBuilderPage() {
                               </div>
                             )}
 
+                            {sec.settings.bannerImageUrl !== undefined && (
+                              <div>
+                                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                  صورة القسم (الرفع من الجهاز):
+                                </label>
+                                <div className="mt-1 flex items-center gap-3">
+                                  {sec.settings.bannerImageUrl && sec.settings.bannerImageUrl.trim() !== '' && (
+                                    <img src={sec.settings.bannerImageUrl} className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shadow-sm shrink-0" alt="Preview" />
+                                  )}
+                                  <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-all bg-white dark:bg-slate-900">
+                                    <ImageIcon className="w-4 h-4 text-slate-400" />
+                                    <span className="text-xs text-slate-500 font-bold">تصفح لرفع صورة...</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          const reader = new FileReader();
+                                          reader.onloadend = () => {
+                                            handleUpdateSectionSettings(sec.id, { bannerImageUrl: reader.result as string });
+                                          };
+                                          reader.readAsDataURL(file);
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+                            )}
+
+                            {sec.settings.ctaText !== undefined && (
+                              <div>
+                                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                  نص الزر (CTA):
+                                </label>
+                                <input
+                                  type="text"
+                                  value={sec.settings.ctaText || ''}
+                                  onChange={(e) => handleUpdateSectionSettings(sec.id, { ctaText: e.target.value })}
+                                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                                />
+                              </div>
+                            )}
+
                             {sec.settings.discountCode !== undefined && (
                               <div>
                                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
@@ -540,6 +590,22 @@ export default function ThemeBuilderPage() {
                                   value={sec.settings.discountCode || ''}
                                   onChange={(e) => handleUpdateSectionSettings(sec.id, { discountCode: e.target.value })}
                                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono font-bold text-brand-600"
+                                />
+                              </div>
+                            )}
+
+                            {sec.settings.itemsCount !== undefined && (
+                              <div>
+                                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                  عدد العناصر المراد عرضها:
+                                </label>
+                                <input
+                                  type="number"
+                                  min={2}
+                                  max={12}
+                                  value={sec.settings.itemsCount || 4}
+                                  onChange={(e) => handleUpdateSectionSettings(sec.id, { itemsCount: parseInt(e.target.value) || 4 })}
+                                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono"
                                 />
                               </div>
                             )}

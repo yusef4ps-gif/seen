@@ -6,10 +6,11 @@ import {
   Boxes, AlertTriangle, TrendingUp, PackageCheck, 
   Save, RefreshCw, Layers, CheckCircle2, ArrowUpDown, Sparkles
 } from 'lucide-react';
-import { storeEngine } from '@/lib/store-engine';
 import { Store, Product } from '@/lib/types';
 import { calculateInventoryOverview, InventoryOverview } from '@/lib/inventory-engine';
 import { formatCurrency } from '@/lib/currency-engine';
+import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
+import { updateProductAction } from '@/app/actions/product';
 
 export default function MerchantInventoryPage() {
   const params = useParams();
@@ -21,23 +22,26 @@ export default function MerchantInventoryPage() {
   const [editingStock, setEditingStock] = useState<Record<string, { stock: number; price: number }>>({});
   const [isSaved, setIsSaved] = useState(false);
 
-  useEffect(() => {
+  const loadData = async () => {
     if (slug) {
-      const s = storeEngine.getStoreBySlug(slug);
+      const s = await getStoreBySlugAction(slug);
       if (s) {
-        setStore(s);
-        const prods = storeEngine.getProducts(s.id);
-        setProducts(prods);
-        setOverview(calculateInventoryOverview(prods));
+        setStore(s as any);
+        const prods = await getProductsByStoreAction(s.id);
+        setProducts(prods as any);
+        setOverview(calculateInventoryOverview(prods as any));
 
-        // Initialize editable map
         const initialMap: Record<string, { stock: number; price: number }> = {};
-        prods.forEach((p) => {
+        prods.forEach((p: any) => {
           initialMap[p.id] = { stock: p.stock, price: p.price };
         });
         setEditingStock(initialMap);
       }
     }
+  };
+
+  useEffect(() => {
+    loadData();
   }, [slug]);
 
   const handleStockChange = (productId: string, newStock: number) => {
@@ -56,17 +60,27 @@ export default function MerchantInventoryPage() {
     setIsSaved(false);
   };
 
-  const handleSaveBulkChanges = () => {
-    Object.keys(editingStock).forEach((productId) => {
+  const handleSaveBulkChanges = async () => {
+    if (!store) return;
+    
+    // Save all changes concurrently
+    const promises = Object.keys(editingStock).map(async (productId) => {
       const { stock, price } = editingStock[productId];
-      storeEngine.updateProduct(productId, { stock, price });
+      const prod = products.find(p => p.id === productId);
+      if (prod && (prod.stock !== stock || prod.price !== price)) {
+        await updateProductAction(productId, {
+          name: prod.name,
+          category: prod.category,
+          stock,
+          price,
+          lowStockAlert: prod.lowStockAlert,
+          isFeatured: prod.isFeatured,
+        });
+      }
     });
 
-    if (store) {
-      const updated = storeEngine.getProducts(store.id);
-      setProducts(updated);
-      setOverview(calculateInventoryOverview(updated));
-    }
+    await Promise.all(promises);
+    await loadData();
 
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);

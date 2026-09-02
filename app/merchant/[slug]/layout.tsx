@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { 
   Store as StoreIcon, LayoutDashboard, Package, Boxes, 
   ShoppingCart, Bot, Settings, ExternalLink, ShieldCheck, Bell, 
-  Menu, X, Sparkles, RefreshCw, Users, ArrowUpRight, Palette
+  Menu, X, Sparkles, RefreshCw, Users, ArrowUpRight, Palette,
+  Ticket, Tag, BarChart, LogOut
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
 import { Store, SystemBroadcast } from '@/lib/types';
@@ -113,7 +114,7 @@ export default function MerchantLayout({
       icon: Package,
     },
     {
-      title: 'ذكاء المخزون والتقييم',
+      title: 'المخزون',
       href: `/merchant/${slug}/inventory`,
       icon: Boxes,
       badge: 'الذكي',
@@ -146,7 +147,7 @@ export default function MerchantLayout({
       badge: 'AI ✨',
     },
     {
-      title: 'محرر القوالب والهوية',
+      title: 'تخصيص الواجهة والمحتوى',
       href: `/merchant/${slug}/theme-builder`,
       icon: Palette,
       badge: 'جديد 🎨',
@@ -155,6 +156,21 @@ export default function MerchantLayout({
       title: 'إعدادات المتجر والمحافظ',
       href: `/merchant/${slug}/settings`,
       icon: Settings,
+    },
+    {
+      title: 'كوبونات التخفيض',
+      href: `/merchant/${slug}/coupons`,
+      icon: Ticket,
+    },
+    {
+      title: 'العروض الخاصة',
+      href: `/merchant/${slug}/offers`,
+      icon: Tag,
+    },
+    {
+      title: 'التقارير',
+      href: `/merchant/${slug}/reports`,
+      icon: BarChart,
     },
   ];
 
@@ -260,16 +276,30 @@ export default function MerchantLayout({
 
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2 bg-slate-50/50 dark:bg-slate-900/50">
-          <Link
-            href="/admin"
-            className="flex items-center justify-between p-2 rounded-xl text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          {currentUser?.role === 'SUPER_ADMIN' && (
+            <Link
+              href="/admin"
+              className="flex items-center justify-between p-2 rounded-xl text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-brand-600" />
+                <span>لوحة الإدارة العليا (Admin)</span>
+              </div>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+          )}
+          <button
+            onClick={() => {
+              authEngine.logout();
+              router.push('/login');
+            }}
+            className="w-full flex items-center justify-between p-2 rounded-xl text-[11px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
           >
             <div className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-brand-600" />
-              <span>لوحة الإدارة العليا (Admin)</span>
+              <LogOut className="w-4 h-4" />
+              <span>تسجيل الخروج</span>
             </div>
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </Link>
+          </button>
         </div>
       </aside>
 

@@ -18,6 +18,15 @@ export async function createProductAction(data: any) {
         category: data.category,
         tags: JSON.stringify(data.tags || []),
         isFeatured: data.isFeatured,
+        variants: {
+          create: data.variants ? data.variants.map((v: any) => ({
+            name: v.name,
+            attributes: JSON.stringify(v.attributes || {}),
+            priceOverride: v.priceOverride,
+            stock: v.stock,
+            sku: v.sku
+          })) : []
+        }
       }
     });
     return { success: true, product };
@@ -29,6 +38,13 @@ export async function createProductAction(data: any) {
 
 export async function updateProductAction(id: string, data: any) {
   try {
+    // First, delete existing variants to replace them with the new ones
+    if (data.variants) {
+      await prisma.productVariant.deleteMany({
+        where: { productId: id }
+      });
+    }
+
     const product = await prisma.product.update({
       where: { id },
       data: {
@@ -42,6 +58,17 @@ export async function updateProductAction(id: string, data: any) {
         category: data.category,
         tags: JSON.stringify(data.tags || []),
         isFeatured: data.isFeatured,
+        ...(data.variants && {
+          variants: {
+            create: data.variants.map((v: any) => ({
+              name: v.name,
+              attributes: JSON.stringify(v.attributes || {}),
+              priceOverride: v.priceOverride,
+              stock: v.stock,
+              sku: v.sku
+            }))
+          }
+        })
       }
     });
     return { success: true, product };

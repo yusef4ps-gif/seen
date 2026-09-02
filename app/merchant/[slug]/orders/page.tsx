@@ -107,6 +107,7 @@ export default function MerchantOrdersPage() {
             { id: 'processing', label: 'قيد التجهيز', count: orders.filter(o => o.status === 'processing').length },
             { id: 'shipped', label: 'تم الشحن', count: orders.filter(o => o.status === 'shipped').length },
             { id: 'delivered', label: 'مكتملة', count: orders.filter(o => o.status === 'delivered').length },
+            { id: 'cancelled', label: 'ملغي', count: orders.filter(o => o.status === 'cancelled').length },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -215,6 +216,7 @@ export default function MerchantOrdersPage() {
                         order.status === 'delivered' ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400' :
                         order.status === 'processing' ? 'bg-sky-50 text-sky-700 border-sky-300 dark:bg-sky-950 dark:text-sky-400' :
                         order.status === 'pending_payment' ? 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-400' :
+                        order.status === 'cancelled' ? 'bg-red-50 text-red-700 border-red-300 dark:bg-red-950 dark:text-red-400' :
                         'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300'
                       }`}
                     >
