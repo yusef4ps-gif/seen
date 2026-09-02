@@ -77,15 +77,23 @@ export default function MerchantAbandonedCartsPage() {
   if (!store) return null;
 
   const generateRecoveryMessage = (cart: AbandonedCart) => {
-    const discountedTotal = Math.round(cart.total * (1 - discountPercent / 100));
     const itemsList = cart.items.map(i => i.productName).join(' و ');
     
     let text = `مرحباً ${cart.customerName || 'عزيزنا العميل'} ✨\n`;
     text += `لاحظنا أنك تركت سلة مشترياتك في متجر *${store.name}* وتحتوي على (${itemsList}).\n\n`;
-    text += `🎁 تقديراً لاهتمامك، يسرنا إهداؤك كوبون خصم خاص بقيمة *${discountPercent}%*!\n`;
-    text += `💰 الإجمالي بعد الخصم: *${discountedTotal} ${cart.currency}* فقط.\n\n`;
-    text += `لإتمام طلبك والاستفادة من العرض، اضغط الرابط التالي:\n`;
-    text += `https://mazn.app/store/${store.slug}?recover=${cart.id}&discount=${discountPercent}`;
+
+    if (discountPercent > 0) {
+      const discountedTotal = Math.round(cart.total * (1 - discountPercent / 100));
+      text += `🎁 تقديراً لاهتمامك، يسرنا إهداؤك كوبون خصم خاص بقيمة *${discountPercent}%*!\n`;
+      text += `استخدم الكود التالي عند الدفع: *RECOVER${discountPercent}*\n`;
+      text += `💰 الإجمالي بعد الخصم سيكون تقريباً: *${discountedTotal} ${cart.currency}*\n\n`;
+      text += `لإتمام طلبك، اضغط الرابط التالي (يمكنك استخدام الكود أو المتابعة بدونه):\n`;
+    } else {
+      text += `هل واجهتك أي مشكلة أثناء الدفع؟ أو تحتاج مساعدة بخصوص المنتجات؟ نحن هنا للإجابة على استفساراتك! 💬\n\n`;
+      text += `بإمكانك العودة لإتمام طلبك متى ما أحببت عبر الرابط التالي:\n`;
+    }
+
+    text += `http://localhost:3000/store/${store.slug}`;
 
     return encodeURIComponent(text);
   };
@@ -126,8 +134,8 @@ export default function MerchantAbandonedCartsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {[5, 10, 15, 20].map((pct) => (
+        <div className="flex items-center gap-2 flex-wrap">
+          {[0, 5, 10, 15, 20].map((pct) => (
             <button
               key={pct}
               onClick={() => setDiscountPercent(pct)}
@@ -137,7 +145,7 @@ export default function MerchantAbandonedCartsPage() {
                   : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
               }`}
             >
-              خصم {pct}%
+              {pct === 0 ? 'بدون خصم (نقاش)' : `خصم ${pct}%`}
             </button>
           ))}
         </div>

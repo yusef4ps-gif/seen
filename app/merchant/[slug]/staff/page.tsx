@@ -67,13 +67,35 @@ export default function MerchantStaffPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/admin/users"
+          <button
+            onClick={() => {
+              const name = prompt('اسم الموظف الجديد:');
+              if (!name) return;
+              const phone = prompt('رقم هاتف الموظف:');
+              if (!phone) return;
+              
+              authEngine.createUserByAdmin({
+                name,
+                email: `${phone}@seen.store`,
+                phone,
+                password: '123',
+                role: 'STORE_STAFF',
+                staffTitle: 'موظف مبيعات',
+                storeId: store.id,
+                storeSlug: store.slug,
+                storeName: store.name,
+                staffPermissions: ['manage_orders', 'manage_products']
+              });
+              
+              const team = authEngine.getUsers(store.id);
+              setStaffMembers(team.filter((u) => u.role === 'STORE_STAFF' || u.role === 'STORE_OWNER'));
+              alert('تمت إضافة الموظف بنجاح! كلمة المرور الافتراضية هي 123');
+            }}
             className="px-4 py-2 rounded-xl text-xs font-bold bg-brand-50 text-brand-700 hover:bg-brand-100 border border-brand-200 transition-colors flex items-center gap-1.5"
           >
-            <ShieldCheck className="w-4 h-4" />
-            <span>طلب إضافة موظف جديد من الإدارة</span>
-          </Link>
+            <UserPlus className="w-4 h-4" />
+            <span>إضافة موظف جديد مباشرة</span>
+          </button>
         </div>
       </div>
 

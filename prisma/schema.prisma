@@ -34,6 +34,7 @@ model Store {
   totalSalesGMV     Float    @default(0)
   themeConfig       String   @default("{}") // JSON string
   storeServices     String   @default("[]") // JSON string
+  marketingPixels   String   @default("{}") // JSON string for tracking IDs
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -43,6 +44,24 @@ model Store {
   
   ownerId           String?
   owner             User?     @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  coupons           Coupon[]
+}
+
+model Coupon {
+  id          String    @id @default(cuid())
+  storeId     String
+  code        String
+  discount    Float
+  type        String    @default("percentage") // percentage, fixed, shipping
+  maxUses     Int       @default(0) // 0 means unlimited
+  usageCount  Int       @default(0)
+  expiry      DateTime?
+  isActive    Boolean   @default(true)
+  appliesTo   String    @default("all") // JSON array of product IDs or "all"
+  createdAt   DateTime  @default(now())
+  store       Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  
+  @@unique([storeId, code])
 }
 
 model User {

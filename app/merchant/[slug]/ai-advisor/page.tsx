@@ -130,9 +130,11 @@ export default function MerchantAIAdvisorPage() {
 
         {generatedCampaign && (
           <div className="p-4 rounded-2xl bg-slate-950 border border-teal-800/80 space-y-3 animate-fadeIn text-xs">
-            <pre className="whitespace-pre-wrap font-sans text-slate-200 leading-relaxed">
-              {generatedCampaign}
-            </pre>
+            <textarea
+              className="w-full h-40 bg-transparent text-slate-200 font-sans leading-relaxed outline-none border-none resize-y"
+              value={generatedCampaign}
+              onChange={(e) => setGeneratedCampaign(e.target.value)}
+            />
             <button
               onClick={() => handleCopy(generatedCampaign, 999)}
               className="px-3 py-1.5 rounded-lg bg-teal-600/30 text-teal-300 hover:bg-teal-600/50 text-[11px] font-bold flex items-center gap-1.5 transition-colors"

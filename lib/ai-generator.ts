@@ -40,6 +40,7 @@ export function generateWhatsAppOrderMessage(orderData: {
   customerName: string;
   items: { name: string; quantity: number; priceFormatted: string }[];
   totalFormatted: string;
+  discountFormatted?: string;
   paymentMethodName: string;
   city: string;
   address: string;
@@ -58,6 +59,9 @@ export function generateWhatsAppOrderMessage(orderData: {
   });
 
   text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+  if (orderData.discountFormatted) {
+    text += `🏷️ *الخصم:* -${orderData.discountFormatted}\n`;
+  }
   text += `💰 *الإجمالي الكلي:* *${orderData.totalFormatted}*\n\n`;
   text += `شكراً لتسوقكم معنا! يرجى تأكيد الطلب للبدء في التجهيز فوراً. ✨`;
 

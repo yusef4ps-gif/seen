@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import { Store, Product, ProductVariant, OrderItem, CurrencyCode, PaymentMethodType, ThemeConfig } from '@/lib/types';
 import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
-import { createOrderAction } from '@/app/actions/order';
+import { createOrderAction, captureAbandonedCartAction } from '@/app/actions/order';
+import { validateCouponAction } from '@/app/actions/coupon';
 import { formatCurrency, convertCurrency, DEFAULT_CURRENCIES } from '@/lib/currency-engine';
 import { generateWhatsAppOrderMessage } from '@/lib/ai-generator';
 import { THEME_PRESETS } from '@/lib/theme-presets';
@@ -48,6 +49,12 @@ export default function CustomerStorefrontPage() {
   const [paymentProofUrl, setPaymentProofUrl] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  
+  // Coupon states
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [couponError, setCouponError] = useState('');
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
   useEffect(() => {
     async function loadStorefront() {
@@ -67,6 +74,43 @@ export default function CustomerStorefrontPage() {
     }
     loadStorefront();
   }, [slug]);
+
+  // Visitor Tracking Ping
+  useEffect(() => {
+    if (!slug) return;
+    const visitorId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
+    const ping = () => {
+      fetch('/api/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId: slug, visitorId })
+      }).catch(() => {});
+    };
+
+    ping();
+    const interval = setInterval(ping, 5000);
+    return () => clearInterval(interval);
+  }, [slug]);
+
+  // Silent Lead Capture for Abandoned Carts
+  useEffect(() => {
+    if (!store?.id || cart.length === 0 || customerPhone.length < 8) return;
+    
+    const timeout = setTimeout(() => {
+      const cartTotalBase = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      captureAbandonedCartAction({
+        storeId: store.id,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        items: cart,
+        total: cartTotalBase,
+        currency: store.baseCurrency || 'SAR'
+      }).catch(console.error);
+    }, 3000); // 3 seconds debounce after typing
+
+    return () => clearTimeout(timeout);
+  }, [customerName, customerPhone, cart, store?.id, store?.baseCurrency]);
 
   if (!store) {
     return (
@@ -145,9 +189,45 @@ export default function CustomerStorefrontPage() {
   // Totals calculations
   const cartSubtotalBase = cart.reduce((sum, item) => sum + item.total, 0);
   const cartSubtotalConverted = getConvertedPrice(cartSubtotalBase);
+  
+  let discountConverted = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.type === 'percentage') {
+      discountConverted = cartSubtotalConverted * (appliedCoupon.discount / 100);
+    } else if (appliedCoupon.type === 'fixed') {
+      discountConverted = getConvertedPrice(appliedCoupon.discount);
+    }
+  }
+
   const selectedShipping = store.shippingMethods.find(m => m.isActive && (deliveryType === 'pickup' ? m.isPickup : !m.isPickup));
-  const shippingCostConverted = deliveryType === 'pickup' ? 0 : (selectedShipping?.cost || 3000);
-  const cartTotalConverted = cartSubtotalConverted + shippingCostConverted;
+  let shippingCostConverted = deliveryType === 'pickup' ? 0 : (selectedShipping?.cost || 3000);
+  
+  if (appliedCoupon?.type === 'shipping') {
+    shippingCostConverted = 0;
+  }
+
+  const cartTotalConverted = Math.max(0, cartSubtotalConverted + shippingCostConverted - discountConverted);
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode) return;
+    setIsValidatingCoupon(true);
+    setCouponError('');
+    const res = await validateCouponAction(couponCode, store.id);
+    if (res.valid) {
+      setAppliedCoupon(res.coupon);
+      setCouponError('');
+    } else {
+      setAppliedCoupon(null);
+      setCouponError(res.error || 'كود الخصم غير صحيح');
+    }
+    setIsValidatingCoupon(false);
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setCouponError('');
+  };
 
   // Checkout submission
   const handlePlaceOrder = async (e: React.FormEvent) => {
@@ -171,7 +251,7 @@ export default function CustomerStorefrontPage() {
       items: cart,
       subtotal: cartSubtotalConverted,
       shippingCost: shippingCostConverted,
-      discount: 0,
+      discount: discountConverted,
       total: cartTotalConverted,
       currency: activeCurrency,
       paymentMethod: selectedPayment,
@@ -200,6 +280,7 @@ export default function CustomerStorefrontPage() {
         customerName,
         items: formattedItems,
         totalFormatted: formatCurrency(cartTotalConverted, activeCurrency),
+        discountFormatted: discountConverted > 0 ? formatCurrency(discountConverted, activeCurrency) : undefined,
         paymentMethodName: paymentName,
         city: city || store.city,
         address: deliveryType === 'pickup' ? 'استلام من المحل' : address,
@@ -1289,15 +1370,61 @@ export default function CustomerStorefrontPage() {
                 )}
               </div>
 
+              {/* Coupon Section */}
+              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="font-bold text-slate-900 dark:text-white text-xs">
+                  كود الخصم (اختياري):
+                </div>
+                {!appliedCoupon ? (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        placeholder="أدخل الكوبون هنا..."
+                        className="flex-1 px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 uppercase font-bold tracking-wider"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        disabled={!couponCode || isValidatingCoupon}
+                        className="px-5 py-2.5 rounded-xl text-xs font-bold bg-slate-900 dark:bg-slate-700 text-white disabled:opacity-50 transition-opacity"
+                      >
+                        {isValidatingCoupon ? 'جاري...' : 'تطبيق'}
+                      </button>
+                    </div>
+                    {couponError && (
+                      <div className="text-red-500 text-[11px] font-bold mt-1 px-1">{couponError}</div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/50">
+                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-xs">
+                      <span>كوبون مطبق: {appliedCoupon.code}</span>
+                    </div>
+                    <button type="button" onClick={handleRemoveCoupon} className="text-red-500 bg-white hover:bg-red-50 px-2 py-1 rounded-lg text-[10px] font-bold border border-red-200">
+                      إزالة
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 space-y-1.5">
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-500">المجموع الفرعي ({cart.length} أصناف):</span>
                   <span className="font-bold">{formatCurrency(cartSubtotalConverted, activeCurrency)}</span>
                 </div>
+                {appliedCoupon && discountConverted > 0 && (
+                  <div className="flex justify-between text-xs text-brand-600 dark:text-brand-400">
+                    <span>خصم الكوبون ({appliedCoupon.code}):</span>
+                    <span className="font-bold">- {formatCurrency(discountConverted, activeCurrency)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-500">رسوم التوصيل:</span>
                   <span className="font-bold">
-                    {deliveryType === 'pickup' ? 'مجاني (استلام)' : formatCurrency(shippingCostConverted, activeCurrency)}
+                    {deliveryType === 'pickup' ? 'مجاني (استلام)' : appliedCoupon?.type === 'shipping' ? 'مجاني بالكوبون' : formatCurrency(shippingCostConverted, activeCurrency)}
                   </span>
                 </div>
                 <div className="flex justify-between text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 pt-1.5 border-t border-slate-200 dark:border-slate-700">

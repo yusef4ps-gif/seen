@@ -5,11 +5,17 @@ import { OrderItem } from '@/lib/types';
 
 export async function createOrderAction(data: any) {
   try {
+    // Determine the next sequential order number for this store
+    const storeOrderCount = await prisma.order.count({
+      where: { storeId: data.storeId }
+    });
+    const sequentialOrderNumber = `#${1000 + storeOrderCount + 1}`;
+
     // 1. Create the order
     const order = await prisma.order.create({
       data: {
         id: data.id,
-        orderNumber: data.orderNumber,
+        orderNumber: sequentialOrderNumber,
         storeId: data.storeId,
         customerName: data.customerName,
         customerPhone: data.customerPhone,
@@ -115,3 +121,45 @@ export async function verifyPaymentProofAction(id: string, status: string) {
     return { success: false, error };
   }
 }
+
+export async function captureAbandonedCartAction(data: any) {
+  try {
+    const existing = await prisma.abandonedCart.findFirst({
+      where: {
+        storeId: data.storeId,
+        customerPhone: data.customerPhone
+      },
+      orderBy: { abandonedAt: 'desc' }
+    });
+
+    if (existing && !existing.recovered) {
+      const updated = await prisma.abandonedCart.update({
+        where: { id: existing.id },
+        data: {
+          customerName: data.customerName,
+          items: JSON.stringify(data.items),
+          total: data.total,
+          currency: data.currency,
+          abandonedAt: new Date()
+        }
+      });
+      return { success: true, cart: updated };
+    } else {
+      const cart = await prisma.abandonedCart.create({
+        data: {
+          storeId: data.storeId,
+          customerName: data.customerName || '',
+          customerPhone: data.customerPhone,
+          items: JSON.stringify(data.items),
+          total: data.total,
+          currency: data.currency,
+        }
+      });
+      return { success: true, cart };
+    }
+  } catch (error) {
+    console.error('Error capturing abandoned cart:', error);
+    return { success: false, error };
+  }
+}
+

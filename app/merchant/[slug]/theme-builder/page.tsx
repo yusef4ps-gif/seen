@@ -375,6 +375,34 @@ export default function ThemeBuilderPage() {
                   </div>
                 </div>
 
+                {/* Background Color */}
+                <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                    لون خلفية المتجر (Background Color):
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={themeConfig.colors.background}
+                      onChange={(e) => setThemeConfig({
+                        ...themeConfig,
+                        colors: { ...themeConfig.colors, background: e.target.value },
+                      })}
+                      className="w-10 h-10 rounded-xl cursor-pointer border-0 bg-transparent p-0"
+                    />
+                    <input
+                      type="text"
+                      value={themeConfig.colors.background}
+                      onChange={(e) => setThemeConfig({
+                        ...themeConfig,
+                        colors: { ...themeConfig.colors, background: e.target.value },
+                      })}
+                      className="px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono"
+                    />
+                  </div>
+                </div>
+
+
                 {/* Font Selector */}
                 <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
@@ -695,19 +723,29 @@ export default function ThemeBuilderPage() {
                   if (section.type === 'hero_slider') {
                     if (presetId === 'tech-modern') {
                       return (
-                        <div key={section.id} className="relative rounded-2xl bg-slate-900 border border-slate-800 p-4 text-white space-y-2">
-                          <div className="text-[9px] font-mono text-cyan-400">⚡ CYBER TECH 2026</div>
-                          <h2 className="text-sm font-black">{section.settings.bannerTitle}</h2>
-                          <p className="text-[10px] text-slate-400">{section.settings.bannerSubtitle}</p>
+                        <div key={section.id} className="relative rounded-2xl bg-slate-900 border border-slate-800 p-4 text-white space-y-2 flex flex-col sm:flex-row items-center gap-4">
+                          <div className="flex-1">
+                            <div className="text-[9px] font-mono text-cyan-400">⚡ CYBER TECH 2026</div>
+                            <h2 className="text-sm font-black">{section.settings.bannerTitle}</h2>
+                            <p className="text-[10px] text-slate-400">{section.settings.bannerSubtitle}</p>
+                          </div>
+                          <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden border border-slate-700 shrink-0">
+                            <img src={section.settings.bannerImageUrl || store.banner} alt="Hero" className="w-full h-full object-cover" />
+                          </div>
                         </div>
                       );
                     }
                     if (presetId === 'yemen-roastery') {
                       return (
-                        <div key={section.id} className="rounded-2xl bg-[#3b1907] text-[#fefcf8] p-4 space-y-1.5 border border-amber-900/30">
-                          <div className="text-[9px] text-amber-300 font-bold">☕ محاصيل يمنية نادرة</div>
-                          <h2 className="text-sm font-black text-amber-100">{section.settings.bannerTitle}</h2>
-                          <p className="text-[10px] text-amber-200/80">{section.settings.bannerSubtitle}</p>
+                        <div key={section.id} className="rounded-2xl bg-[#3b1907] text-[#fefcf8] p-4 space-y-1.5 border border-amber-900/30 flex flex-col sm:flex-row items-center gap-4">
+                          <div className="flex-1 text-right">
+                            <div className="text-[9px] text-amber-300 font-bold">☕ محاصيل يمنية نادرة</div>
+                            <h2 className="text-sm font-black text-amber-100">{section.settings.bannerTitle}</h2>
+                            <p className="text-[10px] text-amber-200/80">{section.settings.bannerSubtitle}</p>
+                          </div>
+                          <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden border-2 border-amber-700/50 shrink-0">
+                            <img src={section.settings.bannerImageUrl || store.banner} alt="Hero" className="w-full h-full object-cover" />
+                          </div>
                         </div>
                       );
                     }

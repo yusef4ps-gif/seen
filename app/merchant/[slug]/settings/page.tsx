@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { 
   Settings, Wallet, RefreshCw, Truck, Store as StoreIcon, 
-  Save, CheckCircle2, Plus, Trash2, Building2, Phone, MapPin, Image as ImageIcon
+  Save, CheckCircle2, Plus, Trash2, Building2, Phone, MapPin, Image as ImageIcon,
+  Target
 } from 'lucide-react';
 import { Store, CurrencyCode, PaymentAccountConfig, ShippingMethod } from '@/lib/types';
 import { getStoreBySlugAction, updateStoreAction } from '@/app/actions/store';
@@ -14,7 +15,7 @@ export default function MerchantSettingsPage() {
   const slug = params.slug as string;
 
   const [store, setStore] = useState<Store | null>(null);
-  const [activeTab, setActiveTab] = useState<'general' | 'payments' | 'currencies' | 'shipping'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'payments' | 'currencies' | 'shipping' | 'marketing'>('general');
   const [isSaved, setIsSaved] = useState(false);
 
   // Form states
@@ -35,6 +36,15 @@ export default function MerchantSettingsPage() {
   });
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccountConfig[]>([]);
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
+  
+  const [marketingPixels, setMarketingPixels] = useState({
+    meta: '',
+    tiktok: '',
+    snapchat: '',
+    googleAds: '',
+    googleAnalytics: '',
+    x: '',
+  });
 
   useEffect(() => {
     async function init() {
@@ -54,6 +64,14 @@ export default function MerchantSettingsPage() {
           setCustomRates(s.customRates || { YER_ADEN: 1910, YER_SANAA: 535, SAR: 3.75, USD: 1 });
           setPaymentAccounts(s.paymentAccounts || []);
           setShippingMethods(s.shippingMethods || []);
+          if ((s as any).marketingPixels) {
+            try {
+              const parsed = JSON.parse((s as any).marketingPixels);
+              setMarketingPixels(parsed);
+            } catch (e) {
+              // ignore
+            }
+          }
         }
       }
     }
@@ -79,6 +97,7 @@ export default function MerchantSettingsPage() {
       customRates: JSON.stringify(customRates),
       paymentAccounts: JSON.stringify(paymentAccounts),
       shippingMethods: JSON.stringify(shippingMethods),
+      marketingPixels: JSON.stringify(marketingPixels),
     });
 
     setIsSaved(true);
@@ -91,10 +110,59 @@ export default function MerchantSettingsPage() {
     );
   };
 
-  const handleUpdatePaymentField = (id: string, field: 'accountNumber' | 'accountName' | 'instructions', value: string) => {
+  const handleUpdatePaymentField = (id: string, field: 'accountNumber' | 'accountName' | 'instructions' | 'name', value: string) => {
     setPaymentAccounts(
       paymentAccounts.map((acc) => (acc.id === id ? { ...acc, [field]: value } : acc))
     );
+  };
+
+  const handleAddPaymentMethod = () => {
+    const newName = prompt('أدخل اسم طريقة الدفع (مثال: محفظة كذا، بنك كذا):');
+    if (!newName) return;
+    const newId = `custom_${Date.now()}`;
+    setPaymentAccounts([
+      ...paymentAccounts,
+      {
+        id: newId,
+        type: newId,
+        name: newName,
+        isActive: true,
+        accountNumber: '',
+        accountName: '',
+        instructions: ''
+      }
+    ]);
+  };
+
+  const handleAddShippingMethod = () => {
+    const newName = prompt('أدخل اسم شركة/منطقة التوصيل:');
+    if (!newName) return;
+    const newCostStr = prompt('أدخل تكلفة التوصيل (رقم، مثلا 500 أو 0 للمجاني):', '0');
+    const newCost = parseFloat(newCostStr || '0') || 0;
+    
+    setShippingMethods([
+      ...shippingMethods,
+      {
+        id: `ship_${Date.now()}`,
+        name: newName,
+        cost: newCost,
+        estimatedDelivery: '1-2 أيام',
+        isActive: true,
+        isPickup: false
+      }
+    ]);
+  };
+
+  const handleRemovePaymentMethod = (id: string) => {
+    if(confirm('هل أنت متأكد من حذف طريقة الدفع هذه؟')) {
+      setPaymentAccounts(paymentAccounts.filter(acc => acc.id !== id));
+    }
+  };
+
+  const handleRemoveShippingMethod = (id: string) => {
+    if(confirm('هل أنت متأكد من حذف شركة التوصيل هذه؟')) {
+      setShippingMethods(shippingMethods.filter(m => m.id !== id));
+    }
   };
 
   return (
@@ -128,6 +196,7 @@ export default function MerchantSettingsPage() {
           { id: 'payments', label: 'المحافظ وطرق الدفع', icon: Wallet },
           { id: 'currencies', label: 'العملات وأسعار الصرف', icon: RefreshCw },
           { id: 'shipping', label: 'الشحن والتوصيل', icon: Truck },
+          { id: 'marketing', label: 'التسويق والبكسلات', icon: Target },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
@@ -286,13 +355,23 @@ export default function MerchantSettingsPage() {
         {/* Tab 2: Payments & Wallets */}
         {activeTab === 'payments' && (
           <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 space-y-5">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                تفعيل حسابات المحافظ وطرق الدفع المحلية
-              </h3>
-              <p className="text-xs text-slate-500">
-                أدخل أرقام حساباتك لتظهر للزبون مباشرة في شاشة الدفع مع تعليمات التحويل
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  تفعيل حسابات المحافظ وطرق الدفع المحلية
+                </h3>
+                <p className="text-xs text-slate-500">
+                  أدخل أرقام حساباتك لتظهر للزبون مباشرة في شاشة الدفع مع تعليمات التحويل
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleAddPaymentMethod}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-brand-50 text-brand-700 hover:bg-brand-100 border border-brand-200 transition-colors flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>إضافة طريقة دفع</span>
+              </button>
             </div>
 
             <div className="space-y-4">
@@ -307,17 +386,37 @@ export default function MerchantSettingsPage() {
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-xs text-slate-900 dark:text-white">{acc.name}</span>
+                      {acc.id.startsWith('custom_') ? (
+                        <input
+                          type="text"
+                          value={acc.name}
+                          onChange={(e) => handleUpdatePaymentField(acc.id, 'name', e.target.value)}
+                          className="font-bold text-xs bg-transparent border-b border-dashed border-slate-400 outline-none w-32 dark:text-white"
+                        />
+                      ) : (
+                        <span className="font-bold text-xs text-slate-900 dark:text-white">{acc.name}</span>
+                      )}
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={acc.isActive}
-                        onChange={() => handleTogglePayment(acc.id)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-600"></div>
-                    </label>
+                    <div className="flex items-center gap-3">
+                      {acc.id.startsWith('custom_') && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePaymentMethod(acc.id)}
+                          className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={acc.isActive}
+                          onChange={() => handleTogglePayment(acc.id)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-600"></div>
+                      </label>
+                    </div>
                   </div>
 
                   {acc.type !== 'cod' && acc.isActive && (
@@ -430,13 +529,23 @@ export default function MerchantSettingsPage() {
         {/* Tab 4: Shipping Methods */}
         {activeTab === 'shipping' && (
           <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 space-y-5">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                خيارات الشحن والتوصيل المحلي
-              </h3>
-              <p className="text-xs text-slate-500">
-                تحديد تكلفة ومدة التوصيل لزبائن المتجر
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  خيارات الشحن والتوصيل المحلي
+                </h3>
+                <p className="text-xs text-slate-500">
+                  تحديد تكلفة ومدة التوصيل لزبائن المتجر
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleAddShippingMethod}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-brand-50 text-brand-700 hover:bg-brand-100 border border-brand-200 transition-colors flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>إضافة شركة توصيل</span>
+              </button>
             </div>
 
             <div className="space-y-3">
@@ -446,11 +555,99 @@ export default function MerchantSettingsPage() {
                     <div className="font-bold text-slate-900 dark:text-white">{m.name}</div>
                     <div className="text-[11px] text-slate-500">{m.estimatedDelivery}</div>
                   </div>
-                  <div className="font-bold text-brand-600 dark:text-brand-400">
-                    {m.cost === 0 ? 'مجاني / استلام فرع' : `${m.cost.toLocaleString()} ر.ي`}
+                  <div className="flex items-center gap-3">
+                    <div className="font-bold text-brand-600 dark:text-brand-400">
+                      {m.cost === 0 ? 'مجاني / استلام فرع' : `${m.cost.toLocaleString()} ر.ي`}
+                    </div>
+                    {m.id.startsWith('ship_') && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveShippingMethod(m.id)}
+                        className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+        {/* Tab 5: Marketing & Pixels */}
+        {activeTab === 'marketing' && (
+          <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 space-y-5">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Target className="w-5 h-5 text-brand-600" />
+                <span>الربط بكسلات والإعلانات</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                قم بربط متجرك مع منصات الإعلانات لتتبع التحويلات وزيارات العملاء بدقة.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Meta Pixel ID (فيسبوك وإنستغرام)</label>
+                <input
+                  type="text"
+                  value={marketingPixels.meta}
+                  onChange={(e) => setMarketingPixels({ ...marketingPixels, meta: e.target.value })}
+                  placeholder="مثال: 123456789012345"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">TikTok Pixel ID</label>
+                <input
+                  type="text"
+                  value={marketingPixels.tiktok}
+                  onChange={(e) => setMarketingPixels({ ...marketingPixels, tiktok: e.target.value })}
+                  placeholder="مثال: C123ABCD..."
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Snapchat Pixel ID</label>
+                <input
+                  type="text"
+                  value={marketingPixels.snapchat}
+                  onChange={(e) => setMarketingPixels({ ...marketingPixels, snapchat: e.target.value })}
+                  placeholder="مثال: a1b2c3d4-..."
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Google Analytics (G-XXXX)</label>
+                <input
+                  type="text"
+                  value={marketingPixels.googleAnalytics}
+                  onChange={(e) => setMarketingPixels({ ...marketingPixels, googleAnalytics: e.target.value })}
+                  placeholder="مثال: G-123456789"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">X (Twitter) Pixel ID</label>
+                <input
+                  type="text"
+                  value={marketingPixels.x}
+                  onChange={(e) => setMarketingPixels({ ...marketingPixels, x: e.target.value })}
+                  placeholder="مثال: ab12c"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Google Ads (AW-XXXX)</label>
+                <input
+                  type="text"
+                  value={marketingPixels.googleAds}
+                  onChange={(e) => setMarketingPixels({ ...marketingPixels, googleAds: e.target.value })}
+                  placeholder="مثال: AW-123456789"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-mono"
+                />
+              </div>
             </div>
           </div>
         )}

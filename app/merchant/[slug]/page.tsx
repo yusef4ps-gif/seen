@@ -21,18 +21,35 @@ export default function MerchantOverviewPage() {
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
+    let isMounted = true;
     async function loadDashboard() {
       if (!slug) return;
       const s = await getStoreBySlugAction(slug);
-      if (s) {
+      if (s && isMounted) {
         setStore(s as any);
         const ords = await getOrdersByStoreAction(s.id);
         const prods = await getProductsByStoreAction(s.id);
-        setOrders(ords as any);
-        setProducts(prods as any);
+        if (isMounted) {
+          setOrders(ords as any);
+          setProducts(prods as any);
+        }
       }
     }
     loadDashboard();
+
+    // Live polling for active visitors every 5 seconds
+    const interval = setInterval(async () => {
+      if (!slug) return;
+      const s = await getStoreBySlugAction(slug);
+      if (s && isMounted) {
+        setStore(s as any);
+      }
+    }, 5000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [slug]);
 
   if (!store) return null;
