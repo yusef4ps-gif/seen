@@ -124,7 +124,7 @@ export default function MerchantSettingsPage() {
       ...paymentAccounts,
       {
         id: newId,
-        type: newId,
+        type: newId as any,
         name: newName,
         isActive: true,
         accountNumber: '',
