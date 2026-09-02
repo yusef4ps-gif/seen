@@ -16,6 +16,7 @@ import { storeEngine } from '@/lib/store-engine';
 import { Store, SubscriptionPlan, PlatformStats } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
 import { getSiteContentAction } from '@/app/actions/content';
+import { defaultComparisonData, ComparisonCategory } from '@/lib/data/comparison';
 
 export default function HomePage() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -47,6 +48,16 @@ export default function HomePage() {
   }, []);
 
   const t = (key: string, fallback: string) => content[key] || fallback;
+
+  // Derive comparison table data
+  let compareData: ComparisonCategory[] = defaultComparisonData;
+  if (content['comparison_table_data']) {
+    try {
+      compareData = JSON.parse(content['comparison_table_data']);
+    } catch (e) {
+      console.error('Failed to parse comparison data', e);
+    }
+  }
 
   // Compute recommended plan from quiz
   const recommendedPlan = (quizStep1 === 'scale' || quizStep2 === 'growth') 
@@ -825,92 +836,21 @@ export default function HomePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                  
-                  {/* Category 1: الأساسيات */}
-                  <tr className="bg-slate-50 dark:bg-slate-800/50 font-bold text-slate-900 dark:text-white">
-                    <td colSpan={4} className="p-3 text-[11px] text-brand-600 dark:text-brand-400">1. الأساسيات والمنتجات</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4">عدد المنتجات والتصنيفات المسموح بها</td>
-                    <td className="p-4 text-center font-bold text-emerald-600">غير محدود ∞</td>
-                    <td className="p-4 text-center font-bold text-emerald-600">غير محدود ∞</td>
-                    <td className="p-4 text-center font-bold text-emerald-600 bg-accent/5">غير محدود ∞</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4">عدد الطلبات والمبيعات الشهرية</td>
-                    <td className="p-4 text-center font-bold text-emerald-600">غير محدود ∞</td>
-                    <td className="p-4 text-center font-bold text-emerald-600">غير محدود ∞</td>
-                    <td className="p-4 text-center font-bold text-emerald-600 bg-accent/5">غير محدود ∞</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4">محرر القوالب المرئي وتخصيص الأقسام</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold">✓</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold">✓</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold bg-accent/5">✓ كامل مع كل القوالب</td>
-                  </tr>
-
-                  {/* Category 2: الدومين والتسويق */}
-                  <tr className="bg-slate-50 dark:bg-slate-800/50 font-bold text-slate-900 dark:text-white">
-                    <td colSpan={4} className="p-3 text-[11px] text-brand-600 dark:text-brand-400">2. الهوية والتسويق الرقمي</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4">ربط اسم نطاق مخصص (yourstore.com)</td>
-                    <td className="p-4 text-center text-slate-400">✗</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold">✓</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold bg-accent/5">✓ مجاناً</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4">إدارة الكوبونات وقسائم الخصم الترويجية</td>
-                    <td className="p-4 text-center text-slate-400">✗</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold">✓</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold bg-accent/5">✓ متقدم</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4">استعادة السلات المتروكة الذكية</td>
-                    <td className="p-4 text-center text-slate-400">✗</td>
-                    <td className="p-4 text-center text-slate-400">✗</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold bg-accent/5">✓ عبر WhatsApp Bot</td>
-                  </tr>
-
-                  {/* Category 3: الدفع والعملات */}
-                  <tr className="bg-slate-50 dark:bg-slate-800/50 font-bold text-slate-900 dark:text-white">
-                    <td colSpan={4} className="p-3 text-[11px] text-brand-600 dark:text-brand-400">3. المدفوعات والعملات في اليمن</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4">محرك أسعار الصرف المزدوج (عدن / صنعاء / SAR)</td>
-                    <td className="p-4 text-center text-slate-400">أساسي</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold">✓</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold bg-accent/5">✓ تحويل آلي مباشر</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4">ربط محافظ جوالي، ون كاش، فلوسك، والكريمي</td>
-                    <td className="p-4 text-center text-slate-400">يدوي</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold">✓</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold bg-accent/5">✓ فوري مع QR Code</td>
-                  </tr>
-
-                  {/* Category 4: فريق العمل والذكاء الاصطناعي */}
-                  <tr className="bg-slate-50 dark:bg-slate-800/50 font-bold text-slate-900 dark:text-white">
-                    <td colSpan={4} className="p-3 text-[11px] text-brand-600 dark:text-brand-400">4. الفريق والذكاء الاصطناعي</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4">حسابات موظفي المتجر والأذونات (RBAC)</td>
-                    <td className="p-4 text-center text-slate-400">حساب مالك فقط</td>
-                    <td className="p-4 text-center text-slate-400">حسابين</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold bg-accent/5">حتى 10 موظفين</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4">إدارة مناديب الشحن والتوصيل الميدانيين</td>
-                    <td className="p-4 text-center text-slate-400">✗</td>
-                    <td className="p-4 text-center text-slate-400">✗</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold bg-accent/5">✓ إسناد وتتبع مباشر</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4">مستشار الذكاء الاصطناعي (AI Inventory Advisor)</td>
-                    <td className="p-4 text-center text-slate-400">✗</td>
-                    <td className="p-4 text-center text-slate-400">✗</td>
-                    <td className="p-4 text-center text-emerald-500 font-bold bg-accent/5">✓ توصيات تسعير ذكية</td>
-                  </tr>
+                  {compareData.map((cat, idx) => (
+                    <React.Fragment key={cat.id}>
+                      <tr className="bg-slate-50 dark:bg-slate-800/50 font-bold text-slate-900 dark:text-white">
+                        <td colSpan={4} className="p-3 text-[11px] text-brand-600 dark:text-brand-400">{cat.title}</td>
+                      </tr>
+                      {cat.features.map(feat => (
+                        <tr key={feat.id}>
+                          <td className="p-4">{feat.name}</td>
+                          <td className={`p-4 text-center ${feat.starter === '✓' ? 'text-emerald-500 font-bold' : feat.starter === '✗' ? 'text-slate-400' : 'text-slate-600 dark:text-slate-300 font-bold'}`}>{feat.starter}</td>
+                          <td className={`p-4 text-center ${feat.marketing === '✓' ? 'text-emerald-500 font-bold' : feat.marketing === '✗' ? 'text-slate-400' : 'text-slate-600 dark:text-slate-300 font-bold'}`}>{feat.marketing}</td>
+                          <td className={`p-4 text-center bg-accent/5 ${feat.pro.includes('✓') ? 'text-emerald-500 font-bold' : feat.pro === '✗' ? 'text-slate-400' : 'text-slate-600 dark:text-slate-300 font-bold'}`}>{feat.pro}</td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  ))}
 
                 </tbody>
               </table>

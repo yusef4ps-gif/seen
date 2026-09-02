@@ -14,6 +14,7 @@ import { storeEngine } from '@/lib/store-engine';
 import { getStoresAction, getPlatformStatsAction, deleteStoreAction, updateStoreAction } from '@/app/actions/store';
 import { authEngine } from '@/lib/auth-engine';
 import { Store, SubscriptionPlan, PlatformStats, SystemBroadcast, SubscriptionPlanTier, User as AuthUser, User } from '@/lib/types';
+import { defaultComparisonData, ComparisonCategory } from '@/lib/data/comparison';
 import { formatCurrency } from '@/lib/currency-engine';
 import BrandLogo from '@/components/BrandLogo';
 import { getUserAction, updateUserAction } from '@/app/actions/user';
@@ -90,6 +91,10 @@ export default function SuperAdminPage() {
   const [isSavingTexts, setIsSavingTexts] = useState(false);
   const [textsSaveSuccess, setTextsSaveSuccess] = useState<string | null>(null);
 
+  // Comparison Table State
+  const [compareData, setCompareData] = useState<ComparisonCategory[]>(defaultComparisonData);
+  const [hasInitCompareData, setHasInitCompareData] = useState(false);
+
   // Profile Edit State
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editProfileName, setEditProfileName] = useState('');
@@ -101,6 +106,7 @@ export default function SuperAdminPage() {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
 
@@ -132,6 +138,27 @@ export default function SuperAdminPage() {
     refreshData();
   }, [router]);
 
+  // Initialize Comparison Data from siteTexts
+  useEffect(() => {
+    if (siteTexts['comparison_table_data'] && !hasInitCompareData) {
+      try {
+        setCompareData(JSON.parse(siteTexts['comparison_table_data']));
+        setHasInitCompareData(true);
+      } catch (e) {
+        console.error('Failed to parse comparison data', e);
+      }
+    }
+  }, [siteTexts, hasInitCompareData]);
+
+  // Sync Comparison Data to siteTexts
+  const handleCompareDataChange = (newData: ComparisonCategory[]) => {
+    setCompareData(newData);
+    setSiteTexts((prev) => ({
+      ...prev,
+      comparison_table_data: JSON.stringify(newData)
+    }));
+  };
+
   const refreshData = async () => {
     const fetchedStores = await getStoresAction();
     const fetchedStats = await getPlatformStatsAction();
@@ -158,6 +185,12 @@ export default function SuperAdminPage() {
     setPasswordError('');
     setPasswordSuccess('');
     if (!currentUser) return;
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordError('كلمة المرور الجديدة غير متطابقة.');
+      return;
+    }
+
     const res = authEngine.changePassword(currentUser.id, oldPassword, newPassword);
     if (!res.success) {
       setPasswordError(res.error || 'حدث خطأ أثناء تغيير كلمة المرور.');
@@ -165,6 +198,7 @@ export default function SuperAdminPage() {
       setPasswordSuccess('تم تحديث كلمة المرور بنجاح! ✓');
       setOldPassword('');
       setNewPassword('');
+      setConfirmPassword('');
       setTimeout(() => {
         setIsPasswordModalOpen(false);
         setPasswordSuccess('');
@@ -655,6 +689,97 @@ export default function SuperAdminPage() {
                       <input type="text" value={siteTexts['compare_subtitle'] || 'تعرف على تفاصيل كل ميزة بدقة في باقات سِين لاختيار ما يلائم طموحك التجاري'} onChange={(e) => setSiteTexts({ ...siteTexts, compare_subtitle: e.target.value })} className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
                     </div>
                   </div>
+
+                  <div className="space-y-4 pb-4 border-t border-slate-100 dark:border-slateDark-800 pt-6">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white border-r-2 border-brand-500 pr-3">إدارة جدول المقارنة التفصيلي</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      يمكنك هنا تعديل مزايا الباقات وتوفرها. استخدم "✓" لتأكيد توفر الميزة، أو "✗" لعدم توفرها، أو اكتب نصاً مخصصاً (مثل: حتى 10 موظفين).
+                    </p>
+                    
+                    <div className="space-y-6 mt-4">
+                      {compareData.map((cat, catIdx) => (
+                        <div key={cat.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slateDark-900 shadow-sm">
+                          <div className="flex items-center gap-2 mb-4">
+                            <input
+                              type="text"
+                              value={cat.title}
+                              onChange={(e) => {
+                                const newData = [...compareData];
+                                newData[catIdx].title = e.target.value;
+                                handleCompareDataChange(newData);
+                              }}
+                              className="px-3 py-1.5 text-sm font-black bg-slate-100 dark:bg-slate-800 rounded-lg outline-none text-brand-600 dark:text-brand-400 flex-1"
+                            />
+                          </div>
+                          
+                          <div className="space-y-3">
+                            {cat.features.map((feat, featIdx) => (
+                              <div key={feat.id} className="grid grid-cols-1 lg:grid-cols-4 gap-2 lg:gap-4 items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/50">
+                                <div className="lg:col-span-1">
+                                  <input
+                                    type="text"
+                                    value={feat.name}
+                                    placeholder="اسم الميزة"
+                                    onChange={(e) => {
+                                      const newData = [...compareData];
+                                      newData[catIdx].features[featIdx].name = e.target.value;
+                                      handleCompareDataChange(newData);
+                                    }}
+                                    className="w-full px-2 py-1.5 text-xs font-bold bg-transparent outline-none border-b border-transparent focus:border-brand-500 transition-colors"
+                                  />
+                                </div>
+                                <div className="lg:col-span-3 grid grid-cols-3 gap-2">
+                                  {['starter', 'marketing', 'pro'].map((planKey, pIdx) => {
+                                    const val = feat[planKey as keyof typeof feat];
+                                    return (
+                                      <div key={planKey} className="relative group">
+                                        <div className="absolute -top-5 right-0 text-[9px] text-slate-400 font-bold">
+                                          {pIdx === 0 ? 'التجارية' : pIdx === 1 ? 'التسويقية' : 'الاحترافية'}
+                                        </div>
+                                        <div className="flex bg-white dark:bg-slateDark-950 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                                          <input
+                                            type="text"
+                                            value={val}
+                                            onChange={(e) => {
+                                              const newData = [...compareData];
+                                              (newData[catIdx].features[featIdx] as any)[planKey] = e.target.value;
+                                              handleCompareDataChange(newData);
+                                            }}
+                                            className="w-full px-2 py-1.5 text-xs font-bold text-center outline-none bg-transparent"
+                                          />
+                                          <div className="flex flex-col border-r border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                                            <button 
+                                              onClick={() => {
+                                                const newData = [...compareData];
+                                                (newData[catIdx].features[featIdx] as any)[planKey] = '✓';
+                                                handleCompareDataChange(newData);
+                                              }}
+                                              title="صح"
+                                              className="px-1.5 py-0.5 text-[10px] text-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 font-bold border-b border-slate-100 dark:border-slate-800"
+                                            >✓</button>
+                                            <button 
+                                              onClick={() => {
+                                                const newData = [...compareData];
+                                                (newData[catIdx].features[featIdx] as any)[planKey] = '✗';
+                                                handleCompareDataChange(newData);
+                                              }}
+                                              title="خطأ"
+                                              className="px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 font-bold"
+                                            >✗</button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
 
                   <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slateDark-800">
                     <button
@@ -1338,6 +1463,16 @@ export default function SuperAdminPage() {
                   required 
                   value={newPassword} 
                   onChange={e => setNewPassword(e.target.value)} 
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500 transition-colors" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">تأكيد كلمة المرور الجديدة</label>
+                <input 
+                  type="password" 
+                  required 
+                  value={confirmPassword} 
+                  onChange={e => setConfirmPassword(e.target.value)} 
                   className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500 transition-colors" 
                 />
               </div>

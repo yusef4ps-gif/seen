@@ -19,7 +19,8 @@ export default function Navbar() {
   useEffect(() => {
     // Read session on mount
     const user = authEngine.getCurrentUser();
-    setCurrentUser(user);
+    // Hide super admin entirely from the public navbar
+    setCurrentUser(user?.role === 'SUPER_ADMIN' ? null : user);
     setIsAuthLoaded(true);
   }, []);
 
@@ -78,16 +79,7 @@ export default function Navbar() {
           {/* Action Area with Dynamic Role-Based Buttons */}
           <div className="flex items-center gap-2 sm:gap-2.5">
             
-            {/* If Logged In as SUPER_ADMIN */}
-            {currentUser?.role === 'SUPER_ADMIN' && (
-              <Link
-                href="/admin"
-                className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 text-xs font-black text-white bg-gradient-to-r from-red-600 to-brand-600 rounded-full shadow-md shadow-red-500/20 hover:scale-105 transition-all"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>👑 الإدارة العليا</span>
-              </Link>
-            )}
+
 
             {/* If Logged In as STORE_OWNER or STORE_STAFF */}
             {(currentUser?.role === 'STORE_OWNER' || currentUser?.role === 'STORE_STAFF') && (
@@ -204,15 +196,7 @@ export default function Navbar() {
             </Link>
 
             {/* Smart Role Mobile Links */}
-            {currentUser?.role === 'SUPER_ADMIN' && (
-              <Link
-                href="/admin"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block p-3 rounded-2xl text-xs font-bold bg-red-50 dark:bg-red-950/40 text-red-600 border border-red-200"
-              >
-                👑 بوابة الإدارة العليا (Super Admin)
-              </Link>
-            )}
+
 
             {(currentUser?.role === 'STORE_OWNER' || currentUser?.role === 'STORE_STAFF') && (
               <Link
