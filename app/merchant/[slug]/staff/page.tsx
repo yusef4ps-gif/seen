@@ -84,7 +84,7 @@ export default function MerchantStaffPage() {
                 storeId: store.id,
                 storeSlug: store.slug,
                 storeName: store.name,
-                staffPermissions: ['manage_orders', 'manage_products']
+                permissions: ['manage_orders', 'manage_products']
               });
               
               const team = authEngine.getUsers(store.id);
