@@ -94,7 +94,7 @@ export default function ThemeBuilderPage() {
   // Save and publish theme
   const handleSaveTheme = async () => {
     if (!store) return;
-    await updateStoreAction(store.id, { themeConfig });
+    await updateStoreAction(store.id, { themeConfig: JSON.stringify(themeConfig) });
     setIsSavedSuccessfully(true);
     setTimeout(() => setIsSavedSuccessfully(false), 3000);
   };
