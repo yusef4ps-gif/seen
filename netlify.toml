@@ -1,8 +1,0 @@
-[build]
-  command = "npx prisma generate && npm run build"
-  publish = ".next"
-
-[build.environment]
-  NODE_VERSION = "20"
-  NEXT_PRIVATE_LOCAL_WEBPACK = "true"
-  NEXT_TELEMETRY_DISABLED = "1"
