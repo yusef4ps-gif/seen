@@ -2,6 +2,7 @@
 
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { requireSuperAdmin } from '@/app/actions/auth';
 
 // Fetch all site content
 export async function getSiteContentAction() {
@@ -24,6 +25,7 @@ export async function updateSiteContentAction(
   updates: { key: string; value: string; group?: string; label?: string }[]
 ) {
   try {
+    await requireSuperAdmin();
     for (const item of updates) {
       await prisma.siteContent.upsert({
         where: { key: item.key },

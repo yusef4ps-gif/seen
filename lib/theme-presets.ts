@@ -226,4 +226,90 @@ export const THEME_PRESETS: ThemePreset[] = [
       sections: DEFAULT_THEME_SECTIONS,
     },
   },
+  {
+    id: 'perfume-beauty',
+    name: 'الجمال والعطور الفاخرة (Glamour & Scents)',
+    category: 'عطور ومستحضرات تجميل',
+    description: 'شكل ناعم وجذاب: يعتمد على ألوان الباستيل الهادئة والمساحات البيضاء المريحة للعين مع خطوط رقيقة لإبراز تفاصيل العطور.',
+    thumbnail: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?w=400&auto=format&fit=crop&q=80',
+    config: {
+      presetId: 'perfume-beauty',
+      colors: {
+        primary: '#be185d', // Rose
+        secondary: '#fbcfe8', // Pink
+        background: '#fff1f2', // Soft Rose Background
+        surface: '#ffffff',
+        textMain: '#4c0519',
+        textMuted: '#9f1239',
+      },
+      typography: {
+        fontFamily: 'Tajawal',
+        headingWeight: 'bold',
+      },
+      layout: {
+        borderRadius: 'curved',
+        cardShadow: 'elevated',
+        productCardStyle: 'classic',
+      },
+      sections: [
+        {
+          ...DEFAULT_THEME_SECTIONS[0],
+          settings: { ...DEFAULT_THEME_SECTIONS[0].settings, bannerTitle: '✨ شحن مجاني للعطور المختارة | تغليف هدايا مجاني' },
+        },
+        {
+          ...DEFAULT_THEME_SECTIONS[1],
+          settings: { 
+            bannerTitle: 'عطرك يعبر عن هويتك',
+            bannerSubtitle: 'اكتشف مجموعتنا الجديدة من العطور الفرنسية والشرقية المصممة خصيصاً لك',
+            bannerImageUrl: 'https://images.unsplash.com/photo-1615634260167-c8cdede054de?w=1200&auto=format&fit=crop&q=80',
+            ctaText: 'تسوق المجموعة الجديدة',
+          },
+        },
+        ...DEFAULT_THEME_SECTIONS.slice(2),
+      ],
+    },
+  },
+  {
+    id: 'sweets-bakery',
+    name: 'الحلويات والمخبوزات (Sweet Treats)',
+    category: 'حلويات، مخبوزات وضيافة',
+    description: 'تصميم مرح وشهي: ألوان دافئة ومبهجة (الوردي المشمشي والبني الشوكولاتي) مع تركيز عالي على صور المنتجات لجذب الشهية.',
+    thumbnail: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&auto=format&fit=crop&q=80',
+    config: {
+      presetId: 'sweets-bakery',
+      colors: {
+        primary: '#ea580c', // Orange/Caramel
+        secondary: '#fef08a', // Yellow
+        background: '#fffbeb', // Amber Background
+        surface: '#ffffff',
+        textMain: '#451a03',
+        textMuted: '#92400e',
+      },
+      typography: {
+        fontFamily: 'Almarai',
+        headingWeight: 'black',
+      },
+      layout: {
+        borderRadius: 'pill',
+        cardShadow: 'subtle',
+        productCardStyle: 'classic',
+      },
+      sections: [
+        {
+          ...DEFAULT_THEME_SECTIONS[0],
+          settings: { ...DEFAULT_THEME_SECTIONS[0].settings, bannerTitle: '🍰 اطلب الآن واستلم طازجاً في نفس اليوم!' },
+        },
+        {
+          ...DEFAULT_THEME_SECTIONS[1],
+          settings: { 
+            bannerTitle: 'ألذ الحلويات والمخبوزات لمناسباتك',
+            bannerSubtitle: 'نخبز يومياً بحب باستخدام أجود المكونات الطبيعية',
+            bannerImageUrl: 'https://images.unsplash.com/photo-1550617931-e17a7b70dce2?w=1200&auto=format&fit=crop&q=80',
+            ctaText: 'اطلب تشكيلة اليوم',
+          },
+        },
+        ...DEFAULT_THEME_SECTIONS.slice(2),
+      ],
+    },
+  },
 ];

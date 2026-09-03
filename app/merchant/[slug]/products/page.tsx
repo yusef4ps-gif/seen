@@ -12,6 +12,8 @@ import { generateAIProductDescription } from '@/lib/ai-generator';
 import ImageUploader from '@/components/ImageUploader';
 import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
 import { createProductAction, updateProductAction, deleteProductAction } from '@/app/actions/product';
+import { logActivityAction } from '@/app/actions/activity';
+import { authEngine } from '@/lib/auth-engine';
 
 export default function MerchantProductsPage() {
   const params = useParams();
@@ -149,6 +151,17 @@ export default function MerchantProductsPage() {
         tags: [category],
         variants, // Ensure variants are passed
       });
+      const user = authEngine.getCurrentUser();
+      if (user) {
+        await logActivityAction({
+          storeId: store.id,
+          userName: user.name,
+          action: 'تعديل',
+          entity: 'منتج',
+          details: `تم تعديل المنتج: ${name}`,
+          device: navigator.userAgent.includes('Mobile') ? 'جوال' : 'كمبيوتر/لابتوب'
+        });
+      }
     } else {
       await createProductAction({
         id: `prod_${Date.now()}`,
@@ -166,15 +179,39 @@ export default function MerchantProductsPage() {
         tags: [category],
         variants, // Ensure variants are passed
       });
+      const user = authEngine.getCurrentUser();
+      if (user) {
+        await logActivityAction({
+          storeId: store.id,
+          userName: user.name,
+          action: 'إضافة',
+          entity: 'منتج',
+          details: `تمت إضافة منتج جديد: ${name}`,
+          device: navigator.userAgent.includes('Mobile') ? 'جوال' : 'كمبيوتر/لابتوب'
+        });
+      }
     }
 
     setIsModalOpen(false);
     await refreshProducts();
   };
 
-  const handleDeleteProduct = async (productId: string) => {
+  const handleDeleteProduct = async (prod: Product) => {
     if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
-      await deleteProductAction(productId);
+      await deleteProductAction(prod.id);
+      
+      const user = authEngine.getCurrentUser();
+      if (user && store) {
+        await logActivityAction({
+          storeId: store.id,
+          userName: user.name,
+          action: 'حذف',
+          entity: 'منتج',
+          details: `تم حذف المنتج: ${prod.name}`,
+          device: navigator.userAgent.includes('Mobile') ? 'جوال' : 'كمبيوتر/لابتوب'
+        });
+      }
+      
       await refreshProducts();
     }
   };
@@ -340,7 +377,7 @@ export default function MerchantProductsPage() {
                           <Edit className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleDeleteProduct(prod.id)}
+                          onClick={() => handleDeleteProduct(prod)}
                           className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-100 hover:text-red-600 text-slate-400 transition-colors"
                           title="حذف المنتج"
                         >

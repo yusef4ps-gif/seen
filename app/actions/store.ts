@@ -2,6 +2,7 @@
 
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { requireAuth, requireStoreOwner, requireSuperAdmin } from '@/app/actions/auth';
 
 // Re-export the initial default JSON from storeEngine logic to use when creating a new store
 const DEFAULT_CUSTOM_RATES = JSON.stringify({
@@ -63,6 +64,7 @@ const DEFAULT_SHIPPING_METHODS = JSON.stringify([
 
 export async function createStoreAction(data: any) {
   try {
+    await requireAuth();
     const cleanSlug = data.slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, '-');
     const existing = await prisma.store.findUnique({ where: { slug: cleanSlug } });
     const finalSlug = existing ? `${cleanSlug}-${Math.floor(100 + Math.random() * 900)}` : cleanSlug;
@@ -229,6 +231,7 @@ export async function getOrdersByStoreAction(storeId: string) {
 
 export async function deleteStoreAction(storeId: string) {
   try {
+    await requireSuperAdmin();
     await prisma.store.delete({
       where: { id: storeId }
     });
@@ -242,6 +245,7 @@ export async function deleteStoreAction(storeId: string) {
 
 export async function updateStoreAction(storeId: string, data: any) {
   try {
+    await requireStoreOwner(storeId);
     const updatedStore = await prisma.store.update({
       where: { id: storeId },
       data,

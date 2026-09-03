@@ -180,7 +180,7 @@ export interface ThemeSection {
 }
 
 export interface ThemeConfig {
-  presetId: 'fashion-luxury' | 'tech-modern' | 'yemen-roastery' | 'minimal-clean';
+  presetId: 'fashion-luxury' | 'tech-modern' | 'yemen-roastery' | 'minimal-clean' | 'perfume-beauty' | 'sweets-delights' | string;
   colors: {
     primary: string;       // Primary brand button & active color
     secondary: string;     // Accent & highlight
@@ -202,7 +202,7 @@ export interface ThemeConfig {
 }
 
 export interface ThemePreset {
-  id: 'fashion-luxury' | 'tech-modern' | 'yemen-roastery' | 'minimal-clean';
+  id: 'fashion-luxury' | 'tech-modern' | 'yemen-roastery' | 'minimal-clean' | 'perfume-beauty' | 'sweets-delights' | string;
   name: string;
   category: string;
   description: string;
@@ -297,6 +297,8 @@ export interface User {
   avatarUrl?: string;
   totalSpent?: number; // For customer CRM
   ordersCount?: number; // For customer CRM
+  salary?: number;
+  startDate?: string;
   createdAt: string;
   lastLoginAt?: string;
 }

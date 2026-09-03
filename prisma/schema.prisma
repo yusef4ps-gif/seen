@@ -45,6 +45,7 @@ model Store {
   ownerId           String?
   owner             User?     @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   coupons           Coupon[]
+  activityLogs      ActivityLog[]
 }
 
 model Coupon {
@@ -176,4 +177,17 @@ model SiteContent {
   group     String   @default("general")
   label     String   @default("")
   updatedAt DateTime @updatedAt
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  storeId   String
+  userName  String
+  action    String   // e.g. "إضافة", "تعديل", "حذف"
+  entity    String   // e.g. "منتج", "طلب"
+  details   String   @db.Text // JSON string or text details
+  device    String   // Browser/Device string
+  createdAt DateTime @default(now())
+
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
 }

@@ -8,6 +8,7 @@ import {
   AlertCircle, Eye, EyeOff, ArrowRight, ShieldCheck, MapPin, Globe2
 } from 'lucide-react';
 import { authEngine } from '@/lib/auth-engine';
+import { setAuthCookieAction } from '@/app/actions/auth';
 import BrandLogo from '@/components/BrandLogo';
 
 declare global {
@@ -120,6 +121,9 @@ function LoginFormContent() {
 
       if (result.success) {
         setSuccessMessage('تم تسجيل الدخول عبر جوجل بنجاح!');
+        if (result.session) {
+          setAuthCookieAction(result.session.token, result.session.user.id, result.session.user.role, result.session.user.storeId);
+        }
         setTimeout(() => {
           router.push(redirectParam || result.redirectUrl || '/profile');
         }, 500);
@@ -136,7 +140,7 @@ function LoginFormContent() {
     setErrorMessage('');
     setIsLoading(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const result = authEngine.login(loginIdentifier, loginPassword);
       setIsLoading(false);
 
@@ -144,6 +148,9 @@ function LoginFormContent() {
         setErrorMessage(result.error || 'فشل تسجيل الدخول. يرجى التحقق من البيانات.');
       } else {
         setSuccessMessage('تم تسجيل الدخول بنجاح! جاري التوجيه...');
+        if (result.session) {
+          await setAuthCookieAction(result.session.token, result.session.user.id, result.session.user.role, result.session.user.storeId);
+        }
         setTimeout(() => {
           router.push(redirectParam || result.redirectUrl || '/profile');
         }, 500);
@@ -162,7 +169,7 @@ function LoginFormContent() {
 
     setIsLoading(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const result = authEngine.registerCustomer({
         name: regName,
         phone: regPhone,
@@ -176,6 +183,9 @@ function LoginFormContent() {
         setErrorMessage(result.error || 'حدث خطأ أثناء إنشاء الحساب.');
       } else {
         setSuccessMessage('تم إنشاء حساب العميل بنجاح! جاري توجيهك...');
+        if (result.session) {
+          await setAuthCookieAction(result.session.token, result.session.user.id, result.session.user.role, result.session.user.storeId);
+        }
         setTimeout(() => {
           router.push(redirectParam || result.redirectUrl || '/profile');
         }, 500);

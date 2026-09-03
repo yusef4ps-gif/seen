@@ -27,6 +27,7 @@ export default function ThemeBuilderPage() {
   // Theme working state
   const [themeConfig, setThemeConfig] = useState<ThemeConfig>(THEME_PRESETS[0].config);
   const [expandedSectionId, setExpandedSectionId] = useState<string | null>('sec-hero');
+  const [isSaving, setIsSaving] = useState(false);
   const [isSavedSuccessfully, setIsSavedSuccessfully] = useState(false);
 
   useEffect(() => {
@@ -93,10 +94,17 @@ export default function ThemeBuilderPage() {
 
   // Save and publish theme
   const handleSaveTheme = async () => {
-    if (!store) return;
-    await updateStoreAction(store.id, { themeConfig: JSON.stringify(themeConfig) });
-    setIsSavedSuccessfully(true);
-    setTimeout(() => setIsSavedSuccessfully(false), 3000);
+    if (!store || isSaving) return;
+    setIsSaving(true);
+    try {
+      await updateStoreAction(store.id, { themeConfig: JSON.stringify(themeConfig) });
+      setIsSavedSuccessfully(true);
+      setTimeout(() => setIsSavedSuccessfully(false), 3000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const presetId = themeConfig.presetId || 'fashion-luxury';
@@ -187,9 +195,15 @@ export default function ThemeBuilderPage() {
 
           <button
             onClick={handleSaveTheme}
-            className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-brand-600 to-teal-500 hover:from-brand-700 hover:to-teal-600 shadow-md shadow-brand-600/25 active:scale-95 transition-all"
+            disabled={isSaving}
+            className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-brand-600 to-teal-500 hover:from-brand-700 hover:to-teal-600 shadow-md shadow-brand-600/25 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-wait"
           >
-            {isSavedSuccessfully ? (
+            {isSaving ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                <span>جاري الحفظ...</span>
+              </>
+            ) : isSavedSuccessfully ? (
               <>
                 <CheckCircle2 className="w-4 h-4 text-white" />
                 <span>تم النشر بنجاح! ✓</span>

@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { OrderItem } from '@/lib/types';
+import { requireStoreOwner } from '@/app/actions/auth';
 
 export async function createOrderAction(data: any) {
   try {
@@ -72,6 +73,8 @@ export async function updateOrderStatusAction(id: string, status: string) {
     const order = await prisma.order.findUnique({ where: { id } });
     if (!order) return { success: false, error: 'Order not found' };
 
+    await requireStoreOwner(order.storeId);
+
     // If order is transitioning to cancelled, restore stock
     if (status === 'cancelled' && order.status !== 'cancelled') {
       const items = JSON.parse(order.items);
@@ -108,6 +111,11 @@ export async function updateOrderStatusAction(id: string, status: string) {
 
 export async function verifyPaymentProofAction(id: string, status: string) {
   try {
+    const orderObj = await prisma.order.findUnique({ where: { id } });
+    if (!orderObj) return { success: false, error: 'Order not found' };
+    
+    await requireStoreOwner(orderObj.storeId);
+
     const order = await prisma.order.update({
       where: { id },
       data: { 

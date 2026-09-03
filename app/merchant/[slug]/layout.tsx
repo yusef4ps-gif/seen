@@ -7,7 +7,7 @@ import {
   Store as StoreIcon, LayoutDashboard, Package, Boxes, 
   ShoppingCart, Bot, Settings, ExternalLink, ShieldCheck, Bell, 
   Menu, X, Sparkles, RefreshCw, Users, ArrowUpRight, Palette,
-  Ticket, Tag, BarChart, LogOut
+  Ticket, Tag, BarChart, History, LogOut
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
 import { Store, SystemBroadcast } from '@/lib/types';
@@ -32,7 +32,14 @@ export default function MerchantLayout({
   const [store, setStore] = useState<Store | null>(null);
   const [broadcasts, setBroadcasts] = useState<SystemBroadcast[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [allStores, setAllStores] = useState<Store[]>([]);
+  
+  const notifications = [
+    { id: 1, type: 'warning', title: 'سلات متروكة', message: 'يوجد 3 سلات متروكة بقيمة 45,000 ريال، قم بإرسال رسائل التذكير.', time: 'قبل ساعتين' },
+    { id: 2, type: 'danger', title: 'تنبيه المخزون', message: 'تنبيه: منتج "عطر العود الفاخر" قارب على النفاذ (باقي قطعتين فقط).', time: 'اليوم' },
+    { id: 3, type: 'info', title: 'تنبيه الاشتراك', message: 'باقة المتجر الأساسية ستنتهي بعد 7 أيام، يرجى التجديد.', time: 'أمس' },
+  ];
 
   useEffect(() => {
     setCurrentUser(authEngine.getCurrentUser());
@@ -171,6 +178,12 @@ export default function MerchantLayout({
       title: 'التقارير',
       href: `/merchant/${slug}/reports`,
       icon: BarChart,
+    },
+    {
+      title: 'سجل الحركات (Audit)',
+      href: `/merchant/${slug}/activity-log`,
+      icon: History,
+      badge: 'جديد',
     },
   ];
 
@@ -326,10 +339,50 @@ export default function MerchantLayout({
 
           <div className="flex items-center gap-2 sm:gap-3">
             
+            <div className="relative">
+              <button 
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                className="relative p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 rounded-full transition-colors"
+              >
+                <Bell className="w-5 h-5" />
+                {notifications.length > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border-2 border-white dark:border-slateDark-900"></span>
+                )}
+              </button>
+
+              {isNotificationsOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsNotificationsOpen(false)}></div>
+                  <div className="absolute top-full left-0 mt-2 w-72 sm:w-80 bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-fadeIn text-right">
+                    <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <h4 className="font-bold text-slate-900 dark:text-white text-sm">التنبيهات</h4>
+                      <span className="text-[10px] text-brand-600 font-bold px-2 py-0.5 rounded-full bg-brand-50 dark:bg-brand-900/30">جديد {notifications.length}</span>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.map(n => (
+                        <div key={n.id} className="p-3 border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex gap-3">
+                          <div className={`mt-0.5 shrink-0 w-2 h-2 rounded-full ${n.type === 'danger' ? 'bg-red-500' : n.type === 'warning' ? 'bg-amber-500' : 'bg-blue-500'}`}></div>
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 dark:text-white mb-0.5">{n.title}</div>
+                            <p className="text-[11px] text-slate-500 leading-relaxed mb-1">{n.message}</p>
+                            <span className="text-[9px] text-slate-400 font-mono">{n.time}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-2 text-center bg-slate-50 dark:bg-slate-800/30">
+                      <button className="text-[11px] font-bold text-brand-600 hover:text-brand-700">تحديد الكل كمقروء</button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
             {/* Live Visitors Pill Indicator */}
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 text-[10px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-300">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>{store.activeVisitorsNow} متسوق متصل</span>
+              <span className="hidden sm:inline">{store.activeVisitorsNow} متسوق متصل</span>
+              <span className="sm:hidden">{store.activeVisitorsNow} متصل</span>
             </div>
 
             {/* Quick Visit Customer Storefront Link */}
@@ -339,7 +392,7 @@ export default function MerchantLayout({
               className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 dark:bg-brand-950 dark:hover:bg-brand-900 border border-brand-200 dark:border-brand-800 transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">معاينة متجر العميل</span>
+              <span className="hidden sm:inline">معاينة المتجر</span>
               <span className="sm:hidden">المتجر</span>
             </Link>
 

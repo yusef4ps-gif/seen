@@ -2,9 +2,14 @@
 
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/app/actions/auth';
 
 export async function getUserAction(id: string) {
   try {
+    const { userId, role } = await requireAuth();
+    if (userId !== id && role !== 'SUPER_ADMIN') {
+      throw new Error('Forbidden');
+    }
     const user = await prisma.user.findUnique({
       where: { id }
     });
@@ -17,6 +22,11 @@ export async function getUserAction(id: string) {
 
 export async function updateUserAction(id: string, data: any) {
   try {
+    const { userId, role } = await requireAuth();
+    if (userId !== id && role !== 'SUPER_ADMIN') {
+      throw new Error('Forbidden');
+    }
+
     // Check if user exists first
     const existing = await prisma.user.findUnique({ where: { id } });
     let updatedUser;

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { LineChart, BarChart2, PieChart, Download, Calendar, TrendingUp, Package, ArrowDownUp, AlertTriangle } from 'lucide-react';
-import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
+import { getStoreBySlugAction, getProductsByStoreAction, getOrdersByStoreAction } from '@/app/actions/store';
 import { Store, Product } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
 
@@ -13,6 +13,7 @@ export default function MerchantReportsPage() {
 
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
@@ -27,6 +28,8 @@ export default function MerchantReportsPage() {
           setStore(s as any);
           const prods = await getProductsByStoreAction(s.id);
           setProducts(prods as any);
+          const ords = await getOrdersByStoreAction(s.id);
+          setOrders(ords);
         }
       }
     }
@@ -47,6 +50,48 @@ export default function MerchantReportsPage() {
   } else if (reportTab === 'low-stock') {
     displayProducts = displayProducts.filter(p => p.stock <= p.lowStockAlert);
   }
+
+  // Dynamic Calculations
+  const totalSalesVolume = products.reduce((sum, p) => sum + (p.price * p.salesCount), 0);
+  const netRevenue = totalSalesVolume * 0.75; // Assuming 25% cost/fees
+  const totalOrdersCount = orders.length > 0 ? orders.filter(o => o.status === 'delivered' || o.status === 'processing').length : Math.floor(products.reduce((sum, p) => sum + p.salesCount, 0) / 2);
+  const avgOrderValue = totalOrdersCount > 0 ? totalSalesVolume / totalOrdersCount : 0;
+
+  // Dynamic Categories for Pie Chart
+  const categorySales: Record<string, number> = {};
+  products.forEach(p => {
+    if (!categorySales[p.category]) categorySales[p.category] = 0;
+    categorySales[p.category] += (p.price * p.salesCount);
+  });
+  
+  const sortedCategories = Object.entries(categorySales).sort((a, b) => b[1] - a[1]);
+  const totalCatSales = sortedCategories.reduce((sum, [_, val]) => sum + val, 0);
+  
+  const topCategories = sortedCategories.slice(0, 3).map(([name, val], idx) => {
+    const colors = ['bg-brand-500', 'bg-purple-500', 'bg-amber-500'];
+    return { name, color: colors[idx], perc: totalCatSales > 0 ? Math.round((val / totalCatSales) * 100) + '%' : '0%' };
+  });
+  
+  const otherSales = sortedCategories.slice(3).reduce((sum, [_, val]) => sum + val, 0);
+  if (otherSales > 0) {
+    topCategories.push({ name: 'أخرى', color: 'bg-slate-300', perc: Math.round((otherSales / totalCatSales) * 100) + '%' });
+  }
+
+  let currentPercentage = 0;
+  const gradientStops = topCategories.map((c) => {
+    const hexColor = c.color === 'bg-brand-500' ? '#14b8a6' :
+                     c.color === 'bg-purple-500' ? '#a855f7' :
+                     c.color === 'bg-amber-500' ? '#f59e0b' : '#cbd5e1';
+    
+    const numPerc = parseInt(c.perc.replace('%', ''));
+    const start = currentPercentage;
+    const end = currentPercentage + numPerc;
+    currentPercentage = end;
+    
+    return `${hexColor} ${start}% ${end}%`;
+  }).join(', ');
+  
+  const conicGradientStr = `conic-gradient(${gradientStops || '#cbd5e1 0% 100%'})`;
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -92,10 +137,10 @@ export default function MerchantReportsPage() {
       {/* KPI Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'إجمالي المبيعات', value: formatCurrency(124500, store.baseCurrency), trend: '+15%' },
-          { label: 'صافي الإيرادات', value: formatCurrency(38200, store.baseCurrency), trend: '+8%' },
-          { label: 'متوسط قيمة الطلب', value: formatCurrency(450, store.baseCurrency), trend: '+2%' },
-          { label: 'الطلبات المكتملة', value: '342 طلب', trend: '+12%' },
+          { label: 'إجمالي المبيعات', value: formatCurrency(totalSalesVolume, store.baseCurrency), trend: '+15%' },
+          { label: 'صافي الإيرادات (تقديري)', value: formatCurrency(netRevenue, store.baseCurrency), trend: '+8%' },
+          { label: 'متوسط قيمة الطلب', value: formatCurrency(avgOrderValue, store.baseCurrency), trend: '+2%' },
+          { label: 'الطلبات المكتملة', value: `${totalOrdersCount} طلب`, trend: '+12%' },
         ].map((kpi, idx) => (
           <div key={idx} className="p-4 bg-white dark:bg-slateDark-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <div className="text-[11px] text-slate-500 font-bold mb-1">{kpi.label}</div>
@@ -105,6 +150,62 @@ export default function MerchantReportsPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Visual Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Sales Bar Chart */}
+        <div className="p-5 bg-white dark:bg-slateDark-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+              <BarChart2 className="w-5 h-5 text-brand-600" />
+              <span>المبيعات (آخر 7 أيام)</span>
+            </h3>
+            <p className="text-xs text-slate-500 mb-6">مقارنة حجم المبيعات اليومية</p>
+          </div>
+          
+          <div className="flex items-end justify-between h-40 gap-2 mt-auto">
+            {[45, 60, 30, 80, 55, 90, 75].map((val, i) => (
+              <div key={i} className="flex flex-col items-center w-full group">
+                <div className="w-full relative bg-brand-100 dark:bg-brand-900/30 rounded-t-md flex items-end justify-center group-hover:bg-brand-200 transition-colors" style={{ height: '140px' }}>
+                  <div className="w-full bg-brand-500 rounded-t-md transition-all" style={{ height: `${val}%` }}></div>
+                  <span className="absolute -top-6 text-[10px] font-bold text-slate-600 dark:text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">{val}k</span>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-2 font-mono">{['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'][i]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Categories Pie Chart */}
+        <div className="p-5 bg-white dark:bg-slateDark-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+              <PieChart className="w-5 h-5 text-purple-600" />
+              <span>مبيعات التصنيفات</span>
+            </h3>
+            <p className="text-xs text-slate-500 mb-6">توزيع مبيعات المنتجات حسب التصنيف</p>
+          </div>
+          
+          <div className="flex items-center justify-center h-40 mt-auto">
+            <div className="relative w-32 h-32 rounded-full conic-gradient-chart shadow-inner flex items-center justify-center">
+              <div className="w-20 h-20 bg-white dark:bg-slateDark-900 rounded-full shadow-sm flex items-center justify-center flex-col">
+                <span className="text-xs font-black text-slate-800 dark:text-slate-200">100%</span>
+              </div>
+            </div>
+            
+            <div className="mr-8 space-y-3 flex-1">
+              {topCategories.map((c, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className={`w-3 h-3 rounded-full ${c.color}`}></span>
+                  <span className="text-xs text-slate-600 dark:text-slate-300">{c.name}</span>
+                  <span className="text-[10px] font-bold text-slate-400 mr-auto">{c.perc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <style dangerouslySetInnerHTML={{__html: `.conic-gradient-chart { background: ${conicGradientStr}; }`}} />
+        </div>
       </div>
 
       {/* Product Reports */}

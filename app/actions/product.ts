@@ -1,9 +1,14 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+import { requireStoreOwner, requireAuth } from '@/app/actions/auth';
 
 export async function createProductAction(data: any) {
   try {
+    await requireAuth();
+    await requireStoreOwner(data.storeId);
+
     const product = await prisma.product.create({
       data: {
         id: data.id,
@@ -38,6 +43,11 @@ export async function createProductAction(data: any) {
 
 export async function updateProductAction(id: string, data: any) {
   try {
+    const existingProduct = await prisma.product.findUnique({ where: { id } });
+    if (!existingProduct) throw new Error("Product not found");
+    
+    await requireStoreOwner(existingProduct.storeId);
+
     // First, delete existing variants to replace them with the new ones
     if (data.variants) {
       await prisma.productVariant.deleteMany({
@@ -80,6 +90,11 @@ export async function updateProductAction(id: string, data: any) {
 
 export async function deleteProductAction(id: string) {
   try {
+    const existingProduct = await prisma.product.findUnique({ where: { id } });
+    if (!existingProduct) throw new Error("Product not found");
+    
+    await requireStoreOwner(existingProduct.storeId);
+
     await prisma.product.delete({
       where: { id }
     });

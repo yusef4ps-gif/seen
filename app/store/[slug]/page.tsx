@@ -27,6 +27,14 @@ export default function CustomerStorefrontPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
   const [activeCurrency, setActiveCurrency] = useState<CurrencyCode>('YER_ADEN');
 
   // Cart state
@@ -264,6 +272,24 @@ export default function CustomerStorefrontPage() {
     if (result.success) {
       const newOrder = result.order;
 
+      // Register or update customer in CRM
+      import('@/lib/auth-engine').then(({ authEngine }) => {
+        const custRes = authEngine.registerCustomer({
+          name: customerName,
+          phone: customerPhone,
+          storeId: store.id,
+          storeSlug: store.slug,
+          storeName: store.name,
+        });
+        if (custRes.session?.user) {
+          const user = custRes.session.user;
+          authEngine.updateUser(user.id, {
+            ordersCount: (user.ordersCount || 0) + 1,
+            totalSpent: (user.totalSpent || 0) + cartTotalConverted
+          });
+        }
+      });
+
       // Prepare items list for WhatsApp formatting
       const formattedItems = cart.map((i) => ({
         name: i.variantName ? `${i.productName} (${i.variantName})` : i.productName,
@@ -292,10 +318,14 @@ export default function CustomerStorefrontPage() {
 
       const targetPhone = store.whatsapp || store.phone.replace(/[^0-9]/g, '');
       if (targetPhone) {
-        window.open(`https://wa.me/${targetPhone}?text=${waMessage}`, '_blank');
+        // Push first so history is correct, then redirect directly
+        router.push(`/store/${store.slug}/track/${newOrder?.id}`);
+        setTimeout(() => {
+          window.location.href = `https://wa.me/${targetPhone}?text=${waMessage}`;
+        }, 100);
+      } else {
+        router.push(`/store/${store.slug}/track/${newOrder?.id}`);
       }
-
-      router.push(`/store/${store.slug}/track/${newOrder?.id}`);
     } else {
       setIsSubmittingOrder(false);
       alert('حدث خطأ أثناء إنشاء الطلب. حاول مرة أخرى.');
@@ -306,8 +336,8 @@ export default function CustomerStorefrontPage() {
 
   const filteredProducts = products.filter((p) => {
     const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          p.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = p.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                          p.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -832,8 +862,9 @@ export default function CustomerStorefrontPage() {
 
                             <div className="p-2.5 sm:p-5 flex-1 flex flex-col justify-between space-y-2 sm:space-y-3 text-right">
                               <div>
-                                <div className="text-[9px] sm:text-[10px] text-slate-400 font-medium mb-0.5">
-                                  {prod.category}
+                                <div className="flex justify-between items-center text-[9px] sm:text-[10px] text-slate-400 font-medium mb-0.5">
+                                  <span>{prod.category}</span>
+                                  <span className="text-emerald-600 font-bold">المتوفر: {prod.stock}</span>
                                 </div>
                                 <h3 
                                   onClick={() => {

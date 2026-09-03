@@ -2,9 +2,11 @@
 
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { requireStoreOwner } from '@/app/actions/auth';
 
 export async function getCouponsAction(storeId: string) {
   try {
+    await requireStoreOwner(storeId);
     const coupons = await prisma.coupon.findMany({
       where: { storeId },
       orderBy: { createdAt: 'desc' }
@@ -26,6 +28,7 @@ export async function createCouponAction(data: {
   appliesTo?: string;
 }) {
   try {
+    await requireStoreOwner(data.storeId);
     // Check if code already exists
     const existing = await prisma.coupon.findUnique({
       where: {
@@ -62,6 +65,7 @@ export async function createCouponAction(data: {
 
 export async function deleteCouponAction(id: string, storeId: string, slug: string) {
   try {
+    await requireStoreOwner(storeId);
     await prisma.coupon.delete({
       where: {
         id,

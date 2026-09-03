@@ -18,6 +18,11 @@ export default function MerchantAIAdvisorPage() {
   const [generatedCampaign, setGeneratedCampaign] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [editableTemplates, setEditableTemplates] = useState<Record<number, string>>({});
+
+  const getTemplateContent = (idx: number, defaultTemplate: string) => {
+    return editableTemplates[idx] !== undefined ? editableTemplates[idx] : defaultTemplate;
+  };
 
   useEffect(() => {
     async function init() {
@@ -177,14 +182,16 @@ export default function MerchantAIAdvisorPage() {
                     {strat.description}
                   </p>
 
-                  <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-700 dark:text-slate-300 font-mono whitespace-pre-line leading-relaxed max-h-36 overflow-y-auto">
-                    {strat.whatsappTemplate}
-                  </div>
+                  <textarea
+                    className="w-full mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-700 dark:text-slate-300 font-mono whitespace-pre-line leading-relaxed h-36 resize-y outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                    value={getTemplateContent(idx, strat.whatsappTemplate)}
+                    onChange={(e) => setEditableTemplates(prev => ({...prev, [idx]: e.target.value}))}
+                  />
                 </div>
 
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                   <button
-                    onClick={() => handleCopy(strat.whatsappTemplate, idx)}
+                    onClick={() => handleCopy(getTemplateContent(idx, strat.whatsappTemplate), idx)}
                     className="flex-1 py-2 px-3 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 transition-colors flex items-center justify-center gap-1.5"
                   >
                     {copiedIndex === idx ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
@@ -192,7 +199,7 @@ export default function MerchantAIAdvisorPage() {
                   </button>
 
                   <a
-                    href={`https://wa.me/?text=${encodeURIComponent(strat.whatsappTemplate)}`}
+                    href={`https://wa.me/?text=${encodeURIComponent(getTemplateContent(idx, strat.whatsappTemplate))}`}
                     target="_blank"
                     rel="noreferrer"
                     className="py-2 px-3 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center gap-1.5"

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ShieldCheck, Lock, User as UserIcon, ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { authEngine } from '@/lib/auth-engine';
+import { setAuthCookieAction } from '@/app/actions/auth';
 import BrandLogo from '@/components/BrandLogo';
 
 export default function AdminLoginPage() {
@@ -21,21 +22,22 @@ export default function AdminLoginPage() {
     setErrorMessage('');
     setIsLoading(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const result = authEngine.login(username, password);
       setIsLoading(false);
 
-      if (!result.success) {
-        setErrorMessage(result.error || 'بيانات الدخول غير صحيحة.');
-      } else if (result.session?.user.role !== 'SUPER_ADMIN') {
-        setErrorMessage('هذا الحساب ليس لديه صلاحيات الإدارة العليا للمنصة.');
+      if (!result.success || result.session?.user.role !== 'SUPER_ADMIN') {
+        setErrorMessage(result.error || 'غير مصرح بالدخول. يرجى التأكد من الصلاحيات.');
       } else {
-        setSuccessMessage(`مرحباً بك ${result.session.user.name}! جاري الدخول للوحة التحكم...`);
+        setSuccessMessage('تم تسجيل الدخول بنجاح! جاري توجيهك للوحة التحكم...');
+        if (result.session) {
+          await setAuthCookieAction(result.session.token, result.session.user.id, result.session.user.role, result.session.user.storeId);
+        }
         setTimeout(() => {
           router.push('/admin');
         }, 500);
       }
-    }, 500);
+    }, 600);
   };
 
   return (
