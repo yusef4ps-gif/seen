@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'سِين (SEEN) | منصة إنشاء وإدارة المتاجر الإلكترونية المتكاملة',
   description: 'منصة سِين (SEEN) السحابية الرائدة لإنشاء وإدارة المتاجر الإلكترونية الذكية في اليمن والمنطقة مع دعم كامل للمحافظ المحلية والدفع عند الاستلام وأسعار الصرف الحية.',
