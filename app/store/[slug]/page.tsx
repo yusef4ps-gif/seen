@@ -332,10 +332,34 @@ export default function CustomerStorefrontPage() {
     }
   };
 
-  const categories = Array.from(new Set(products.map((p) => p.category)));
+  // Parse categories from products
+  const categoryMap = new Map<string, Set<string>>();
+  products.forEach(p => {
+    const parts = p.category.split(' > ');
+    const mainCat = parts[0]?.trim();
+    const subCat = parts[1]?.trim();
+    if (mainCat) {
+      if (!categoryMap.has(mainCat)) categoryMap.set(mainCat, new Set());
+      if (subCat) categoryMap.get(mainCat)!.add(subCat);
+    }
+  });
+
+  const parsedCategories = Array.from(categoryMap.entries()).map(([main, subs]) => ({
+    main,
+    subs: Array.from(subs)
+  }));
+
+  const getBrandLogo = (brandName: string) => {
+    const n = brandName.toLowerCase();
+    if (n.includes('samsung') || n.includes('سامسونج')) return 'https://upload.wikimedia.org/wikipedia/commons/2/24/Samsung_Logo.svg';
+    if (n.includes('apple') || n.includes('ابل') || n.includes('آبل') || n.includes('ايفون')) return 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg';
+    if (n.includes('xiaomi') || n.includes('شاومي')) return 'https://upload.wikimedia.org/wikipedia/commons/2/29/Xiaomi_logo.svg';
+    if (n.includes('huawei') || n.includes('هواوي')) return 'https://upload.wikimedia.org/wikipedia/commons/0/00/Huawei_Logo.svg';
+    return null;
+  };
 
   const filteredProducts = products.filter((p) => {
-    const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory || p.category.startsWith(selectedCategory + ' > ');
     const matchesSearch = p.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
                           p.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
@@ -575,42 +599,84 @@ export default function CustomerStorefrontPage() {
               );
             }
 
-            // --- SECTION: FEATURES STRIP ---
+            // --- SECTION: FEATURES STRIP (Replaced by Dynamic Categories Navigation) ---
             if (section.type === 'features_strip') {
               return (
-                <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8">
-                  <div className={`p-4 sm:p-6 grid grid-cols-3 gap-2 sm:gap-6 text-center text-xs ${
+                <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 mt-4 sm:mt-6">
+                  <div className={`p-2 sm:p-4 rounded-2xl flex items-center gap-4 overflow-x-auto no-scrollbar shadow-sm ${
                     presetId === 'tech-modern'
-                      ? 'bg-slate-900 border border-slate-800 rounded-2xl text-slate-200'
+                      ? 'bg-slate-900 border border-slate-800 text-slate-200'
                       : presetId === 'yemen-roastery'
-                      ? 'bg-[#f8f4eb] border border-amber-900/10 rounded-2xl text-[#451a03]'
+                      ? 'bg-[#f8f4eb] border border-amber-900/10 text-[#451a03]'
                       : presetId === 'minimal-clean'
                       ? 'border-2 border-black bg-white rounded-none text-black'
-                      : 'bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xs'
+                      : 'bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800'
                   }`}>
-                    <div className="space-y-1">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 mx-auto rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-800" style={{ color: primaryColor }}>
-                        {presetId === 'tech-modern' ? <Cpu className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" /> : <Truck className="w-4 h-4 sm:w-5 sm:h-5" />}
-                      </div>
-                      <h4 className="font-bold text-[11px] sm:text-sm">توصيل سريع</h4>
-                      <p className="text-[9px] sm:text-xs opacity-70 hidden xs:block">لكافة المحافظات</p>
-                    </div>
+                    <button
+                        onClick={() => setSelectedCategory('all')}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                          selectedCategory === 'all'
+                            ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400' 
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300'
+                        }`}
+                        style={{
+                          backgroundColor: selectedCategory === 'all' ? (presetId === 'minimal-clean' ? '#000' : `${primaryColor}15`) : undefined,
+                          color: selectedCategory === 'all' ? (presetId === 'minimal-clean' ? '#fff' : primaryColor) : undefined,
+                          borderRadius: presetId === 'minimal-clean' ? '0px' : '12px'
+                        }}
+                      >
+                        الكل
+                      </button>
+                    {parsedCategories.length === 0 && <div className="text-xs opacity-50 p-2">لا توجد أقسام مضافة بعد</div>}
+                    {parsedCategories.map((cat, idx) => (
+                      <div key={idx} className="relative group shrink-0">
+                        <button
+                          onClick={() => setSelectedCategory(cat.main)}
+                          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                            selectedCategory === cat.main || selectedCategory.startsWith(cat.main + ' > ')
+                              ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400' 
+                              : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300'
+                          }`}
+                          style={{
+                            backgroundColor: selectedCategory === cat.main || selectedCategory.startsWith(cat.main + ' > ') ? (presetId === 'minimal-clean' ? '#000' : `${primaryColor}15`) : undefined,
+                            color: selectedCategory === cat.main || selectedCategory.startsWith(cat.main + ' > ') ? (presetId === 'minimal-clean' ? '#fff' : primaryColor) : undefined,
+                            borderRadius: presetId === 'minimal-clean' ? '0px' : '12px'
+                          }}
+                        >
+                          <span>{cat.main}</span>
+                          {cat.subs.length > 0 && <ChevronDown className="w-3 h-3 opacity-50" />}
+                        </button>
 
-                    <div className="space-y-1">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 mx-auto rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-800" style={{ color: primaryColor }}>
-                        {presetId === 'tech-modern' ? <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" /> : <Award className="w-4 h-4 sm:w-5 sm:h-5" />}
+                        {/* Dropdown for Subcategories */}
+                        {cat.subs.length > 0 && (
+                          <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden translate-y-2 group-hover:translate-y-0"
+                            style={{ borderRadius: presetId === 'minimal-clean' ? '0px' : '16px' }}
+                          >
+                            <div className="py-2">
+                              {cat.subs.map(sub => {
+                                const logo = getBrandLogo(sub);
+                                const fullCat = `${cat.main} > ${sub}`;
+                                const isSelected = selectedCategory === fullCat;
+                                return (
+                                  <button
+                                    key={sub}
+                                    onClick={() => setSelectedCategory(fullCat)}
+                                    className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
+                                      isSelected ? 'text-brand-600 bg-brand-50/50 dark:bg-brand-900/10' : 'text-slate-600 dark:text-slate-300'
+                                    }`}
+                                  >
+                                    <span>{sub}</span>
+                                    {logo && (
+                                      <img src={logo} alt={sub} className="w-5 h-5 object-contain opacity-70" />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <h4 className="font-bold text-[11px] sm:text-sm">ضمان الجودة</h4>
-                      <p className="text-[9px] sm:text-xs opacity-70 hidden xs:block">منتجات أصلية 100%</p>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 mx-auto rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-800" style={{ color: primaryColor }}>
-                        <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
-                      </div>
-                      <h4 className="font-bold text-[11px] sm:text-sm">دفع مرن ومحلي</h4>
-                      <p className="text-[9px] sm:text-xs opacity-70 hidden xs:block">كريمي وجوالي وكاش</p>
-                    </div>
+                    ))}
                   </div>
                 </section>
               );
@@ -640,40 +706,7 @@ export default function CustomerStorefrontPage() {
                       />
                     </div>
 
-                    {/* Category Pills */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1">
-                      <button
-                        onClick={() => setSelectedCategory('all')}
-                        className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs font-bold whitespace-nowrap transition-all ${
-                          selectedCategory === 'all'
-                            ? 'text-white shadow-xs'
-                            : 'bg-white/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
-                        } ${presetId === 'minimal-clean' ? 'rounded-none border-2 border-black' : ''}`}
-                        style={{ 
-                          backgroundColor: selectedCategory === 'all' ? (presetId === 'minimal-clean' ? '#000000' : primaryColor) : undefined,
-                          borderRadius: presetId === 'minimal-clean' ? '0px' : theme.layout.borderRadius === 'pill' ? '9999px' : '12px'
-                        }}
-                      >
-                        {presetId === 'minimal-clean' ? '[00] الكل' : `الكل (${products.length})`}
-                      </button>
-                      {categories.map((cat, idx) => (
-                        <button
-                          key={cat}
-                          onClick={() => setSelectedCategory(cat)}
-                          className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs font-bold whitespace-nowrap transition-all ${
-                            selectedCategory === cat
-                              ? 'text-white shadow-xs'
-                              : 'bg-white/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
-                          } ${presetId === 'minimal-clean' ? 'rounded-none border-2 border-black' : ''}`}
-                          style={{ 
-                            backgroundColor: selectedCategory === cat ? (presetId === 'minimal-clean' ? '#000000' : primaryColor) : undefined,
-                            borderRadius: presetId === 'minimal-clean' ? '0px' : theme.layout.borderRadius === 'pill' ? '9999px' : '12px'
-                          }}
-                        >
-                          {presetId === 'minimal-clean' ? `[0${idx + 1}] ${cat}` : cat}
-                        </button>
-                      ))}
-                    </div>
+
 
                   </div>
                 </section>
@@ -1480,8 +1513,20 @@ export default function CustomerStorefrontPage() {
       )}
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200/60 dark:border-slate-800 py-8 text-center text-xs opacity-75 px-4">
-        <p>© {new Date().getFullYear()} {store.name}. متجر مدعوم ومستضاف بواسطة منصة مَزن (Mazn SaaS).</p>
+      <footer className="mt-auto border-t border-slate-200/60 dark:border-slate-800 py-6 text-center text-xs px-4">
+        <p className="opacity-75 mb-3">© {new Date().getFullYear()} {store.name}. جميع الحقوق محفوظة.</p>
+        <a 
+          href="/" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+        >
+          <span>تم إنشاء هذا المتجر بواسطة</span>
+          <span className="font-black text-brand-600 dark:text-brand-400 tracking-wider flex items-center gap-1">
+            <Sparkles className="w-3.5 h-3.5" />
+            SEEN
+          </span>
+        </a>
       </footer>
 
     </div>

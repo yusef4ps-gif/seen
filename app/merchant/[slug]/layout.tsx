@@ -14,6 +14,7 @@ import { Store, SystemBroadcast } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
 import BrandLogo from '@/components/BrandLogo';
 import { getStoreBySlugAction, getStoresAction } from '@/app/actions/store';
+import { getStoreNotificationsAction } from '@/app/actions/notifications';
 
 import { authEngine } from '@/lib/auth-engine';
 import { User as AuthUser } from '@/lib/types';
@@ -35,19 +36,93 @@ export default function MerchantLayout({
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [allStores, setAllStores] = useState<Store[]>([]);
   
-  const notifications = [
-    { id: 1, type: 'warning', title: 'سلات متروكة', message: 'يوجد 3 سلات متروكة بقيمة 45,000 ريال، قم بإرسال رسائل التذكير.', time: 'قبل ساعتين' },
-    { id: 2, type: 'danger', title: 'تنبيه المخزون', message: 'تنبيه: منتج "عطر العود الفاخر" قارب على النفاذ (باقي قطعتين فقط).', time: 'اليوم' },
-    { id: 3, type: 'info', title: 'تنبيه الاشتراك', message: 'باقة المتجر الأساسية ستنتهي بعد 7 أيام، يرجى التجديد.', time: 'أمس' },
-  ];
+  
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+
 
   useEffect(() => {
     setCurrentUser(authEngine.getCurrentUser());
     
+    
     async function loadData() {
       if (slug) {
         const s = await getStoreBySlugAction(slug);
-        if (s) setStore(s as any);
+        if (s) {
+          setStore(s as any);
+          
+          // Fetch Real Notifications
+          const notifsRes = await getStoreNotificationsAction(s.id);
+          if (notifsRes.success && notifsRes.data) {
+            const dynamicNotifs: any[] = [];
+            let unread = 0;
+            let currentId = 1;
+
+            // Abandoned Carts
+            if (notifsRes.data.abandoned.count > 0) {
+              dynamicNotifs.push({
+                id: currentId++,
+                type: 'warning',
+                title: 'سلات متروكة',
+                message: `يوجد ${notifsRes.data.abandoned.count} سلات متروكة بقيمة ${formatCurrency(notifsRes.data.abandoned.total, s.baseCurrency)}، قم بمتابعتها.`,
+                time: 'جديد'
+              });
+              unread++;
+            }
+
+            // Low Stock
+            if (notifsRes.data.lowStock && notifsRes.data.lowStock.length > 0) {
+              notifsRes.data.lowStock.forEach((prod: any) => {
+                dynamicNotifs.push({
+                  id: currentId++,
+                  type: 'danger',
+                  title: 'تنبيه المخزون',
+                  message: `تنبيه: منتج "${prod.name}" قارب على النفاذ (باقي ${prod.stock} قطع فقط).`,
+                  time: 'جديد'
+                });
+                unread++;
+              });
+            }
+
+            // Subscription Calculation
+            if (notifsRes.data.storeDetails) {
+              const createdAt = new Date(notifsRes.data.storeDetails.createdAt);
+              const now = new Date();
+              const diffTime = Math.abs(now.getTime() - createdAt.getTime());
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              const maxTrialDays = 14;
+              
+              const remaining = maxTrialDays - diffDays;
+              setTrialDaysLeft(remaining);
+
+              if (notifsRes.data.storeDetails.planStatus === 'trial') {
+                if (remaining <= 3 && remaining > 0) {
+                  dynamicNotifs.push({
+                    id: currentId++,
+                    type: 'info',
+                    title: 'تنبيه الاشتراك',
+                    message: `باقة المتجر الأساسية (الفترة التجريبية) ستنتهي بعد ${remaining} أيام، يرجى التجديد قريباً لتجنب الإيقاف.`,
+                    time: 'اليوم'
+                  });
+                  unread++;
+                } else if (remaining <= 0) {
+                  dynamicNotifs.push({
+                    id: currentId++,
+                    type: 'danger',
+                    title: 'انتهاء الاشتراك',
+                    message: `انتهت الفترة التجريبية المجانية الخاصة بك. يرجى الاشتراك في إحدى الباقات للاستمرار في استقبال الطلبات.`,
+                    time: 'الآن'
+                  });
+                  unread++;
+                }
+              }
+            }
+
+            setNotifications(dynamicNotifs);
+            setUnreadCount(unread);
+          }
+        }
       }
       const all = await getStoresAction();
       setAllStores(all as any);
@@ -56,6 +131,7 @@ export default function MerchantLayout({
     loadData();
     setBroadcasts(storeEngine.getBroadcasts());
   }, [slug]);
+
 
   // ⛔ Guard: If logged in as CUSTOMER, prevent them from accessing merchant management
   if (currentUser?.role === 'CUSTOMER') {
@@ -345,7 +421,7 @@ export default function MerchantLayout({
                 className="relative p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 rounded-full transition-colors"
               >
                 <Bell className="w-5 h-5" />
-                {notifications.length > 0 && (
+                {unreadCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border-2 border-white dark:border-slateDark-900"></span>
                 )}
               </button>
@@ -356,7 +432,7 @@ export default function MerchantLayout({
                   <div className="absolute top-full left-0 mt-2 w-72 sm:w-80 bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-fadeIn text-right">
                     <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                       <h4 className="font-bold text-slate-900 dark:text-white text-sm">التنبيهات</h4>
-                      <span className="text-[10px] text-brand-600 font-bold px-2 py-0.5 rounded-full bg-brand-50 dark:bg-brand-900/30">جديد {notifications.length}</span>
+                      <span className="text-[10px] text-brand-600 font-bold px-2 py-0.5 rounded-full bg-brand-50 dark:bg-brand-900/30">جديد {unreadCount}</span>
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {notifications.map(n => (
@@ -371,7 +447,7 @@ export default function MerchantLayout({
                       ))}
                     </div>
                     <div className="p-2 text-center bg-slate-50 dark:bg-slate-800/30">
-                      <button className="text-[11px] font-bold text-brand-600 hover:text-brand-700">تحديد الكل كمقروء</button>
+                      <button onClick={() => setUnreadCount(0)} className="text-[11px] font-bold text-brand-600 hover:text-brand-700">تحديد الكل كمقروء</button>
                     </div>
                   </div>
                 </>
@@ -401,21 +477,35 @@ export default function MerchantLayout({
         </header>
 
         {/* Trial Countdown & Subscription Status Banner */}
-        {store.planStatus === 'trial' && (
-          <div className="mx-3 sm:mx-8 mt-3 p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-[#0f2b48] via-[#144b7a] to-[#14b8a6] text-white flex flex-wrap items-center justify-between gap-3 shadow-md">
+        
+        {store.planStatus === 'trial' && trialDaysLeft !== null && (
+          <div className={`mx-3 sm:mx-8 mt-3 p-3 sm:p-3.5 rounded-2xl text-white flex flex-wrap items-center justify-between gap-3 shadow-md ${trialDaysLeft <= 0 ? 'bg-gradient-to-r from-red-900 via-red-800 to-red-600' : 'bg-gradient-to-r from-[#0f2b48] via-[#144b7a] to-[#14b8a6]'}`}>
             <div className="flex items-center gap-2.5">
               <span className="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center text-sm shrink-0">
-                🎁
+                {trialDaysLeft <= 0 ? '⚠️' : '🎁'}
               </span>
               <div>
                 <div className="text-xs font-black flex items-center gap-2">
-                  <span>أنت حالياً في الفترة التجريبية المجانية (14 يوماً)</span>
-                  <span className="px-2 py-0.5 rounded-full bg-[#2dd4bf] text-[#0f2b48] text-[10px] font-black">
-                    تجربة مجانية نشطة
+                  <span>
+                    {trialDaysLeft > 0 
+                      ? `أنت حالياً في الفترة التجريبية المجانية (${trialDaysLeft} يوماً متبقية)` 
+                      : 'لقد انتهت الفترة التجريبية المجانية الخاصة بك'}
                   </span>
+                  {trialDaysLeft > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-[#2dd4bf] text-[#0f2b48] text-[10px] font-black">
+                      تجربة مجانية نشطة
+                    </span>
+                  )}
+                  {trialDaysLeft <= 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-900 text-[10px] font-black animate-pulse">
+                      الاشتراك منتهي
+                    </span>
+                  )}
                 </div>
                 <div className="text-[11px] text-slate-200">
-                  استمتع بكافة الميزات الاحترافية، دعم بنك القطيبي، وأسعار الصرف الحية مجاناً.
+                  {trialDaysLeft > 0 
+                    ? `بدأت تجربتك بتاريخ ${new Date(store.createdAt).toLocaleDateString('ar-YE')}، استمتع بكافة الميزات الاحترافية مجاناً.`
+                    : 'يرجى ترقية الباقة لاستعادة وصولك إلى كافة ميزات المتجر وتفعيل استقبال الطلبات.'}
                 </div>
               </div>
             </div>
@@ -428,6 +518,7 @@ export default function MerchantLayout({
             </Link>
           </div>
         )}
+
 
         {/* Global Broadcast Banner (if any) */}
         {broadcasts.length > 0 && (
@@ -451,6 +542,22 @@ export default function MerchantLayout({
         <main className="p-3 sm:p-8 flex-1">
           {children}
         </main>
+
+        {/* SEEN Platform Footer */}
+        <footer className="border-t border-slate-200 dark:border-slate-800 py-4 px-3 sm:px-8 text-center text-xs flex items-center justify-center">
+          <a 
+            href="/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+          >
+            <span>مدعوم ومستضاف بواسطة منصة</span>
+            <span className="font-black text-brand-600 dark:text-brand-400 tracking-wider flex items-center gap-1">
+              <Sparkles className="w-3 h-3" />
+              SEEN
+            </span>
+          </a>
+        </footer>
 
       </div>
 

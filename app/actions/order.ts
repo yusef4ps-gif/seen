@@ -64,7 +64,7 @@ export async function createOrderAction(data: any) {
     return { success: true, order };
   } catch (error) {
     console.error('Error creating order:', error);
-    return { success: false, error };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -105,7 +105,7 @@ export async function updateOrderStatusAction(id: string, status: string) {
     return { success: true, order: updatedOrder };
   } catch (error) {
     console.error('Error updating order status:', error);
-    return { success: false, error };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -126,7 +126,7 @@ export async function verifyPaymentProofAction(id: string, status: string) {
     return { success: true, order };
   } catch (error) {
     console.error('Error verifying payment:', error);
-    return { success: false, error };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -167,7 +167,7 @@ export async function captureAbandonedCartAction(data: any) {
     }
   } catch (error) {
     console.error('Error capturing abandoned cart:', error);
-    return { success: false, error };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 

@@ -45,6 +45,9 @@ export async function createCouponAction(data: {
     const coupon = await prisma.coupon.create({
       data: {
         ...data,
+        expiry: data.expiry ? new Date(data.expiry) : null,
+        discount: Number(data.discount) || 0,
+        maxUses: Number(data.maxUses) || 0,
         code: data.code.toUpperCase(),
       }
     });

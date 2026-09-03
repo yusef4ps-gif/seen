@@ -30,6 +30,10 @@ export async function requireAuth() {
   const storeId = cookies().get('seen_session_store_id')?.value;
 
   if (!userId) {
+    // Development bypass for easy testing
+    if (process.env.NODE_ENV === 'development') {
+      return { userId: 'dev-user', role: 'SUPER_ADMIN', storeId: 'dev-store' };
+    }
     throw new Error('Unauthorized');
   }
 

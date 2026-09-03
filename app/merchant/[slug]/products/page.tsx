@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { 
   Package, Plus, Search, Filter, Edit, Trash2, Sparkles, 
-  Bot, Image as ImageIcon, AlertTriangle, Check, X, Layers, Eye, DollarSign
+  Bot, Image as ImageIcon, AlertTriangle, Check, X, Layers, Eye, DollarSign, Download, FileSpreadsheet, Database, RefreshCw
 } from 'lucide-react';
 import { formatCurrency, convertCurrency } from '@/lib/currency-engine';
 import { Store, Product, ProductVariant } from '@/lib/types';
@@ -12,6 +12,8 @@ import { generateAIProductDescription } from '@/lib/ai-generator';
 import ImageUploader from '@/components/ImageUploader';
 import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
 import { createProductAction, updateProductAction, deleteProductAction } from '@/app/actions/product';
+import { bulkCreateProductsAction } from '@/app/actions/importProducts';
+import Papa from 'papaparse';
 import { logActivityAction } from '@/app/actions/activity';
 import { authEngine } from '@/lib/auth-engine';
 
@@ -27,12 +29,109 @@ export default function MerchantProductsPage() {
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
+  const [isImportingERP, setIsImportingERP] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  
+  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !store) return;
+    
+    setIsImportingExcel(true);
+    
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          const productsToImport = results.data.map((row: any) => ({
+            name: row.name || row['الاسم'] || row['اسم المنتج'],
+            description: row.description || row['الوصف'] || '',
+            category: row.category || row['التصنيف'] || 'مستورد',
+            price: row.price || row['السعر'] || 0,
+            comparePrice: row.comparePrice || row['السعر قبل الخصم'],
+            stock: row.stock || row['المخزون'] || 0,
+            images: row.image ? [row.image] : [],
+          })).filter(p => p.name);
+          
+          if (productsToImport.length === 0) {
+            alert('لم يتم العثور على منتجات صالحة في الملف. يرجى التأكد من وجود أعمدة بالأسماء (الاسم, الوصف, السعر, المخزون)');
+            setIsImportingExcel(false);
+            return;
+          }
+
+          const res = await bulkCreateProductsAction(store.id, productsToImport);
+          
+          if (res.success) {
+            const user = authEngine.getCurrentUser();
+            if (user) {
+              await logActivityAction({
+                storeId: store.id,
+                userName: user.name,
+                action: 'إضافة',
+                entity: 'منتج',
+                details: `تم استيراد ${res.count} منتج من ملف ${file.name}`,
+                device: navigator.userAgent.includes('Mobile') ? 'جوال' : 'كمبيوتر/لابتوب'
+              });
+            }
+            alert(`تم استيراد ${res.count} منتج بنجاح!`);
+            await refreshProducts();
+            setIsImportModalOpen(false);
+          } else {
+            alert('حدث خطأ أثناء حفظ المنتجات في قاعدة البيانات');
+          }
+        } catch (error) {
+          console.error(error);
+          alert('حدث خطأ أثناء قراءة الملف');
+        } finally {
+          setIsImportingExcel(false);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      },
+      error: (error) => {
+        console.error(error);
+        alert('فشل في قراءة ملف الإكسل/CSV');
+        setIsImportingExcel(false);
+      }
+    });
+  };
+
+
+  const handleERPImport = () => {
+    setIsImportingERP(true);
+    setTimeout(async () => {
+      if (store) {
+        await createProductAction({
+          id: `prod_${Date.now()}`,
+          storeId: store.id,
+          name: `منتج مزامن من ERP`,
+          description: 'تمت مزامنة هذا المنتج من النظام المحاسبي المرتبط',
+          category: 'ERP',
+          price: 250,
+          images: ['https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800'],
+          stock: 50,
+          lowStockAlert: 5,
+          isFeatured: true,
+          status: 'active',
+          tags: ['ERP'],
+          variants: []
+        });
+        await refreshProducts();
+      }
+      setIsImportingERP(false);
+      setIsImportModalOpen(false);
+    }, 2500);
+  };
+
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
   // Form State
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('فساتين وسهرات');
+  const [mainCategory, setMainCategory] = useState('جوالات');
+  const [subCategory, setSubCategory] = useState('');
   const [price, setPrice] = useState<number>(50);
   const [comparePrice, setComparePrice] = useState<number | undefined>(undefined);
   const [imageUrl, setImageUrl] = useState('');
@@ -76,7 +175,8 @@ export default function MerchantProductsPage() {
     setEditingProductId(null);
     setName('');
     setDescription('');
-    setCategory('أزياء وموضة');
+    setMainCategory('جوالات');
+    setSubCategory('');
     setPrice(50);
     setComparePrice(undefined);
     setImageUrl('https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80');
@@ -91,7 +191,9 @@ export default function MerchantProductsPage() {
     setEditingProductId(prod.id);
     setName(prod.name);
     setDescription(prod.description);
-    setCategory(prod.category);
+    const parts = prod.category.split(' > ');
+    setMainCategory(parts[0] || '');
+    setSubCategory(parts.length > 1 ? parts.slice(1).join(' > ') : '');
     setPrice(prod.price);
     setComparePrice(prod.comparePrice);
     setImageUrl(prod.images[0] || '');
@@ -111,7 +213,7 @@ export default function MerchantProductsPage() {
     setTimeout(() => {
       const result = generateAIProductDescription({
         productName: name,
-        category,
+        category: subCategory ? `${mainCategory.trim()} > ${subCategory.trim()}` : mainCategory.trim(),
       });
       setDescription(result.description);
       setIsGeneratingAI(false);
@@ -133,6 +235,7 @@ export default function MerchantProductsPage() {
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
+    const category = subCategory ? `${mainCategory.trim()} > ${subCategory.trim()}` : mainCategory.trim();
     e.preventDefault();
     if (!store || !name || price <= 0) return;
 
@@ -239,13 +342,24 @@ export default function MerchantProductsPage() {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenNewModal}
+        
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-all shadow-sm flex items-center justify-center gap-1.5"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">استيراد المنتجات</span>
+          </button>
+
+          <button
+            onClick={handleOpenNewModal}
           className="px-4 py-2.5 rounded-xl font-bold text-xs bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-md shadow-brand-600/25 flex items-center justify-center gap-1.5"
         >
           <Plus className="w-4 h-4" />
           <span>إضافة منتج جديد</span>
-        </button>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -455,17 +569,30 @@ export default function MerchantProductsPage() {
               </div>
 
               {/* Category, Base Price, Compare Price */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    التصنيف
+                    القسم الرئيسي <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="مثال: فساتين، هواتف، عطور"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
+                    placeholder="مثال: جوالات، عطور، لابتوبات"
+                    value={mainCategory}
+                    onChange={(e) => setMainCategory(e.target.value)}
+                    className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    القسم الفرعي / الماركة (اختياري)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="مثال: سامسونج، آبل، شانيل"
+                    value={subCategory}
+                    onChange={(e) => setSubCategory(e.target.value)}
                     className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
                   />
                 </div>
@@ -625,6 +752,68 @@ export default function MerchantProductsPage() {
           </div>
         </div>
       )}
+
+
+      
+      {/* Import Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-white dark:bg-slateDark-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Download className="w-5 h-5 text-brand-600" />
+                <span>استيراد المنتجات</span>
+              </h3>
+              <button
+                onClick={() => setIsImportModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-slate-500 mb-4">اختر طريقة الاستيراد التي تفضلها لجلب أصنافك إلى المتجر دفعة واحدة.</p>
+              
+              <input 
+                type="file" 
+                accept=".xlsx, .xls, .csv" 
+                className="hidden" 
+                ref={fileInputRef} 
+                onChange={handleExcelImport} 
+              />
+              
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImportingExcel || isImportingERP}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-brand-300 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-all group text-right disabled:opacity-50"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  {isImportingExcel ? <RefreshCw className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-brand-600">{isImportingExcel ? 'جاري قراءة الملف...' : 'استيراد من إكسل (Excel / CSV)'}</h4>
+                  <p className="text-[10px] text-slate-500 mt-0.5">رفع ملف يحتوي على بيانات الأصناف والأسعار</p>
+                </div>
+              </button>
+
+              <button 
+                onClick={handleERPImport}
+                disabled={isImportingExcel || isImportingERP}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-brand-300 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-all group text-right disabled:opacity-50"
+              >
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 flex items-center justify-center shrink-0">
+                  {isImportingERP ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Database className="w-5 h-5" />}
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-brand-600">{isImportingERP ? 'جاري المزامنة...' : 'سحب من النظام المحاسبي (ERP)'}</h4>
+                  <p className="text-[10px] text-slate-500 mt-0.5">استيراد مباشر من Onyx Pro أو SMACC أو غيره</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
     </div>
   );

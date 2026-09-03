@@ -60,10 +60,9 @@ export function formatCurrency(
   const symbol = DEFAULT_CURRENCIES[currencyCode]?.symbol || currencyCode;
   
   // Format numbers with commas (e.g. 15,000 ر.ي)
-  const isWhole = currencyCode.startsWith('YER');
-  const formattedNum = new Intl.NumberFormat('ar-YE', {
-    maximumFractionDigits: isWhole ? 0 : 2,
-    minimumFractionDigits: isWhole ? 0 : 2,
+  const formattedNum = new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
   }).format(amount);
 
   return `${formattedNum} ${symbol}`;

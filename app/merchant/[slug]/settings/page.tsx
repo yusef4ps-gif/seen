@@ -3,19 +3,52 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { 
-  Settings, Wallet, RefreshCw, Truck, Store as StoreIcon, 
+  Settings, Wallet, RefreshCw, Truck, Store as StoreIcon, Database, 
   Save, CheckCircle2, Plus, Trash2, Building2, Phone, MapPin, Image as ImageIcon,
   Target
 } from 'lucide-react';
 import { Store, CurrencyCode, PaymentAccountConfig, ShippingMethod } from '@/lib/types';
 import { getStoreBySlugAction, updateStoreAction } from '@/app/actions/store';
+import { generateApiKeyAction, getApiKeysAction, deleteApiKeyAction } from '@/app/actions/apiKey';
 
 export default function MerchantSettingsPage() {
   const params = useParams();
   const slug = params.slug as string;
 
   const [store, setStore] = useState<Store | null>(null);
-  const [activeTab, setActiveTab] = useState<'general' | 'payments' | 'currencies' | 'shipping' | 'marketing'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'payments' | 'currencies' | 'shipping' | 'marketing' | 'accounting'>('general');
+  const [apiKeys, setApiKeys] = useState<any[]>([]);
+  const [isGeneratingKey, setIsGeneratingKey] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  
+  const generateApiKey = async () => {
+    if (!store) return;
+    setIsGeneratingKey(true);
+    try {
+      const newKey = await generateApiKeyAction(store.id, 'مفتاح جديد ' + new Date().toLocaleDateString('ar-EG'));
+      setApiKeys([...apiKeys, newKey]);
+    } catch (e) {
+      alert('فشل توليد المفتاح');
+    }
+    setIsGeneratingKey(false);
+  };
+
+  const copyApiKey = (keyStr: string) => {
+    navigator.clipboard.writeText(keyStr);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const handleRevokeApiKey = async (keyId: string) => {
+    if (!store) return;
+    if (confirm('هل أنت متأكد من إلغاء هذا المفتاح؟ سيتوقف أي نظام متصل به عن العمل.')) {
+      await deleteApiKeyAction(store.id, keyId);
+      setApiKeys(apiKeys.filter(k => k.id !== keyId));
+    }
+  };
+
+
   const [isSaved, setIsSaved] = useState(false);
 
   // Form states
@@ -64,6 +97,8 @@ export default function MerchantSettingsPage() {
           setCustomRates(s.customRates || { YER_ADEN: 1910, YER_SANAA: 535, SAR: 3.75, USD: 1 });
           setPaymentAccounts(s.paymentAccounts || []);
           setShippingMethods(s.shippingMethods || []);
+          const keys = await getApiKeysAction(s.id);
+          setApiKeys(keys);
           if ((s as any).marketingPixels) {
             try {
               const parsed = JSON.parse((s as any).marketingPixels);
@@ -160,6 +195,13 @@ export default function MerchantSettingsPage() {
     }
   };
 
+  
+  const handleToggleShipping = (id: string) => {
+    setShippingMethods(
+      shippingMethods.map((m) => (m.id === id ? { ...m, isActive: !m.isActive } : m))
+    );
+  };
+
   const handleRemoveShippingMethod = (id: string) => {
     if(confirm('هل أنت متأكد من حذف شركة التوصيل هذه؟')) {
       setShippingMethods(shippingMethods.filter(m => m.id !== id));
@@ -198,6 +240,7 @@ export default function MerchantSettingsPage() {
           { id: 'currencies', label: 'العملات وأسعار الصرف', icon: RefreshCw },
           { id: 'shipping', label: 'الشحن والتوصيل', icon: Truck },
           { id: 'marketing', label: 'التسويق والبكسلات', icon: Target },
+          { id: 'accounting', label: 'الربط المحاسبي (ERP)', icon: Database },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
@@ -387,7 +430,7 @@ export default function MerchantSettingsPage() {
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      {acc.id.startsWith('custom_') ? (
+                      {true ? (
                         <input
                           type="text"
                           value={acc.name}
@@ -399,11 +442,23 @@ export default function MerchantSettingsPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-3">
-                      {acc.id.startsWith('custom_') && (
+                      
+                      <label className="relative inline-flex items-center cursor-pointer ml-3">
+                        <input
+                          type="checkbox"
+                          checked={m.isActive !== false}
+                          onChange={() => handleToggleShipping(m.id)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-600"></div>
+                      </label>
+
+                    {true && (
                         <button
                           type="button"
                           onClick={() => handleRemovePaymentMethod(acc.id)}
-                          className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg"
+                          className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg ml-2"
+                      >
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -551,7 +606,7 @@ export default function MerchantSettingsPage() {
 
             <div className="space-y-3">
               {shippingMethods.map((m, idx) => (
-                <div key={m.id} className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div key={m.id} className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${m.isActive !== false ? 'border-brand-200 dark:border-brand-800 bg-slate-50 dark:bg-slate-800/40' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/20 opacity-60'}`}>
                   <div>
                     <div className="font-bold text-slate-900 dark:text-white">{m.name}</div>
                     <div className="text-[11px] text-slate-500">{m.estimatedDelivery}</div>
@@ -560,7 +615,7 @@ export default function MerchantSettingsPage() {
                     <div className="font-bold text-brand-600 dark:text-brand-400">
                       {m.cost === 0 ? 'مجاني / استلام فرع' : `${m.cost.toLocaleString()} ر.ي`}
                     </div>
-                    {m.id.startsWith('ship_') && (
+                    {true && (
                       <button
                         type="button"
                         onClick={() => handleRemoveShippingMethod(m.id)}
@@ -650,6 +705,72 @@ export default function MerchantSettingsPage() {
                 />
               </div>
             </div>
+          </div>
+        )}
+
+        
+        {/* Tab 6: Accounting Integrations */}
+        {activeTab === 'accounting' && (
+          <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 space-y-5">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Database className="w-5 h-5 text-brand-600" />
+                <span>الربط بالأنظمة المحاسبية (ERP)</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                قم بربط متجرك بأنظمة المحاسبة الشهيرة لمزامنة المنتجات، الكميات، الفواتير، وحسابات العملاء تلقائياً.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              {[
+                { id: 'onyx', name: 'أونكس برو (Onyx Pro)', desc: 'نظام يمن سوفت المحاسبي', color: 'bg-blue-600' },
+                { id: 'smacc', name: 'سماك (SMACC)', desc: 'النظام المحاسبي السحابي', color: 'bg-emerald-600' },
+                { id: 'quickbooks', name: 'QuickBooks', desc: 'نظام إدارة الحسابات العالمي', color: 'bg-green-600' },
+                { id: 'odoo', name: 'أودو (Odoo)', desc: 'نظام تخطيط الموارد الشامل', color: 'bg-purple-600' },
+              ].map(sys => (
+                <div key={sys.id} className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between transition-colors hover:border-brand-300 group">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">{sys.name}</h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{sys.desc}</p>
+                  </div>
+                  <button type="button" onClick={() => alert('تم إرسال طلب الربط بنجاح وسيتم التواصل معك')} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 group-hover:text-brand-600 group-hover:border-brand-300 transition-colors">
+                    ربط النظام
+                  </button>
+                </div>
+              ))}
+            </div>
+            
+            
+            <div className="mt-4 p-4 rounded-2xl bg-brand-50/50 dark:bg-brand-900/10 border border-brand-100 dark:border-brand-900/50 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+               <div className="flex-1 w-full">
+                 <h4 className="text-xs font-bold text-brand-800 dark:text-brand-300 mb-1">إعدادات الربط المتقدمة (API)</h4>
+                 <p className="text-[11px] text-slate-600 dark:text-slate-400">إذا كان لديك نظام محاسبي خاص وتريد ربطه، يمكنك استخدام مفاتيح الربط الخاصة بمتجرك.</p>
+                 
+                 {apiKey && (
+                   <div className="mt-3 flex items-center gap-2 w-full animate-fadeIn">
+                     <div className="px-3 py-2 bg-white dark:bg-slate-900 border border-brand-200 dark:border-brand-800 rounded-lg text-xs font-mono text-slate-800 dark:text-slate-200 flex-1 overflow-x-auto">
+                       {apiKey}
+                     </div>
+                     <button type="button" onClick={copyApiKey} className="shrink-0 p-2 rounded-lg bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 hover:bg-brand-200 transition-colors flex items-center gap-1">
+                       {isCopied ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <span className="text-xs font-bold">نسخ</span>}
+                     </button>
+                   </div>
+                 )}
+               </div>
+               
+               <button 
+                 type="button" 
+                 onClick={generateApiKey} 
+                 disabled={isGeneratingKey}
+                 className="shrink-0 px-4 py-2.5 rounded-xl text-xs font-bold bg-brand-600 text-white shadow-sm hover:bg-brand-500 transition-colors disabled:opacity-50 flex items-center gap-2"
+               >
+                 {isGeneratingKey ? (
+                   <><RefreshCw className="w-4 h-4 animate-spin" /> جاري التوليد...</>
+                 ) : apiKey ? 'توليد مفتاح جديد' : 'إنشاء مفتاح API'}
+               </button>
+            </div>
+
           </div>
         )}
 
