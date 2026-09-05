@@ -24,7 +24,7 @@ export async function createCouponAction(data: {
   discount: number;
   type: string;
   maxUses: number;
-  expiry?: Date | null;
+  expiry?: string | null;
   appliesTo?: string;
 }) {
   try {

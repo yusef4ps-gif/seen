@@ -79,6 +79,14 @@ export default function MerchantSettingsPage() {
     x: '',
   });
 
+  const [socialLinks, setSocialLinks] = useState({
+    facebook: '',
+    instagram: '',
+    x: '',
+    tiktok: '',
+    snapchat: '',
+  });
+
   useEffect(() => {
     async function init() {
       if (slug) {
@@ -103,6 +111,14 @@ export default function MerchantSettingsPage() {
             try {
               const parsed = JSON.parse((s as any).marketingPixels);
               setMarketingPixels(parsed);
+            } catch (e) {
+              // ignore
+            }
+          }
+          if ((s as any).socialLinks) {
+            try {
+              const parsed = JSON.parse((s as any).socialLinks);
+              setSocialLinks(parsed);
             } catch (e) {
               // ignore
             }
@@ -133,6 +149,7 @@ export default function MerchantSettingsPage() {
       paymentAccounts: JSON.stringify(paymentAccounts),
       shippingMethods: JSON.stringify(shippingMethods),
       marketingPixels: JSON.stringify(marketingPixels),
+      socialLinks: JSON.stringify(socialLinks),
     });
 
     setIsSaved(true);
@@ -336,7 +353,68 @@ export default function MerchantSettingsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-3">روابط وسائل التواصل الاجتماعي</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1.5">رابط Facebook</label>
+                  <input
+                    type="url"
+                    value={socialLinks.facebook}
+                    onChange={(e) => setSocialLinks({ ...socialLinks, facebook: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    placeholder="https://facebook.com/..."
+                    dir="ltr"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1.5">رابط Instagram</label>
+                  <input
+                    type="url"
+                    value={socialLinks.instagram}
+                    onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    placeholder="https://instagram.com/..."
+                    dir="ltr"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1.5">رابط X (Twitter)</label>
+                  <input
+                    type="url"
+                    value={socialLinks.x}
+                    onChange={(e) => setSocialLinks({ ...socialLinks, x: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    placeholder="https://x.com/..."
+                    dir="ltr"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1.5">رابط TikTok</label>
+                  <input
+                    type="url"
+                    value={socialLinks.tiktok}
+                    onChange={(e) => setSocialLinks({ ...socialLinks, tiktok: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    placeholder="https://tiktok.com/@..."
+                    dir="ltr"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1.5">رابط Snapchat</label>
+                  <input
+                    type="url"
+                    value={socialLinks.snapchat}
+                    onChange={(e) => setSocialLinks({ ...socialLinks, snapchat: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    placeholder="https://snapchat.com/add/..."
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   شعار المتجر (Logo)
@@ -442,23 +520,11 @@ export default function MerchantSettingsPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-3">
-                      
-                      <label className="relative inline-flex items-center cursor-pointer ml-3">
-                        <input
-                          type="checkbox"
-                          checked={m.isActive !== false}
-                          onChange={() => handleToggleShipping(m.id)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-600"></div>
-                      </label>
-
-                    {true && (
+                      {true && (
                         <button
                           type="button"
                           onClick={() => handleRemovePaymentMethod(acc.id)}
                           className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg ml-2"
-                      >
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -747,14 +813,21 @@ export default function MerchantSettingsPage() {
                  <h4 className="text-xs font-bold text-brand-800 dark:text-brand-300 mb-1">إعدادات الربط المتقدمة (API)</h4>
                  <p className="text-[11px] text-slate-600 dark:text-slate-400">إذا كان لديك نظام محاسبي خاص وتريد ربطه، يمكنك استخدام مفاتيح الربط الخاصة بمتجرك.</p>
                  
-                 {apiKey && (
-                   <div className="mt-3 flex items-center gap-2 w-full animate-fadeIn">
-                     <div className="px-3 py-2 bg-white dark:bg-slate-900 border border-brand-200 dark:border-brand-800 rounded-lg text-xs font-mono text-slate-800 dark:text-slate-200 flex-1 overflow-x-auto">
-                       {apiKey}
-                     </div>
-                     <button type="button" onClick={copyApiKey} className="shrink-0 p-2 rounded-lg bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 hover:bg-brand-200 transition-colors flex items-center gap-1">
-                       {isCopied ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <span className="text-xs font-bold">نسخ</span>}
-                     </button>
+                 {apiKeys && apiKeys.length > 0 && (
+                   <div className="mt-4 space-y-2">
+                     {apiKeys.map((ak, idx) => (
+                       <div key={ak.id || idx} className="flex items-center gap-2 w-full animate-fadeIn">
+                         <div className="px-3 py-2 bg-white dark:bg-slate-900 border border-brand-200 dark:border-brand-800 rounded-lg text-xs font-mono text-slate-800 dark:text-slate-200 flex-1 overflow-x-auto">
+                           {ak.key}
+                         </div>
+                         <button type="button" onClick={() => copyApiKey(ak.key)} className="shrink-0 p-2 rounded-lg bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 hover:bg-brand-200 transition-colors flex items-center gap-1">
+                           {isCopied ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <span className="text-xs font-bold">نسخ</span>}
+                         </button>
+                         <button type="button" onClick={() => handleRevokeApiKey(ak.id)} className="shrink-0 p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                           <Trash2 className="w-4 h-4" />
+                         </button>
+                       </div>
+                     ))}
                    </div>
                  )}
                </div>
@@ -767,7 +840,7 @@ export default function MerchantSettingsPage() {
                >
                  {isGeneratingKey ? (
                    <><RefreshCw className="w-4 h-4 animate-spin" /> جاري التوليد...</>
-                 ) : apiKey ? 'توليد مفتاح جديد' : 'إنشاء مفتاح API'}
+                 ) : apiKeys.length > 0 ? 'توليد مفتاح جديد' : 'إنشاء مفتاح API'}
                </button>
             </div>
 

@@ -10,7 +10,8 @@ import {
   Users, RefreshCw, Smartphone, Globe, CreditCard, Truck, 
   Lock, MessageCircle, Bot, Zap, Crown, Rocket, Brush, 
   Database, Code2, GraduationCap, ChevronRight, HelpCircle, 
-  CheckCircle2, Building2, Package, Layers
+  CheckCircle2, Building2, Package, Layers, Search, MapPin, Phone, Mail, 
+  Clock, Facebook, Youtube, Instagram, Twitter, Linkedin
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
 import { Store, SubscriptionPlan, PlatformStats } from '@/lib/types';
@@ -69,29 +70,14 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#f6fafb] dark:bg-[#0a1317] text-slate-900 dark:text-slate-100 font-sans relative overflow-x-hidden selection:bg-brand-500 selection:text-white">
       
-      {/* 🌌 Cosmic Space Canvas with Nebula Pulses & Twinkling Stars Background */}
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+      {/* Soft Clean Background with Animated Blobs */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#f6fafb] dark:bg-[#0a1317]">
+        {/* Subtle Grid Pattern */}
+        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(#0f2b48 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
         
-        {/* Radial Depth Gradient */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_70%_at_50%_35%,transparent_40%,rgba(15,43,72,0.06)_100%)] dark:bg-[radial-gradient(ellipse_80%_70%_at_50%_35%,transparent_30%,rgba(6,15,27,0.8)_100%)]" />
-
-        {/* Moving Nebula Glow Orbs matching SEEN Navy & Mint-Cyan Palette */}
-        <div className="absolute -top-[10%] -right-[10%] w-[60vw] h-[60vh] min-w-[500px] rounded-full bg-[radial-gradient(closest-side,rgba(45,212,191,0.18)_0%,transparent_70%)] dark:bg-[radial-gradient(closest-side,rgba(45,212,191,0.25)_0%,transparent_70%)] animate-nebula-a" />
-        <div className="absolute top-[35%] -left-[10%] w-[55vw] h-[55vh] min-w-[450px] rounded-full bg-[radial-gradient(closest-side,rgba(15,43,72,0.22)_0%,transparent_65%)] dark:bg-[radial-gradient(closest-side,rgba(20,184,166,0.18)_0%,transparent_65%)] animate-nebula-b" />
-        <div className="absolute bottom-[10%] right-[15%] w-[65vw] h-[50vh] min-w-[500px] rounded-full bg-[radial-gradient(closest-side,rgba(20,184,166,0.15)_0%,transparent_70%)] dark:bg-[radial-gradient(closest-side,rgba(15,43,72,0.35)_0%,transparent_70%)] animate-nebula-c" />
-
-        {/* Twinkling Starfield Pattern */}
-        <div 
-          className="absolute inset-0 opacity-30 dark:opacity-50 animate-star-twinkle"
-          style={{
-            backgroundImage: `radial-gradient(2px 2px at 20px 30px, #2dd4bf, rgba(0,0,0,0)),
-                              radial-gradient(2px 2px at 40px 70px, #0f2b48, rgba(0,0,0,0)),
-                              radial-gradient(1.5px 1.5px at 90px 40px, #14b8a6, rgba(0,0,0,0)),
-                              radial-gradient(2px 2px at 160px 120px, #2dd4bf, rgba(0,0,0,0)),
-                              radial-gradient(1.5px 1.5px at 230px 180px, #0f2b48, rgba(0,0,0,0))`,
-            backgroundSize: '300px 300px'
-          }}
-        />
+        {/* Soft Animated Glows */}
+        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-brand-500/10 dark:bg-brand-500/15 blur-[100px] animate-pulse" />
+        <div className="absolute bottom-[10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-emerald-500/10 dark:bg-emerald-500/10 blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
       </div>
 
       {/* Floating Navbar */}
@@ -170,202 +156,207 @@ export default function HomePage() {
           </div>
 
           {/* ========================================================================= */}
-          {/* 💻 REALISTIC 3D FLOATING DASHBOARD VIEWPORT MOCKUP */}
+          {/* 💻 LUXURIOUS DUAL MOCKUP (DESKTOP + MOBILE) */}
           {/* ========================================================================= */}
-          <div className="mt-12 sm:mt-16 max-w-5xl mx-auto">
-            <div className="relative rounded-3xl sm:rounded-[2.5rem] bg-[#071322] border-[3px] sm:border-[5px] border-[#0f2b48] p-2 sm:p-3.5 shadow-[0_30px_100px_-20px_rgba(15,43,72,0.7),0_0_50px_rgba(45,212,191,0.15)] text-right">
-              
-              {/* Laptop Camera Notch & Status LEDs */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 sm:w-20 h-3 bg-[#0a1727] rounded-b-xl flex items-center justify-center gap-1.5 z-30 border-b border-x border-[#14283e]">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#2dd4bf] shadow-[0_0_6px_#2dd4bf]" />
-                <div className="w-1 h-1 rounded-full bg-emerald-400 shadow-[0_0_5px_#34d399]" />
-              </div>
-
-              {/* Viewport Screen Container */}
-              <div className="relative rounded-2xl sm:rounded-3xl bg-[#0a1727] border border-slate-800 overflow-hidden text-slate-100 min-h-[420px] sm:min-h-[500px] flex flex-col justify-between">
-                
-                {/* Viewport Top Bar & Mockup Tab Switcher */}
-                <div className="bg-[#0f2b48] border-b border-slate-700/60 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-                  
-                  {/* Left Mockup Controls */}
+          <div className="mt-16 sm:mt-24 max-w-6xl mx-auto relative px-4">
+            
+            {/* --- Desktop Mockup (Background) --- */}
+            <div className="relative w-full max-w-4xl mx-auto md:ml-auto md:mr-12 rounded-2xl sm:rounded-[2rem] p-[1px] bg-gradient-to-br from-slate-300 via-slate-100 to-slate-300 dark:from-slate-700 dark:via-slate-800 dark:to-slate-700 shadow-[0_40px_100px_-20px_rgba(15,43,72,0.2)] dark:shadow-[0_40px_100px_-20px_rgba(20,184,166,0.1)] overflow-hidden z-10 animate-fade-in-up group">
+              <div className="bg-white/95 dark:bg-[#071118]/95 backdrop-blur-3xl rounded-2xl sm:rounded-[2rem] w-full h-full overflow-hidden flex flex-col">
+                {/* Window Header */}
+                <div className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200/60 dark:border-slate-700/60 px-5 py-3.5 flex items-center justify-between backdrop-blur-md">
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
-                    </div>
-                    <span className="text-[11px] font-mono text-slate-300 hidden sm:inline mr-2">
-                      seen.store/create-store
-                    </span>
+                    <div className="w-3 h-3 rounded-full bg-red-400/90 shadow-[0_0_8px_rgba(248,113,113,0.4)]" />
+                    <div className="w-3 h-3 rounded-full bg-amber-400/90 shadow-[0_0_8px_rgba(251,191,36,0.4)]" />
+                    <div className="w-3 h-3 rounded-full bg-emerald-400/90 shadow-[0_0_8px_rgba(52,211,153,0.4)]" />
                   </div>
-
-                  {/* Interactive Switcher Tabs */}
-                  <div className="flex items-center gap-1 bg-slate-900/60 p-1 rounded-xl border border-slate-700/60 text-xs font-bold">
-                    <button
-                      onClick={() => setActiveMockupTab('dashboard')}
-                      className={`px-3 py-1.5 rounded-lg transition-all ${
-                        activeMockupTab === 'dashboard'
-                          ? 'bg-brand-500 text-white shadow-xs'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      📊 لوحة التحكم
-                    </button>
-                    <button
-                      onClick={() => setActiveMockupTab('products')}
-                      className={`px-3 py-1.5 rounded-lg transition-all ${
-                        activeMockupTab === 'products'
-                          ? 'bg-brand-500 text-white shadow-xs'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      🛍️ المنتجات
-                    </button>
-                    <button
-                      onClick={() => setActiveMockupTab('storefront')}
-                      className={`px-3 py-1.5 rounded-lg transition-all ${
-                        activeMockupTab === 'storefront'
-                          ? 'bg-brand-500 text-white shadow-xs'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      🏪 متجر العميل
-                    </button>
-                    <button
-                      onClick={() => setActiveMockupTab('theme')}
-                      className={`px-3 py-1.5 rounded-lg transition-all ${
-                        activeMockupTab === 'theme'
-                          ? 'bg-brand-500 text-white shadow-xs'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      🎨 استوديو القوالب
-                    </button>
+                  <div className="px-6 py-1.5 rounded-full bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-700/50 text-[10px] sm:text-xs font-mono text-slate-500/80 flex items-center gap-2 shadow-inner flex-1 max-w-sm justify-center mx-4">
+                    <Lock className="w-3 h-3 text-emerald-500" />
+                    seen.store/dashboard
                   </div>
-
+                  <div className="w-16"></div>
                 </div>
+                
+                {/* Desktop UI Content */}
+                <div className="p-4 sm:p-8 bg-slate-50/30 dark:bg-transparent flex flex-col md:flex-row gap-8 min-h-[420px]">
+                   {/* Sidebar Skeleton */}
+                   <div className="hidden md:flex flex-col gap-4 w-48 shrink-0 border-l border-slate-200/50 dark:border-slate-800/50 pl-6">
+                     <div className="h-10 rounded-xl bg-gradient-to-r from-brand-100 to-brand-50 dark:from-brand-900/40 dark:to-brand-800/20 border border-brand-200/50 dark:border-brand-800/50 w-full mb-4 shadow-sm" />
+                     <div className="h-4 rounded-full bg-slate-200/70 dark:bg-slate-800/70 w-3/4" />
+                     <div className="h-4 rounded-full bg-slate-200/70 dark:bg-slate-800/70 w-full" />
+                     <div className="h-4 rounded-full bg-slate-200/70 dark:bg-slate-800/70 w-5/6" />
+                     <div className="h-4 rounded-full bg-slate-200/70 dark:bg-slate-800/70 w-2/3" />
+                   </div>
+                   
+                   {/* Main Content Area */}
+                   <div className="flex-1 space-y-8">
+                     {/* Header */}
+                     <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50 pb-5">
+                       <div className="text-right">
+                         <div className="text-xl font-black text-slate-800 dark:text-white tracking-tight">إدارة المتجر</div>
+                         <div className="text-xs text-slate-500 mt-1 font-medium">إلقاء نظرة عامة على أداء متجرك اليوم</div>
+                       </div>
+                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-100 to-emerald-100 dark:from-brand-900/50 dark:to-emerald-900/50 border border-brand-200/50 dark:border-brand-800/50 flex items-center justify-center shadow-inner">
+                         <StoreIcon className="w-6 h-6 text-brand-600 dark:text-brand-400" />
+                       </div>
+                     </div>
 
-                {/* Viewport Dynamic Content based on selected Tab */}
-                <div className="p-4 sm:p-6 flex-1 flex flex-col justify-center">
-                  
-                  {activeMockupTab === 'dashboard' && (
-                    <div className="space-y-4 animate-fadeIn">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80">
-                          <div className="text-[10px] text-slate-400 font-bold">مبيعات اليوم (GMV)</div>
-                          <div className="text-lg sm:text-xl font-black text-emerald-400 mt-1">$4,850</div>
-                          <div className="text-[9px] text-emerald-300 mt-0.5">+18% نمو مباشر</div>
-                        </div>
-                        <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80">
-                          <div className="text-[10px] text-slate-400 font-bold">الطلبات المكتملة</div>
-                          <div className="text-lg sm:text-xl font-black text-white mt-1">128 طلب</div>
-                          <div className="text-[9px] text-brand-300 mt-0.5">تجهيز وشحن فوري</div>
-                        </div>
-                        <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80">
-                          <div className="text-[10px] text-slate-400 font-bold">الزوار النشطين الآن</div>
-                          <div className="text-lg sm:text-xl font-black text-accent mt-1">42 متسوق</div>
-                          <div className="text-[9px] text-accent mt-0.5">سلات قيد الشراء</div>
-                        </div>
-                        <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80">
-                          <div className="text-[10px] text-slate-400 font-bold">استعادة السلات</div>
-                          <div className="text-lg sm:text-xl font-black text-teal-300 mt-1">84%</div>
-                          <div className="text-[9px] text-teal-200 mt-0.5">عبر بوت WhatsApp</div>
-                        </div>
-                      </div>
+                     {/* Stats Cards */}
+                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+                       <div className="p-5 rounded-2xl bg-white/80 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 shadow-sm backdrop-blur-md text-right group-hover:-translate-y-1 transition-transform duration-500">
+                         <div className="text-xs text-slate-500 font-bold mb-3">الإيرادات الصافية</div>
+                         <div className="text-2xl font-black bg-gradient-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent font-mono">1,165,896 ر.ي</div>
+                         <div className="text-[10px] font-bold text-emerald-500 mt-2 flex items-center justify-end gap-1 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-md w-fit ml-auto"><ArrowUpRight className="w-3 h-3" /> +155.5%</div>
+                       </div>
+                       <div className="p-5 rounded-2xl bg-white/80 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 shadow-sm backdrop-blur-md text-right group-hover:-translate-y-1 transition-transform duration-500 delay-75">
+                         <div className="text-xs text-slate-500 font-bold mb-3">إجمالي العملاء</div>
+                         <div className="text-2xl font-black text-slate-800 dark:text-white font-mono">26</div>
+                         <div className="text-[10px] font-bold text-emerald-500 mt-2 flex items-center justify-end gap-1 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-md w-fit ml-auto"><ArrowUpRight className="w-3 h-3" /> +100.0%</div>
+                       </div>
+                       <div className="p-5 rounded-2xl bg-white/80 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 shadow-sm backdrop-blur-md text-right hidden lg:block group-hover:-translate-y-1 transition-transform duration-500 delay-150">
+                         <div className="text-xs text-slate-500 font-bold mb-3">الطلبات</div>
+                         <div className="text-2xl font-black text-slate-800 dark:text-white font-mono">51</div>
+                         <div className="text-[10px] font-bold text-emerald-500 mt-2 flex items-center justify-end gap-1 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-md w-fit ml-auto"><ArrowUpRight className="w-3 h-3" /> +100.0%</div>
+                       </div>
+                     </div>
 
-                      {/* Mini Live Orders Table */}
-                      <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/60">
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-300 mb-2">
-                          <span>أحدث الطلبات الواردة فورياً:</span>
-                          <span className="text-emerald-400 text-[10px]">مباشر 🟢</span>
-                        </div>
-                        <div className="space-y-1.5 text-[11px]">
-                          <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-700 flex items-center justify-between">
-                            <span className="font-bold">ORD-9421 • ريم باعباد (عدن)</span>
-                            <span className="text-emerald-400 font-mono font-bold">45,000 YER</span>
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[9px]">كريمي حاسب</span>
-                          </div>
-                          <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-700 flex items-center justify-between">
-                            <span className="font-bold">ORD-9420 • محمد الصنعاني (صنعاء)</span>
-                            <span className="text-emerald-400 font-mono font-bold">320 SAR</span>
-                            <span className="px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-bold text-[9px]">جوالي محفظة</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeMockupTab === 'products' && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 animate-fadeIn">
-                      {[
-                        { name: 'فستان مخمل ملكي فاخر', price: '45,000 YER', stock: 'متوفر 8 قطع', img: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200' },
-                        { name: 'عطر عود عدني فاخر', price: '28,000 YER', stock: 'متوفر 15 قطعة', img: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=200' },
-                        { name: 'حقيبة يد جلدية أصلية', price: '38,000 YER', stock: 'متوفر 4 قطع', img: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=200' },
-                      ].map((item, idx) => (
-                        <div key={idx} className="p-3 rounded-2xl bg-slate-800/80 border border-slate-700 flex flex-col justify-between">
-                          <img src={item.img} alt="" className="w-full h-24 rounded-xl object-cover mb-2" />
-                          <div className="font-bold text-xs truncate">{item.name}</div>
-                          <div className="flex items-center justify-between text-[10px] mt-2">
-                            <span className="text-emerald-400 font-mono font-bold">{item.price}</span>
-                            <span className="text-slate-400">{item.stock}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {activeMockupTab === 'storefront' && (
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 text-center space-y-3 animate-fadeIn">
-                      <div className="text-xs font-bold text-brand-300">واجهة متجر عدن بوتيك لاكجري</div>
-                      <div className="text-lg font-black text-white">تسوق أرقى التشكيلات اليمنية الفاخرة</div>
-                      <p className="text-xs text-slate-400 max-w-md mx-auto">شراء فوري بنقرة واحدة، وتتبع الطلب بالخريطة، وتأكيد عبر الواتساب</p>
-                      <Link
-                        href="/create-store"
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs"
-                      >
-                        <span>تصفح المتجر الحي الآن</span>
-                        <ArrowLeft className="w-3.5 h-3.5" />
-                      </Link>
-                    </div>
-                  )}
-
-                  {activeMockupTab === 'theme' && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-bold animate-fadeIn">
-                      {[
-                        { title: 'عدن لاكجري', desc: 'قالب الأزياء الفاخر', color: 'border-brand-500 bg-brand-950/40 text-brand-300' },
-                        { title: 'صنعاء نيو تيك', desc: 'قالب الإلكترونيات 120Hz', color: 'border-cyan-500 bg-cyan-950/40 text-cyan-300' },
-                        { title: 'مزارع حراز', desc: 'قالب البن والتراث', color: 'border-amber-500 bg-amber-950/40 text-amber-300' },
-                        { title: 'مينيمال السويسري', desc: 'قالب أبيض وأسود حاد', color: 'border-slate-500 bg-slate-800 text-white' },
-                      ].map((th, i) => (
-                        <div key={i} className={`p-3 rounded-2xl border ${th.color}`}>
-                          <Palette className="w-4 h-4 mx-auto mb-1 opacity-80" />
-                          <div>{th.title}</div>
-                          <div className="text-[9px] font-normal opacity-70 mt-0.5">{th.desc}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
+                     {/* Setup Progress */}
+                     <div className="p-6 rounded-2xl bg-gradient-to-r from-white to-slate-50 dark:from-slate-800/80 dark:to-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 shadow-sm text-right relative overflow-hidden">
+                       <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 dark:bg-brand-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                       <h4 className="text-sm font-black text-slate-800 dark:text-white flex items-center justify-end gap-2 mb-5 relative z-10">
+                         إطلاق متجرك الإلكتروني <span className="animate-pulse">🚀</span>
+                       </h4>
+                       <div className="space-y-4 relative z-10">
+                         {[
+                           { title: 'هوية المتجر', desc: 'قم بوضع شعار متجرك، وإعداد الألوان والخطوط.' },
+                           { title: 'طرق الدفع', desc: 'قم بإعداد طرق استلام المدفوعات (الكريمي، المحافظ).' },
+                           { title: 'إعدادات الشحن', desc: 'قم بتهيئة خيارات الشحن والتوصيل الداخلي.' },
+                         ].map((step, i) => (
+                           <div key={i} className="flex items-center justify-end gap-4 group/step cursor-default">
+                             <div className="text-right">
+                               <div className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover/step:text-brand-600 dark:group-hover/step:text-brand-400 transition-colors">{step.title}</div>
+                               <div className="text-[10px] text-slate-500 mt-0.5">{step.desc}</div>
+                             </div>
+                             <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-brand-600 to-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md">
+                               <Check className="w-3.5 h-3.5" />
+                             </div>
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                   </div>
                 </div>
-
-                {/* Viewport Bottom Quick Bar */}
-                <div className="bg-[#19313b]/90 border-t border-slate-700/60 px-4 py-2.5 flex items-center justify-between text-xs text-slate-300">
-                  <span className="flex items-center gap-1.5 text-[11px]">
-                    <Sparkles className="w-3.5 h-3.5 text-accent" />
-                    <span>محرر القوالب الحي متاح في لوحة التاجر</span>
-                  </span>
-                  <Link
-                    href="/create-store"
-                    className="font-bold text-brand-300 hover:underline flex items-center gap-1 text-[11px]"
-                  >
-                    <span>فتح اللوحة الحقيقية</span>
-                    <ArrowLeft className="w-3 h-3" />
-                  </Link>
-                </div>
-
               </div>
-
             </div>
+
+            {/* --- Mobile Mockup (Foreground/Left Overlap) --- */}
+            <div className="absolute top-10 lg:-left-4 xl:-left-12 left-0 w-[240px] sm:w-[280px] h-[500px] sm:h-[580px] rounded-[2.5rem] sm:rounded-[3.2rem] p-[1.5px] bg-gradient-to-br from-slate-300 via-slate-100 to-slate-400 dark:from-slate-600 dark:via-slate-800 dark:to-slate-700 shadow-[0_40px_80px_rgba(0,0,0,0.15)] dark:shadow-[0_40px_80px_rgba(0,0,0,0.5)] z-30 hidden md:flex flex-col animate-float hover:scale-[1.02] transition-transform duration-500">
+               <div className="w-full h-full bg-[#f8fafc] dark:bg-[#0a1118] rounded-[2.4rem] sm:rounded-[3.1rem] overflow-hidden relative flex flex-col border-[6px] border-slate-900 dark:border-black">
+                 {/* Dynamic Island / Notch */}
+                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-slate-900 dark:bg-black rounded-b-3xl z-40 flex justify-center items-center gap-2">
+                   <div className="w-1.5 h-1.5 rounded-full bg-slate-700 dark:bg-slate-800" />
+                   <div className="w-1.5 h-1.5 rounded-full bg-slate-700 dark:bg-slate-800" />
+                 </div>
+                 
+                 {/* Mobile Screen Content */}
+                 <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide pt-10 text-right bg-white dark:bg-[#0a1118]">
+                   {/* Mobile Header */}
+                   <div className="px-5 flex items-center justify-between mb-5">
+                     <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700/50 shadow-sm">
+                       <span className="text-[11px]">📞</span>
+                     </div>
+                     <div className="font-black text-sm text-slate-800 dark:text-white tracking-tight">متجرك</div>
+                   </div>
+                   
+                   {/* Search Bar */}
+                   <div className="px-5 mb-5">
+                     <div className="w-full h-11 rounded-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/50 flex items-center justify-end px-4 text-xs text-slate-400 font-medium shadow-inner">
+                       <span className="opacity-70">...ابحث عن منتجاتك المفضلة</span>
+                     </div>
+                   </div>
+                   
+                   {/* Banner Slider */}
+                   <div className="px-5 mb-6">
+                     <div className="w-full h-36 rounded-[1.25rem] bg-gradient-to-r from-emerald-600 to-teal-500 overflow-hidden relative shadow-md shadow-emerald-500/20" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400)', backgroundSize: 'cover' }}>
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                       <div className="absolute inset-0 p-4 flex flex-col justify-end items-end text-white text-right">
+                         <h3 className="font-black text-lg mb-0.5 text-white drop-shadow-md">ساعات فاخرة</h3>
+                         <p className="text-[10px] mb-3 text-slate-200 font-medium">دقة متناهية وفخامة تليق بمعصمك</p>
+                         <button className="px-4 py-2 bg-brand-500 text-white text-[10px] font-black rounded-xl w-fit shadow-lg shadow-brand-500/30">تسوق الآن</button>
+                       </div>
+                     </div>
+                   </div>
+
+                   {/* Categories */}
+                   <div className="px-5 mb-6 flex justify-end gap-3 overflow-x-auto">
+                     {['ملابس', 'عطور', 'تجميل', 'حقائب'].reverse().map((cat, i) => (
+                       <div key={i} className="flex flex-col items-center gap-2 shrink-0">
+                         <div className="w-14 h-14 rounded-[1.1rem] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-center p-0.5">
+                           <img src="https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=50" className="w-full h-full object-cover rounded-2xl" alt="" />
+                         </div>
+                         <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{cat}</span>
+                       </div>
+                     ))}
+                   </div>
+
+                   {/* Flash Sale */}
+                   <div className="px-5 pb-5">
+                     <div className="flex items-center justify-between mb-4 flex-row-reverse">
+                       <h3 className="font-black text-sm text-slate-800 dark:text-white">عروض محدودة 🔥</h3>
+                       <div className="text-red-600 dark:text-red-400 text-[10px] font-black px-2.5 py-1 bg-red-50 dark:bg-red-500/10 rounded-lg">04:18:06</div>
+                     </div>
+                     <div className="grid grid-cols-2 gap-3.5">
+                       <div className="bg-white dark:bg-slate-800/80 rounded-2xl p-2.5 border border-slate-100 dark:border-slate-700/50 shadow-sm relative">
+                         <div className="absolute top-3 right-3 bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-md z-10 shadow-sm">خصم 20%</div>
+                         <div className="w-full h-28 bg-slate-100 dark:bg-slate-700 rounded-xl mb-2.5 overflow-hidden">
+                           <img src="https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=200" className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
+                         </div>
+                         <div className="text-[10px] font-bold text-slate-800 dark:text-slate-200 mb-0.5">عطر كلاسيك</div>
+                         <div className="text-brand-600 dark:text-brand-400 text-xs font-black">12,500 ر.ي</div>
+                       </div>
+                       <div className="bg-white dark:bg-slate-800/80 rounded-2xl p-2.5 border border-slate-100 dark:border-slate-700/50 shadow-sm relative">
+                         <div className="absolute top-3 right-3 bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-md z-10 shadow-sm">خصم 15%</div>
+                         <div className="w-full h-28 bg-slate-100 dark:bg-slate-700 rounded-xl mb-2.5 overflow-hidden">
+                           <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200" className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
+                         </div>
+                         <div className="text-[10px] font-bold text-slate-800 dark:text-slate-200 mb-0.5">فستان سهرة</div>
+                         <div className="text-brand-600 dark:text-brand-400 text-xs font-black">45,000 ر.ي</div>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+                 
+                 {/* Bottom Navigation */}
+                 <div className="h-16 bg-white/90 dark:bg-[#0a1118]/90 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-800/50 flex items-center justify-around px-2 text-[10px] text-slate-400 font-bold z-50 flex-row-reverse pb-1">
+                   <div className="flex flex-col items-center gap-1 text-brand-600"><StoreIcon className="w-5 h-5" />الرئيسية</div>
+                   <div className="flex flex-col items-center gap-1"><Layers className="w-5 h-5" />الأقسام</div>
+                   <div className="flex flex-col items-center gap-1"><ShoppingBag className="w-5 h-5" />السلة</div>
+                   <div className="flex flex-col items-center gap-1"><Users className="w-5 h-5" />حسابي</div>
+                 </div>
+               </div>
+            </div>
+
+            {/* Floating Badges (Premium Interactive Elements) */}
+            <div className="absolute top-10 left-[28%] bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white dark:border-slate-700 shadow-2xl shadow-brand-500/10 rounded-[1.25rem] p-3 items-center gap-3 z-40 animate-float hidden md:flex hover:scale-105 transition-transform duration-300 cursor-default" style={{ animationDelay: '1s' }}>
+              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-500 to-emerald-400 text-white flex items-center justify-center shrink-0 shadow-inner">
+                <Package className="w-4 h-4" />
+              </div>
+              <div className="text-right pr-1">
+                <div className="text-xs font-black text-slate-800 dark:text-white tracking-tight">طلب جديد!</div>
+                <div className="text-[10px] text-slate-500 font-medium">من ليلى الحمدي - 18,500 ر.ي</div>
+              </div>
+            </div>
+
+            <div className="absolute bottom-16 right-[-10px] lg:right-[-30px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white dark:border-slate-700 shadow-2xl shadow-emerald-500/10 rounded-[1.25rem] p-3 items-center gap-3 z-40 animate-float hidden md:flex hover:scale-105 transition-transform duration-300 cursor-default" style={{ animationDelay: '2s' }}>
+               <div className="text-right pl-1">
+                <div className="text-[10px] text-slate-500 font-medium mb-0.5">إيراد اليوم</div>
+                <div className="text-sm font-black bg-gradient-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent font-mono tracking-tight">187,500 ر.ي</div>
+              </div>
+              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center shrink-0 shadow-inner">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+            </div>
+
           </div>
 
         </section>
@@ -811,6 +802,129 @@ export default function HomePage() {
         </section>
 
         {/* ========================================================================= */}
+        {/* 🎨 4.5 DYNAMIC THEMES SHOWCASE */}
+        {/* ========================================================================= */}
+        <section id="themes" className="py-20 sm:py-28 px-4 sm:px-6 max-w-7xl mx-auto text-right">
+          <div className="text-center max-w-4xl mx-auto mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold mb-4">
+              <Palette className="w-4 h-4" />
+              <span>مكتبة القوالب</span>
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white mb-6">
+              قوالب <span className="text-brand-600 dark:text-brand-400">احترافية</span> جاهزة للعربية
+            </h2>
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
+              قوالب مصمّمة للسوق العربي — متجاوبة مع كل الأجهزة، داعمة للـ RTL أصلياً، وجاهزة للتخصيص بضغطة زر.
+            </p>
+
+            {/* Stats Strip */}
+            <div className="flex flex-wrap items-center justify-center divide-x divide-x-reverse divide-slate-200 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm max-w-3xl mx-auto shadow-sm">
+              <div className="px-6 py-4 flex-1 min-w-[120px]">
+                <div className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white">10ث</div>
+                <div className="text-[10px] sm:text-xs text-slate-500 font-bold mt-1">إعداد سريع</div>
+              </div>
+              <div className="px-6 py-4 flex-1 min-w-[120px]">
+                <div className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white">100%</div>
+                <div className="text-[10px] sm:text-xs text-slate-500 font-bold mt-1">متجاوب RTL</div>
+              </div>
+              <div className="px-6 py-4 flex-1 min-w-[120px]">
+                <div className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white">5</div>
+                <div className="text-[10px] sm:text-xs text-slate-500 font-bold mt-1">صناعات مدعومة</div>
+              </div>
+              <div className="px-6 py-4 flex-1 min-w-[120px]">
+                <div className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white">+20</div>
+                <div className="text-[10px] sm:text-xs text-slate-500 font-bold mt-1">تصميم احترافي</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Dynamic Theme Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            {/* Theme 1: Fashion */}
+            <div className="group rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden shadow-md hover:shadow-xl hover:border-brand-300 dark:hover:border-brand-700 transition-all duration-300 flex flex-col">
+              {/* Browser Header Mockup */}
+              <div className="bg-slate-100 dark:bg-slate-900 px-4 py-3 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+                <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+                <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+              </div>
+              {/* Dynamic Scrolling Image Container */}
+              <div className="h-[350px] overflow-hidden relative bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shrink-0 cursor-pointer">
+                <div className="absolute inset-0 w-full h-[800px] transition-transform duration-[4s] ease-linear group-hover:-translate-y-[calc(100%-350px)]">
+                  <img src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=600&auto=format&fit=crop" alt="Fashion Theme" className="w-full h-full object-cover object-top opacity-90 group-hover:opacity-100 transition-opacity" />
+                </div>
+                {/* Overlay Gradient for visual depth */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              </div>
+              {/* Info */}
+              <div className="p-5 text-right flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white mb-1">الأزياء والموضة</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">مصمم ليدعم فلاتر المقاسات وجميع متغيرات منتجات الأزياء بشكل مثالي.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Theme 2: Abayas */}
+            <div className="group rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden shadow-md hover:shadow-xl hover:brand-300 dark:hover:border-brand-700 transition-all duration-300 flex flex-col">
+              <div className="bg-slate-100 dark:bg-slate-900 px-4 py-3 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+                <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+                <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+              </div>
+              <div className="h-[350px] overflow-hidden relative bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shrink-0 cursor-pointer">
+                <div className="absolute inset-0 w-full h-[800px] transition-transform duration-[4s] ease-linear group-hover:-translate-y-[calc(100%-350px)]">
+                  <img src="https://images.unsplash.com/photo-1589465885857-44edb59bbff2?q=80&w=600&auto=format&fit=crop" alt="Abayas Theme" className="w-full h-full object-cover object-top opacity-90 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              </div>
+              <div className="p-5 text-right flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white mb-1">العبايات</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">واجهات صُممت لعرض منتجات العبايات بشكل جذاب ومساحات واسعة للصور.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Theme 3: Beauty */}
+            <div className="group rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden shadow-md hover:shadow-xl hover:brand-300 dark:hover:border-brand-700 transition-all duration-300 flex flex-col">
+              <div className="bg-slate-100 dark:bg-slate-900 px-4 py-3 flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 shrink-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+                <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+                <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+              </div>
+              <div className="h-[350px] overflow-hidden relative bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shrink-0 cursor-pointer">
+                <div className="absolute inset-0 w-full h-[800px] transition-transform duration-[4s] ease-linear group-hover:-translate-y-[calc(100%-350px)]">
+                  <img src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=600&auto=format&fit=crop" alt="Cosmetics Theme" className="w-full h-full object-cover object-top opacity-90 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              </div>
+              <div className="p-5 text-right flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white mb-1">العناية والتجميل</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">صمم خصيصاً لمجال العناية والتجميل لإبراز تفاصيل المنتجات والبراند.</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="mt-16 text-center max-w-xl mx-auto">
+             <div className="relative">
+                <input 
+                  type="text" 
+                  placeholder="ابحث عن قالب يناسب نشاطك..." 
+                  className="w-full pl-4 pr-12 py-4 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm text-right"
+                />
+                <div className="absolute top-1/2 -translate-y-1/2 right-4 text-slate-400">
+                  <Search className="w-5 h-5" />
+                </div>
+             </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
         {/* 📊 5. COMPLETE 27-FEATURE COMPARISON MATRIX */}
         {/* ========================================================================= */}
         <section id="compare" className="py-16 sm:py-24 px-4 sm:px-6 max-w-7xl mx-auto text-right">
@@ -862,59 +976,130 @@ export default function HomePage() {
       </main>
 
       {/* ========================================================================= */}
-      {/* ⚓ FOOTER WITH YEMEN PAYMENTS BADGES & SOCIAL LINKS */}
+      {/* ⚓ COMPREHENSIVE FOOTER */}
       {/* ========================================================================= */}
-      <footer className="relative z-10 border-t border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slateDark-950/80 backdrop-blur-xl text-right pt-12 pb-8 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <footer className="relative z-10 border-t border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slateDark-950/80 backdrop-blur-xl text-right pt-16 pb-8 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto space-y-12">
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          {/* Top Grid (Brand + Links) */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
             
             {/* Brand Col */}
-            <div className="space-y-3">
-              <BrandLogo size="md" />
-              <p className="text-xs text-slate-500 leading-relaxed">
-                منصة التجارة الإلكترونية السحابية الرائدة في اليمن، لتمكين التجار وأصحاب المشاريع من إدارة مبيعاتهم واشتراكاتهم بكل ثقة واحترافية.
+            <div className="md:col-span-2 space-y-4">
+              <BrandLogo size="lg" />
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">
+                سِين هي منصة التجارة الإلكترونية الأفضل في اليمن لإنشاء وإدارة المتاجر الإلكترونية. وتوفر حلولاً متكاملة للدفع والشحن والتسويق لتساعدك على إدارة وتنمية تجارتك من مكان واحد دون الحاجة لخبرة برمجية.
               </p>
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-300">
+                <HelpCircle className="w-4 h-4 text-brand-600" />
+                <span>دعم فني 6 أيام/أسبوع</span>
+              </div>
             </div>
 
-            {/* Links Col 1 */}
-            <div className="space-y-2 text-xs">
-              <div className="font-bold text-slate-900 dark:text-white mb-2">روابط سريعة</div>
-              <div><Link href="/create-store" className="text-slate-500 hover:text-brand-600">أنشئ متجرك مجاناً</Link></div>
-              <div><Link href="/#pricing" className="text-slate-500 hover:text-brand-600">باقات الأسعار</Link></div>
-              <div><Link href="/#quiz" className="text-slate-500 hover:text-brand-600">مرشد الباقات السريع</Link></div>
-              <div><Link href="/create-store" className="text-slate-500 hover:text-brand-600">إنشاء متجر جديد</Link></div>
+            {/* Links Cols */}
+            <div className="space-y-4">
+              <div className="font-black text-slate-900 dark:text-white mb-2">المنصة</div>
+              <ul className="space-y-3 text-sm">
+                <li><Link href="/#pricing" className="text-slate-500 hover:text-brand-600 transition-colors">الباقات</Link></li>
+                <li><Link href="/create-store" className="text-slate-500 hover:text-brand-600 transition-colors">إنشاء متجر</Link></li>
+              </ul>
             </div>
 
-            {/* Links Col 2 */}
-            <div className="space-y-2 text-xs">
-              <div className="font-bold text-slate-900 dark:text-white mb-2">البوابات والأنظمة</div>
-              <div><Link href="/login" className="text-slate-500 hover:text-brand-600">بوابة تسجيل الدخول الموحدة</Link></div>
-              <div><Link href="/admin" className="text-slate-500 hover:text-brand-600">لوحة الإدارة العليا (Super Admin)</Link></div>
-              <div><Link href="/create-store" className="text-slate-500 hover:text-brand-600">إنشاء متجر جديد</Link></div>
-              <div><Link href="/login" className="text-slate-500 hover:text-brand-600">تسجيل دخول التجار والعملاء</Link></div>
+            <div className="space-y-4">
+              <div className="font-black text-slate-900 dark:text-white mb-2">تعلم</div>
+              <ul className="space-y-3 text-sm">
+                <li><Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">المدونة</Link></li>
+                <li><Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">الأسئلة الشائعة</Link></li>
+                <li><Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">مركز المساعدة</Link></li>
+              </ul>
             </div>
 
-            {/* Yemen Payments */}
-            <div className="space-y-2 text-xs">
-              <div className="font-bold text-slate-900 dark:text-white mb-2">طرق الدفع والتحويل المدعومة</div>
-              <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
-                <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">الكريمي حاسب</span>
-                <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">محفظة جوالي</span>
-                <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">ون كاش</span>
-                <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">فلوسك</span>
-                <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">العمقي للصرافة</span>
-                <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">الدفع عند الاستلام (COD)</span>
+            <div className="space-y-4">
+              <div className="font-black text-slate-900 dark:text-white mb-2">الشركة</div>
+              <ul className="space-y-3 text-sm">
+                <li><Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">من نحن</Link></li>
+                <li><Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">تواصل معنا</Link></li>
+                <li><Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">انضم لفريقنا</Link></li>
+              </ul>
+            </div>
+
+          </div>
+
+          <hr className="border-slate-100 dark:border-slate-800" />
+
+          {/* Middle Grid (Customer Service + Social) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
+            
+            {/* Customer Service Info */}
+            <div className="space-y-5">
+              <div className="font-black text-slate-900 dark:text-white text-lg">نقاط خدمة العملاء</div>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-400">
+                  <MapPin className="w-5 h-5 shrink-0 text-brand-600 mt-0.5" />
+                  <div>
+                    <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      {t('footer_branch_name', 'فرع صنعاء')}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+                  <Phone className="w-4 h-4 shrink-0 text-slate-400" />
+                  <span dir="ltr" className="font-medium">{t('footer_phone_1', '+967 779 500 088')}</span>
+                </div>
+
+                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+                  <MessageCircle className="w-4 h-4 shrink-0 text-green-500" />
+                  <span dir="ltr" className="font-medium">{t('footer_whatsapp', 'واتساب')}</span>
+                </div>
+
+                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+                  <Mail className="w-4 h-4 shrink-0 text-slate-400" />
+                  <span dir="ltr" className="font-medium">{t('footer_email', 'info@seen.ye')}</span>
+                </div>
+
+                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+                  <Clock className="w-4 h-4 shrink-0 text-slate-400" />
+                  <span>{t('footer_hours', 'السبت - الأربعاء : 9 ص - 1 م')}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Social Media & Follow */}
+            <div className="flex flex-col md:items-end gap-4">
+              <div className="flex items-center gap-3">
+                <span className="font-bold text-slate-900 dark:text-white">تابعنا</span>
+                <div className="flex gap-2">
+                  <Link href={t('footer_social_linkedin', '#')} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-brand-50 hover:text-brand-600 transition-colors">
+                    <Linkedin className="w-4 h-4" />
+                  </Link>
+                  <Link href={t('footer_social_facebook', '#')} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-brand-50 hover:text-brand-600 transition-colors">
+                    <Facebook className="w-4 h-4" />
+                  </Link>
+                  <Link href={t('footer_social_youtube', '#')} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-brand-50 hover:text-brand-600 transition-colors">
+                    <Youtube className="w-4 h-4" />
+                  </Link>
+                  <Link href={t('footer_social_x', '#')} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-brand-50 hover:text-brand-600 transition-colors">
+                    <Twitter className="w-4 h-4" />
+                  </Link>
+                  <Link href={t('footer_social_instagram', '#')} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-brand-50 hover:text-brand-600 transition-colors">
+                    <Instagram className="w-4 h-4" />
+                  </Link>
+                </div>
               </div>
             </div>
 
           </div>
 
-          <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
-            <div>جميع الحقوق محفوظة © 2026 منصة سِين (SEEN SaaS)</div>
-            <div className="flex items-center gap-4">
-              <span>صنع بحب في اليمن 🇾🇪</span>
+          {/* Bottom Copyright & Legal Links */}
+          <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <div className="flex gap-4 sm:gap-6 flex-wrap justify-center">
+              <Link href="#" className="hover:text-brand-600">الشروط والأحكام</Link>
+              <Link href="#" className="hover:text-brand-600">الخصوصية</Link>
+              <Link href="#" className="hover:text-brand-600">سياسة الاسترداد</Link>
+              <Link href="#" className="hover:text-brand-600">إمكانية الوصول</Link>
             </div>
+            <div>جميع الحقوق محفوظة لمنصة سِين © 2026</div>
           </div>
 
         </div>

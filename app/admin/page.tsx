@@ -780,6 +780,64 @@ export default function SuperAdminPage() {
                     </div>
                   </div>
 
+                  <div className="space-y-4 pb-4 border-t border-slate-100 dark:border-slateDark-800 pt-6">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white border-r-2 border-brand-500 pr-3">القسم: تذييل الموقع وخدمة العملاء (Footer & Contact)</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">اسم الفرع / الموقع</label>
+                        <input type="text" value={siteTexts['footer_branch_name'] || 'الفرع الرئيسي: صنعاء - شارع الأصبحي'} onChange={(e) => setSiteTexts({ ...siteTexts, footer_branch_name: e.target.value })} className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">رقم الهاتف 1</label>
+                        <input type="text" value={siteTexts['footer_phone_1'] || '967-770-000-000'} onChange={(e) => setSiteTexts({ ...siteTexts, footer_phone_1: e.target.value })} dir="ltr" className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">رقم الهاتف 2</label>
+                        <input type="text" value={siteTexts['footer_phone_2'] || '967-01-000-000'} onChange={(e) => setSiteTexts({ ...siteTexts, footer_phone_2: e.target.value })} dir="ltr" className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">رقم الواتساب</label>
+                        <input type="text" value={siteTexts['footer_whatsapp'] || '967-730-000-000'} onChange={(e) => setSiteTexts({ ...siteTexts, footer_whatsapp: e.target.value })} dir="ltr" className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">البريد الإلكتروني</label>
+                        <input type="email" value={siteTexts['footer_email'] || 'hello@seen.com'} onChange={(e) => setSiteTexts({ ...siteTexts, footer_email: e.target.value })} dir="ltr" className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">أوقات العمل</label>
+                        <input type="text" value={siteTexts['footer_hours'] || 'السبت - الخميس: 9 ص - 10 م'} onChange={(e) => setSiteTexts({ ...siteTexts, footer_hours: e.target.value })} className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                      </div>
+                    </div>
+                    
+                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-6 border-t dark:border-slateDark-800 pt-4">روابط وسائل التواصل الاجتماعي</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">رابط LinkedIn</label>
+                        <input type="url" value={siteTexts['footer_social_linkedin'] || '#'} onChange={(e) => setSiteTexts({ ...siteTexts, footer_social_linkedin: e.target.value })} dir="ltr" className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">رابط Facebook</label>
+                        <input type="url" value={siteTexts['footer_social_facebook'] || '#'} onChange={(e) => setSiteTexts({ ...siteTexts, footer_social_facebook: e.target.value })} dir="ltr" className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">رابط YouTube</label>
+                        <input type="url" value={siteTexts['footer_social_youtube'] || '#'} onChange={(e) => setSiteTexts({ ...siteTexts, footer_social_youtube: e.target.value })} dir="ltr" className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">رابط TikTok</label>
+                        <input type="url" value={siteTexts['footer_social_tiktok'] || '#'} onChange={(e) => setSiteTexts({ ...siteTexts, footer_social_tiktok: e.target.value })} dir="ltr" className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">رابط X (Twitter)</label>
+                        <input type="url" value={siteTexts['footer_social_x'] || '#'} onChange={(e) => setSiteTexts({ ...siteTexts, footer_social_x: e.target.value })} dir="ltr" className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] font-bold text-slate-500">رابط Instagram</label>
+                        <input type="url" value={siteTexts['footer_social_instagram'] || '#'} onChange={(e) => setSiteTexts({ ...siteTexts, footer_social_instagram: e.target.value })} dir="ltr" className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none focus:border-brand-500" />
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slateDark-800">
                     <button

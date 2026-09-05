@@ -8,7 +8,8 @@ import {
   Sparkles, CheckCircle2, ChevronDown, ArrowLeft, Phone, 
   MapPin, Clock, ShieldCheck, X, Plus, Minus, Send, 
   Wallet, Image as ImageIcon, QrCode, ExternalLink, Flame, 
-  Truck, RefreshCw, Star, Tag, Ticket, Cpu, Zap, Award, Coffee, Heart
+  Truck, RefreshCw, Star, Tag, Ticket, Cpu, Zap, Award, Coffee, Heart,
+  Facebook, Instagram, Twitter, Youtube, Linkedin, MessageCircle, Mail
 } from 'lucide-react';
 import { Store, Product, ProductVariant, OrderItem, CurrencyCode, PaymentMethodType, ThemeConfig } from '@/lib/types';
 import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
@@ -139,6 +140,14 @@ export default function CustomerStorefrontPage() {
   const fontFamily = theme.typography.fontFamily || 'Tajawal';
   const borderRadiusClass = theme.layout.borderRadius === 'pill' ? 'rounded-full' : theme.layout.borderRadius === 'curved' ? 'rounded-2xl' : 'rounded-none';
   const buttonRadiusClass = theme.layout.borderRadius === 'pill' ? 'rounded-full' : theme.layout.borderRadius === 'curved' ? 'rounded-xl' : 'rounded-none';
+
+  // Parse social links
+  let socialLinks: any = {};
+  if (store.socialLinks) {
+    try {
+      socialLinks = JSON.parse(store.socialLinks);
+    } catch(e) {}
+  }
 
   // Currency conversion helper for current active currency
   const getConvertedPrice = (priceInBase: number) => {
@@ -1512,20 +1521,105 @@ export default function CustomerStorefrontPage() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200/60 dark:border-slate-800 py-6 text-center text-xs px-4">
-        <p className="opacity-75 mb-3">© {new Date().getFullYear()} {store.name}. جميع الحقوق محفوظة.</p>
+      {/* Store Footer */}
+      <div className="bg-white dark:bg-slate-900 border-t border-slate-200/60 dark:border-slate-800 mt-16 pt-12 pb-8 px-4 sm:px-6 md:px-8 relative z-0">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
+          
+          <div className="space-y-4">
+            {store.logo && (
+              <img src={store.logo} alt={store.name} className="h-12 w-auto rounded-xl object-contain" />
+            )}
+            <h3 className="text-lg font-black text-slate-900 dark:text-white" style={{ fontFamily }}>{store.name}</h3>
+            <p className="text-sm text-slate-500 leading-relaxed max-w-xs">{store.description}</p>
+            
+            <div className="flex flex-wrap gap-2 pt-2">
+              {socialLinks.facebook && (
+                <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-brand-600 transition-colors">
+                  <Facebook className="w-4 h-4" />
+                </a>
+              )}
+              {socialLinks.instagram && (
+                <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-brand-600 transition-colors">
+                  <Instagram className="w-4 h-4" />
+                </a>
+              )}
+              {socialLinks.x && (
+                <a href={socialLinks.x} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-brand-600 transition-colors">
+                  <Twitter className="w-4 h-4" />
+                </a>
+              )}
+              {socialLinks.tiktok && (
+                <a href={socialLinks.tiktok} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-brand-600 transition-colors">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.04.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.12-3.44-3.17-3.61-5.46-.21-2.91 1.67-5.63 4.41-6.4 1.5-.42 3.08-.27 4.54.19v4.11c-.04.02-.07.03-.11.05-1.12.56-2.61.35-3.32-.73-.55-.83-.4-2.04.33-2.73.57-.54 1.35-.73 2.06-.61.7.13 1.25.68 1.42 1.38.04.16.05.32.05.48.01 4.79.01 9.58.01 14.37v.29c.01-.2.03-.4.03-.61-.01-5.64 0-11.28-.01-16.92z"/>
+                  </svg>
+                </a>
+              )}
+              {socialLinks.snapchat && (
+                <a href={socialLinks.snapchat} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-yellow-400 transition-colors">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 24c-.218 0-.466-.022-.727-.066-1.348-.225-2.673-.622-3.935-1.176-.906-.398-1.574-.913-1.956-1.503-.314-.486-.395-1.025-.236-1.57.195-.668.74-1.272 1.57-1.745.28-.16.598-.292.937-.393a2.695 2.695 0 0 0 1.505-1.398c.15-.31.254-.645.308-1.01.077-.52.023-1.024-.158-1.488-.205-.53-.55-.992-1.01-1.352-.395-.312-.862-.516-1.378-.598a.965.965 0 0 1-.58-.29.897.897 0 0 1-.22-.596c0-.28.1-.53.284-.716.208-.21.49-.33.79-.33.376 0 .736.14.994.39.262.257.412.597.412.936 0 .584.498 1.054 1.102 1.054.606 0 1.106-.47 1.106-1.054 0-1.127-.954-2.046-2.124-2.046-.86 0-1.637.525-1.954 1.32-.124.314-.184.654-.176.993.024.873.34 1.696.88 2.308.528.6 1.238.995 2.008 1.116a4.595 4.595 0 0 1-2.482 2.378c-.682.316-1.442.544-2.228.665-.89.136-1.482.528-1.722 1.134-.184.47-.11.968.214 1.443.434.637 1.168 1.205 2.146 1.66 1.455.674 3.084 1.133 4.755 1.34.6.075 1.208.114 1.815.114s1.216-.04 1.815-.115c1.67-.207 3.3-.666 4.755-1.34.978-.455 1.712-1.023 2.146-1.66.324-.475.398-.973.214-1.443-.24-.606-.832-.998-1.722-1.134-.786-.12-1.546-.35-2.228-.665a4.595 4.595 0 0 1-2.482-2.378c.77-.12 1.48-.516 2.008-1.116.54-.612.856-1.435.88-2.308.008-.34-.052-.68-.176-.993-.317-.795-1.094-1.32-1.954-1.32-1.17 0-2.124.92-2.124 2.046 0 .584.5 1.054 1.106 1.054.604 0 1.102-.47 1.102-1.054 0-.34.15-.68.412-.937.258-.25.618-.39.994-.39.3 0 .582.12.79.33.184.186.284.436.284.716 0 .227-.083.43-.22.596a.965.965 0 0 1-.58.29c-.516.082-.983.286-1.378.598-.46.36-.805.822-1.01 1.352-.18.464-.235.968-.158 1.488.054.365.158.7.308 1.01a2.695 2.695 0 0 0 1.505 1.398c.34.1.658.233.937.393.83.473 1.375 1.077 1.57 1.745.158.545.078 1.084-.236 1.57-.382.59-1.05 1.105-1.956 1.503-1.262.554-2.587.95-3.935 1.176-.26.044-.51.066-.727.066zM11.975 0c1.782 0 3.397.643 4.678 1.744a6.536 6.536 0 0 1 2.22 3.654c.264 1.345.068 2.697-.563 3.882-.417.784-.988 1.47-1.68 2.015.013.106.013.22.013.336 0 .55-.078 1.096-.23 1.63a7.284 7.284 0 0 1-1.396 2.61c-.558.68-1.222 1.258-1.97 1.705-.286.173-.59.324-.91.455.053-.133.094-.275.122-.423.108-.57-.008-1.134-.334-1.637-.24-.37-.582-.676-.983-.878a2.532 2.532 0 0 0-1.127-.248h-.024c-.4.01-.79.123-1.144.33-.35.204-.64.492-.852.846-.312.518-.4 1.105-.25 1.683.056.208.136.407.242.593-.324-.135-.63-.29-.918-.466-.75-.45-1.41-1.028-1.97-1.708a7.284 7.284 0 0 1-1.397-2.61c-.152-.534-.23-1.08-.23-1.63 0-.115 0-.23.013-.335-.693-.546-1.264-1.232-1.68-2.016-.63-1.185-.827-2.537-.564-3.88a6.536 6.536 0 0 1 2.22-3.655C8.577.643 10.193 0 11.975 0z"/>
+                  </svg>
+                </a>
+              )}
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white" style={{ fontFamily }}>تواصل معنا</h4>
+            <div className="space-y-3">
+              {store.phone && (
+                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+                  <Phone className="w-4 h-4 shrink-0 text-brand-500" />
+                  <span dir="ltr">{store.phone}</span>
+                </div>
+              )}
+              {store.whatsapp && (
+                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+                  <MessageCircle className="w-4 h-4 shrink-0 text-green-500" />
+                  <span dir="ltr">{store.whatsapp}</span>
+                </div>
+              )}
+              {store.email && (
+                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+                  <Mail className="w-4 h-4 shrink-0 text-slate-400" />
+                  <span>{store.email}</span>
+                </div>
+              )}
+              {store.address && (
+                <div className="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  <MapPin className="w-4 h-4 shrink-0 text-slate-400 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <div>{store.city}</div>
+                    <div className="text-[11px] opacity-80">{store.address}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white" style={{ fontFamily }}>روابط هامة</h4>
+            <div className="space-y-2 flex flex-col items-start text-sm">
+              <Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">سياسة الخصوصية</Link>
+              <Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">الشروط والأحكام</Link>
+              <Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">سياسة الاسترجاع والتوصيل</Link>
+              <Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">الأسئلة الشائعة</Link>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Powered By Footer */}
+      <footer className="bg-slate-50 dark:bg-slate-950 border-t border-slate-200/60 dark:border-slate-800 py-6 text-center text-xs px-4">
+        <p className="opacity-75 mb-3 text-slate-500">© {new Date().getFullYear()} {store.name}. جميع الحقوق محفوظة.</p>
         <a 
           href="/" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+          className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 group"
         >
-          <span>تم إنشاء هذا المتجر بواسطة</span>
-          <span className="font-black text-brand-600 dark:text-brand-400 tracking-wider flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5" />
-            SEEN
-          </span>
+          <span className="font-medium">تم إنشاء هذا المتجر بواسطة منصة سِين</span>
+          <img src="/seen-horizontal-transparent.png" alt="SEEN" className="h-6 w-auto object-contain opacity-80 group-hover:opacity-100 transition-opacity" />
         </a>
       </footer>
 

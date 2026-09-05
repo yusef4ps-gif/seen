@@ -49,7 +49,7 @@ export default function MerchantCouponsPage() {
       type,
       discount: parseFloat(discount) || 0,
       maxUses: parseInt(maxUses) || 0,
-      expiry: expiry ? new Date(expiry) : null,
+      expiry: expiry || null,
       appliesTo: 'all'
     };
 

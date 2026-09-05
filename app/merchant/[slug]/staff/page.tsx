@@ -8,6 +8,7 @@ import {
 import { authEngine } from '@/lib/auth-engine';
 import { User, Store, StaffPermission } from '@/lib/types';
 import { getStoreBySlugAction } from '@/app/actions/store';
+import { logActivityAction } from '@/app/actions/activity';
 
 const AVAILABLE_PERMISSIONS: { id: StaffPermission, label: string }[] = [
   { id: 'manage_products', label: 'المنتجات والتصنيفات' },
@@ -67,6 +68,8 @@ export default function MerchantStaffPage() {
       permissions: newEmployee.permissions
     });
     
+    logActivityAction(store.id, 'ADD', `تمت إضافة الموظف الجديد: ${newEmployee.name}`, newEmployee.name, 'STAFF');
+
     refreshStaff(store.id);
     setIsAddModalOpen(false);
     setNewEmployee({
@@ -89,6 +92,8 @@ export default function MerchantStaffPage() {
       permissions: editingEmployee.permissions
     });
     
+    logActivityAction(store.id, 'UPDATE', `تم تعديل بيانات الموظف: ${editingEmployee.name}`, editingEmployee.name, 'STAFF');
+
     refreshStaff(store.id);
     setIsEditModalOpen(false);
     setEditingEmployee(null);
@@ -98,6 +103,8 @@ export default function MerchantStaffPage() {
     if (!store) return;
     if (confirm('هل أنت متأكد من تغيير حالة حساب هذا الموظف؟')) {
       authEngine.toggleUserStatus(userId);
+      const user = authEngine.getUsers(store.id).find(u => u.id === userId);
+      logActivityAction(store.id, 'UPDATE', `تم تغيير حالة حساب الموظف: ${user?.name || ''}`, user?.name || '', 'STAFF');
       refreshStaff(store.id);
     }
   };
@@ -105,7 +112,9 @@ export default function MerchantStaffPage() {
   const handleDeleteEmployee = (userId: string) => {
     if (!store) return;
     if (confirm('هل أنت متأكد من حذف حساب الموظف نهائياً؟ هذا الإجراء لا يمكن التراجع عنه.')) {
+      const user = authEngine.getUsers(store.id).find(u => u.id === userId);
       authEngine.deleteUser(userId);
+      logActivityAction(store.id, 'DELETE', `تم حذف حساب الموظف: ${user?.name || ''}`, user?.name || '', 'STAFF');
       refreshStaff(store.id);
       setIsEditModalOpen(false);
       setEditingEmployee(null);

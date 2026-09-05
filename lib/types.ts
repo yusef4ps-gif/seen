@@ -240,6 +240,7 @@ export interface Store {
   customDomain?: string;
   activeVisitorsNow: number;
   totalSalesGMV: number;
+  socialLinks?: string; // stringified JSON
   themeConfig?: ThemeConfig;
   storeServices?: {
     delivery?: boolean;
