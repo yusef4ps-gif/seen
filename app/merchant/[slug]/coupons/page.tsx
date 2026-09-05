@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { Ticket, Plus, Tag, Trash2, Clock, X } from 'lucide-react';
 import { getStoreBySlugAction } from '@/app/actions/store';
 import { getCouponsAction, createCouponAction, deleteCouponAction } from '@/app/actions/coupon';
+import { logActivityAction } from '@/app/actions/activity';
 import { Store } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
 
@@ -56,6 +57,16 @@ export default function MerchantCouponsPage() {
     const res = await createCouponAction(data as any);
     if (res.success) {
       setCoupons([res.coupon, ...coupons]);
+      
+      logActivityAction({
+        storeId: store.id,
+        action: 'إضافة',
+        details: `تمت إضافة كود خصم جديد: ${code}`,
+        userName: 'النظام / التاجر',
+        entity: 'عروض وخصومات',
+        device: window.navigator.userAgent
+      });
+
       setIsModalOpen(false);
       // Reset form
       setCode('');
@@ -74,6 +85,15 @@ export default function MerchantCouponsPage() {
       const res = await deleteCouponAction(id, store.id, slug);
       if (res.success) {
         setCoupons(coupons.filter(c => c.id !== id));
+        
+        logActivityAction({
+          storeId: store.id,
+          action: 'حذف',
+          details: `تم حذف كود الخصم`,
+          userName: 'النظام / التاجر',
+          entity: 'عروض وخصومات',
+          device: window.navigator.userAgent
+        });
       } else {
         alert(res.error);
       }

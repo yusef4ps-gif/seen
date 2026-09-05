@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { 
   TrendingUp, ShoppingBag, Users, DollarSign, Package, 
   ArrowUpRight, ArrowDownRight, Clock, CheckCircle2, AlertCircle, 
-  Plus, Bot, Eye, Sparkles, ExternalLink, Printer, ChevronLeft, Calendar, CalendarDays
+  Plus, Bot, Eye, EyeOff, Sparkles, ExternalLink, Printer, ChevronLeft, Calendar, CalendarDays
 } from 'lucide-react';
 import { Store, Order, Product } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
@@ -20,7 +20,9 @@ export default function MerchantOverviewPage() {
 
   const [store, setStore] = useState<Store | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [isOrdersVisible, setIsOrdersVisible] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -288,16 +290,36 @@ export default function MerchantOverviewPage() {
             </h3>
             <p className="text-[10px] sm:text-xs text-slate-500">متابعة فورية للمدفوعات وحالات الشحن</p>
           </div>
-          <Link
-            href={`/merchant/${slug}/orders`}
-            className="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1"
-          >
-            <span>كل الطلبات</span>
-            <ChevronLeft className="w-3.5 h-3.5" />
-          </Link>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <button
+              onClick={() => setIsOrdersVisible(!isOrdersVisible)}
+              className="text-xs font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg transition-colors"
+              title={isOrdersVisible ? "إخفاء الطلبات" : "إظهار الطلبات"}
+            >
+              {isOrdersVisible ? (
+                <>
+                  <EyeOff className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">إخفاء</span>
+                </>
+              ) : (
+                <>
+                  <Eye className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">إظهار</span>
+                </>
+              )}
+            </button>
+            <Link
+              href={`/merchant/${slug}/orders`}
+              className="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1"
+            >
+              <span>كل الطلبات</span>
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {isOrdersVisible && (
+          <div className="overflow-x-auto">
           <table className="w-full text-right text-xs">
             <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-medium border-b border-slate-200 dark:border-slate-800">
               <tr>
@@ -348,10 +370,10 @@ export default function MerchantOverviewPage() {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
-
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
     </div>

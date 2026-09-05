@@ -68,7 +68,14 @@ export default function MerchantStaffPage() {
       permissions: newEmployee.permissions
     });
     
-    logActivityAction(store.id, 'ADD', `تمت إضافة الموظف الجديد: ${newEmployee.name}`, newEmployee.name, 'STAFF');
+    logActivityAction({
+      storeId: store.id,
+      action: 'إضافة',
+      details: `تمت إضافة الموظف الجديد: ${newEmployee.name}`,
+      userName: newEmployee.name,
+      entity: 'موظف',
+      device: window.navigator.userAgent
+    });
 
     refreshStaff(store.id);
     setIsAddModalOpen(false);
@@ -92,7 +99,14 @@ export default function MerchantStaffPage() {
       permissions: editingEmployee.permissions
     });
     
-    logActivityAction(store.id, 'UPDATE', `تم تعديل بيانات الموظف: ${editingEmployee.name}`, editingEmployee.name, 'STAFF');
+    logActivityAction({
+      storeId: store.id,
+      action: 'تعديل',
+      details: `تم تعديل بيانات الموظف: ${editingEmployee.name}`,
+      userName: editingEmployee.name,
+      entity: 'موظف',
+      device: window.navigator.userAgent
+    });
 
     refreshStaff(store.id);
     setIsEditModalOpen(false);
@@ -104,7 +118,14 @@ export default function MerchantStaffPage() {
     if (confirm('هل أنت متأكد من تغيير حالة حساب هذا الموظف؟')) {
       authEngine.toggleUserStatus(userId);
       const user = authEngine.getUsers(store.id).find(u => u.id === userId);
-      logActivityAction(store.id, 'UPDATE', `تم تغيير حالة حساب الموظف: ${user?.name || ''}`, user?.name || '', 'STAFF');
+      logActivityAction({
+        storeId: store.id,
+        action: 'تعديل',
+        details: `تم تغيير حالة حساب الموظف: ${user?.name || ''}`,
+        userName: user?.name || 'مجهول',
+        entity: 'موظف',
+        device: window.navigator.userAgent
+      });
       refreshStaff(store.id);
     }
   };
@@ -114,7 +135,14 @@ export default function MerchantStaffPage() {
     if (confirm('هل أنت متأكد من حذف حساب الموظف نهائياً؟ هذا الإجراء لا يمكن التراجع عنه.')) {
       const user = authEngine.getUsers(store.id).find(u => u.id === userId);
       authEngine.deleteUser(userId);
-      logActivityAction(store.id, 'DELETE', `تم حذف حساب الموظف: ${user?.name || ''}`, user?.name || '', 'STAFF');
+      logActivityAction({
+        storeId: store.id,
+        action: 'حذف',
+        details: `تم حذف حساب الموظف: ${user?.name || ''}`,
+        userName: user?.name || 'مجهول',
+        entity: 'موظف',
+        device: window.navigator.userAgent
+      });
       refreshStaff(store.id);
       setIsEditModalOpen(false);
       setEditingEmployee(null);

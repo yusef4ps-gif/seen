@@ -3,6 +3,7 @@
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { requireAuth, requireStoreOwner, requireSuperAdmin } from '@/app/actions/auth';
+import { sendEmail, EmailTemplates } from '@/lib/notification-engine';
 
 // Re-export the initial default JSON from storeEngine logic to use when creating a new store
 const DEFAULT_CUSTOM_RATES = JSON.stringify({
@@ -108,6 +109,27 @@ export async function createStoreAction(data: any) {
     revalidatePath('/admin');
     revalidatePath('/');
     
+    // Send Welcome Email
+    try {
+      if (newStore.email) {
+        const dashboardLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/merchant/${newStore.slug}`;
+        const storeLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/store/${newStore.slug}`;
+        
+        await sendEmail({
+          to: newStore.email,
+          subject: `🚀 تم تجهيز متجرك (${newStore.name}) بنجاح!`,
+          html: EmailTemplates.WelcomeMerchant(
+            data.name || 'عزيزي التاجر', // Could use user name if available
+            newStore.name,
+            storeLink,
+            dashboardLink
+          )
+        });
+      }
+    } catch (emailErr) {
+      console.error('Failed to send welcome email:', emailErr);
+    }
+
     return { success: true, store: parsedStore };
   } catch (error: any) {
     console.error('Error creating store in Prisma:', error);

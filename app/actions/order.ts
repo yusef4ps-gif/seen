@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { OrderItem } from '@/lib/types';
 import { requireStoreOwner } from '@/app/actions/auth';
+import { sendEmail, EmailTemplates } from '@/lib/notification-engine';
 
 export async function createOrderAction(data: any) {
   try {
@@ -59,6 +60,29 @@ export async function createOrderAction(data: any) {
           });
         }
       }
+    }
+
+    // 3. Send Email Notification to Merchant
+    try {
+      const store = await prisma.store.findUnique({ where: { id: data.storeId } });
+      if (store && store.email) {
+        // We do this in the background (no await needed for the main request thread if we don't want to block, but here it's fine)
+        const dashboardLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/merchant/${store.slug}/orders`;
+        await sendEmail({
+          to: store.email,
+          subject: `🛒 طلب جديد #${sequentialOrderNumber.replace('#', '')} من ${data.customerName}`,
+          html: EmailTemplates.MerchantNewOrder(
+            store.name,
+            sequentialOrderNumber,
+            data.customerName,
+            data.total,
+            data.currency,
+            dashboardLink
+          )
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send merchant order notification:', emailError);
     }
 
     return { success: true, order };
