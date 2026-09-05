@@ -20,7 +20,6 @@ export default function MerchantOverviewPage() {
 
   const [store, setStore] = useState<Store | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isOrdersVisible, setIsOrdersVisible] = useState(true);
 
