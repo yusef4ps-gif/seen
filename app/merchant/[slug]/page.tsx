@@ -13,6 +13,7 @@ import {
 import { Store, Order, Product } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
 import { getStoreBySlugAction, getOrdersByStoreAction, getProductsByStoreAction } from '@/app/actions/store';
+import ActiveVisitorsCounter from '@/components/ActiveVisitorsCounter';
 
 export default function MerchantOverviewPage() {
   const params = useParams();
@@ -30,8 +31,10 @@ export default function MerchantOverviewPage() {
       const s = await getStoreBySlugAction(slug);
       if (s && isMounted) {
         setStore(s as any);
-        const ords = await getOrdersByStoreAction(s.id);
-        const prods = await getProductsByStoreAction(s.id);
+        const [ords, prods] = await Promise.all([
+          getOrdersByStoreAction(s.id),
+          getProductsByStoreAction(s.id)
+        ]);
         if (isMounted) {
           setOrders(ords as any);
           setProducts(prods as any);
@@ -40,21 +43,10 @@ export default function MerchantOverviewPage() {
     }
     loadDashboard();
 
-    // Live polling for active visitors every 5 seconds
-    const interval = setInterval(async () => {
-      if (!slug) return;
-      const s = await getStoreBySlugAction(slug);
-      if (s && isMounted) {
-        setStore(s as any);
-      }
-    }, 5000);
-
     return () => {
       isMounted = false;
-      clearInterval(interval);
     };
   }, [slug]);
-
 
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'custom' | 'all'>('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
@@ -101,10 +93,10 @@ export default function MerchantOverviewPage() {
   }, [filteredOrders]);
 
 
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.status !== 'cancelled' ? o.total : 0), 0);
-  const completedOrders = filteredOrders.filter((o) => o.status === 'delivered').length;
-  const pendingOrders = filteredOrders.filter((o) => o.status === 'new' || o.status === 'pending_payment' || o.status === 'processing').length;
-  const lowStockCount = products.filter((p) => p.stock <= (p.lowStockAlert || 5)).length;
+  const totalRevenue = useMemo(() => filteredOrders.reduce((sum, o) => sum + (o.status !== 'cancelled' ? o.total : 0), 0), [filteredOrders]);
+  const completedOrders = useMemo(() => filteredOrders.filter((o) => o.status === 'delivered').length, [filteredOrders]);
+  const pendingOrders = useMemo(() => filteredOrders.filter((o) => o.status === 'new' || o.status === 'pending_payment' || o.status === 'processing').length, [filteredOrders]);
+  const lowStockCount = useMemo(() => products.filter((p) => p.stock <= (p.lowStockAlert || 5)).length, [products]);
 
   if (!store) return null;
 
@@ -218,7 +210,7 @@ export default function MerchantOverviewPage() {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5 sm:gap-4">
         
         {/* KPI 1 */}
         <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between">
@@ -258,6 +250,10 @@ export default function MerchantOverviewPage() {
         </div>
 
 
+        {/* KPI 3 (Active Visitors Counter Component) */}
+        <div className="h-full">
+          <ActiveVisitorsCounter storeId={store.slug} />
+        </div>
 
         {/* KPI 4 */}
         <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between">

@@ -43,6 +43,11 @@ export default function UnifiedProfilePage() {
 
   if (!currentUser) return null;
 
+  if (currentUser.role === 'CUSTOMER') {
+    router.replace('/');
+    return null;
+  }
+
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
     const updates: Partial<User> = { name, phone, email };
@@ -270,7 +275,7 @@ export default function UnifiedProfilePage() {
 
       {/* Footer */}
       <footer className="py-4 text-center text-[11px] text-slate-400">
-        منصة مَزن (Mazn SaaS) - الجلسة مؤمنة بنظام التشفير السحابي
+        منصة سِين (SEEN SaaS) - الجلسة مؤمنة بنظام التشفير السحابي
       </footer>
 
     </div>

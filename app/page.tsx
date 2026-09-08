@@ -11,7 +11,7 @@ import {
   Lock, MessageCircle, Bot, Zap, Crown, Rocket, Brush, 
   Database, Code2, GraduationCap, ChevronRight, HelpCircle, 
   CheckCircle2, Building2, Package, Layers, Search, MapPin, Phone, Mail, 
-  Clock, Facebook, Youtube, Instagram, Twitter, Linkedin
+  Clock, Facebook, Youtube, Instagram, Twitter, Linkedin, User
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
 import { Store, SubscriptionPlan, PlatformStats } from '@/lib/types';
@@ -559,6 +559,79 @@ export default function HomePage() {
         </section>
 
         {/* ========================================================================= */}
+        {/* 🛠️ NEW: HOW IT WORKS / STEPS TO CREATE A STORE */}
+        {/* ========================================================================= */}
+        <section className="py-20 px-4 sm:px-6 max-w-7xl mx-auto text-right">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-brand-500/25 bg-brand-500/10 text-brand-700 dark:text-brand-300 text-xs font-bold mb-3">
+              <Rocket className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+              <span>خطوات بسيطة وسريعة</span>
+            </div>
+            <h2 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+              كيف تبدأ تجارتك مع سِين؟
+            </h2>
+            <p className="mt-4 text-sm text-slate-500 max-w-xl mx-auto">
+              أنشئ متجرك الإلكتروني المتكامل بـ 4 خطوات سهلة وسريعة، وابدأ باستقبال طلبات عملائك اليوم.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 sm:gap-8 relative">
+            {/* Connecting Line (Desktop Only) */}
+            <div className="hidden md:block absolute top-1/2 left-[10%] right-[10%] h-0.5 bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent -translate-y-1/2 z-0" />
+
+            {/* Step 1 */}
+            <div className="relative z-10 flex flex-col items-center text-center group">
+              <div className="w-16 h-16 rounded-3xl bg-white dark:bg-slateDark-900 border-2 border-slate-100 dark:border-slate-800 shadow-xl flex items-center justify-center mb-6 group-hover:border-brand-500 group-hover:-translate-y-2 transition-all duration-300 relative">
+                <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-brand-500 text-white text-[11px] font-black flex items-center justify-center border-2 border-white dark:border-slateDark-900">1</div>
+                <User className="w-7 h-7 text-slate-400 group-hover:text-brand-500 transition-colors" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">{t('step1_title', 'وثّق حسابك')}</h3>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-[200px]">{t('step1_desc', 'قم بتسجيل الدخول بأمان عبر حساب Google الخاص بك بثوانٍ معدودة أو أنشئ حساباً جديداً.')}</p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="relative z-10 flex flex-col items-center text-center group">
+              <div className="w-16 h-16 rounded-3xl bg-white dark:bg-slateDark-900 border-2 border-slate-100 dark:border-slate-800 shadow-xl flex items-center justify-center mb-6 group-hover:border-brand-500 group-hover:-translate-y-2 transition-all duration-300 relative">
+                <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-brand-500 text-white text-[11px] font-black flex items-center justify-center border-2 border-white dark:border-slateDark-900">2</div>
+                <Building2 className="w-7 h-7 text-slate-400 group-hover:text-brand-500 transition-colors" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">{t('step2_title', 'تفاصيل المتجر')}</h3>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-[200px]">{t('step2_desc', 'اختر اسم متجرك ورابطه الفريد، وحدد نشاطك التجاري ورقم الواتساب للطلبات.')}</p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="relative z-10 flex flex-col items-center text-center group">
+              <div className="w-16 h-16 rounded-3xl bg-white dark:bg-slateDark-900 border-2 border-slate-100 dark:border-slate-800 shadow-xl flex items-center justify-center mb-6 group-hover:border-brand-500 group-hover:-translate-y-2 transition-all duration-300 relative">
+                <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-brand-500 text-white text-[11px] font-black flex items-center justify-center border-2 border-white dark:border-slateDark-900">3</div>
+                <Palette className="w-7 h-7 text-slate-400 group-hover:text-brand-500 transition-colors" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">{t('step3_title', 'اختر القالب والهوية')}</h3>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-[200px]">{t('step3_desc', 'استعرض القوالب الجاهزة، وارفع شعارك الخاص ليتناسب تصميم المتجر مع هويتك فوراً.')}</p>
+            </div>
+
+            {/* Step 4 */}
+            <div className="relative z-10 flex flex-col items-center text-center group">
+              <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-brand-600 to-emerald-500 border-2 border-transparent shadow-xl shadow-brand-500/20 flex items-center justify-center mb-6 group-hover:-translate-y-2 transition-all duration-300 relative">
+                <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-white text-brand-600 text-[11px] font-black flex items-center justify-center border-2 border-brand-500">4</div>
+                <Rocket className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">{t('step4_title', 'جاهز للانطلاق!')}</h3>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-[200px]">{t('step4_desc', 'اكتمل الإعداد! سيتم توجيهك للوحة تحكم متجرك لإضافة منتجاتك واستقبال الطلبات.')}</p>
+            </div>
+          </div>
+          
+          <div className="mt-14 flex justify-center">
+             <Link
+                href="/create-store"
+                className="px-8 py-3.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold shadow-xl hover:-translate-y-0.5 active:scale-95 transition-all flex items-center gap-2"
+              >
+                <span>ابدأ رحلتك مجاناً الآن</span>
+                <ArrowLeft className="w-4 h-4" />
+              </Link>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
         {/* 🧭 3. INTERACTIVE PRICING QUIZ ("أيّ باقة تناسبني؟") */}
         {/* ========================================================================= */}
         <section id="quiz" className="py-16 sm:py-20 px-4 sm:px-6 max-w-4xl mx-auto text-right">
@@ -736,72 +809,6 @@ export default function HomePage() {
         </section>
 
         {/* ========================================================================= */}
-        {/* ❓ 4.5 FAQ SECTION (الأسئلة الشائعة) */}
-        {/* ========================================================================= */}
-        <section className="py-16 sm:py-24 px-4 sm:px-6 max-w-3xl mx-auto text-right">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white mb-3">
-              {t('faq_title', 'أسئلة شائعة')}
-            </h2>
-            <p className="text-sm text-slate-500 max-w-xl mx-auto">
-              {t('faq_subtitle', 'ستجد معظم أسئلتك وتساؤلاتك هنا. إن لم تجد سؤالك في هذه القائمة رجاء لا تتردد في الاتصال بنا')}
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {[
-              { q: 'ما هي منصة سِين؟', a: 'سِين هي منصة تجارة إلكترونية سحابية متكاملة تتيح لك إنشاء متجرك الإلكتروني الخاص في اليمن بسهولة، وإدارته بشكل كامل دون الحاجة لأي خبرة برمجية.' },
-              { q: 'ما هي ميزات منصة سِين؟', a: 'توفر المنصة تصميمات جاهزة، إدارة للمخزون والطلبات، نظام تسعير متعدد العملات (صنعاء، عدن، سعودي)، وربط مع بوابات الدفع المحلية مثل الكريمي وجوالي وون كاش.' },
-              { q: 'كيف يمكنني إنشاء حساب ومتجر؟', a: 'يمكنك البدء فوراً بالنقر على "أنشئ متجرك مجاناً" وتعبئة بياناتك الأساسية، وسيتم تجهيز متجرك وإطلاقه خلال دقائق معدودة.' },
-              { q: 'هل يمكنني ربط طرق دفع محلية يمنية؟', a: 'نعم، المنصة مجهزة للربط المباشر مع أشهر طرق الدفع والمحافظ الإلكترونية في اليمن لتسهيل استلام أموالك من عملائك.' },
-              { q: 'هل أستطيع استخدام اسم نطاق (Domain) خاص بي؟', a: 'بالتأكيد، يمكنك في الباقات المتقدمة ربط متجرك باسم نطاق خاص بك (مثل www.yourstore.com) لتعزيز علامتك التجارية.' },
-              { q: 'هل تأخذ المنصة عمولة على المبيعات؟', a: 'لا، منصة سِين لا تفرض أي عمولات خفية على مبيعاتك. أنت تدفع فقط قيمة الاشتراك الشهري أو السنوي للباقة التي تختارها.' },
-              { q: 'ما هي وسائل الدفع المتاحة للاشتراك في المنصة؟', a: 'نوفر خيارات دفع متعددة تناسب الجميع في اليمن، بما في ذلك الحوالات البنكية المباشرة عبر الكريمي، القطيبي، أو عبر المحافظ الإلكترونية.' }
-            ].map((defaultItem, index) => {
-              const num = index + 1;
-              const q = t(`faq_q${num}`, defaultItem.q);
-              const a = t(`faq_a${num}`, defaultItem.a);
-              if (!q || !a) return null;
-              
-              const isOpen = openFaq === num;
-              
-              return (
-                <div key={num} className="border-b border-slate-200 dark:border-slate-800 last:border-0 pb-1">
-                  <button
-                    onClick={() => setOpenFaq(isOpen ? null : num)}
-                    className="w-full py-4 flex items-center justify-between text-right hover:text-brand-600 transition-colors"
-                  >
-                    <span className="font-bold text-slate-900 dark:text-white">{q}</span>
-                    <span className={`transform transition-transform duration-200 ${isOpen ? 'rotate-180 text-brand-600' : 'text-slate-400'}`}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </span>
-                  </button>
-                  <div
-                    className={`overflow-hidden transition-all duration-300 ${
-                      isOpen ? 'max-h-96 opacity-100 pb-4' : 'max-h-0 opacity-0'
-                    }`}
-                  >
-                    <p className="text-sm text-slate-500 leading-relaxed pr-2">
-                      {a}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-12 text-center">
-            <Link
-              href="https://wa.me/967777777777"
-              target="_blank"
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-sm shadow-xl hover:shadow-2xl transition-all"
-            >
-              <span>إتصل بنا</span>
-            </Link>
-          </div>
-        </section>
-
-        {/* ========================================================================= */}
         {/* 🎨 4.5 DYNAMIC THEMES SHOWCASE */}
         {/* ========================================================================= */}
         <section id="themes" className="py-20 sm:py-28 px-4 sm:px-6 max-w-7xl mx-auto text-right">
@@ -973,7 +980,73 @@ export default function HomePage() {
 
         </section>
 
-      </main>
+{/* ========================================================================= */}
+        {/* ❓ 4.5 FAQ SECTION (الأسئلة الشائعة) */}
+        {/* ========================================================================= */}
+        <section className="py-16 sm:py-24 px-4 sm:px-6 max-w-3xl mx-auto text-right">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white mb-3">
+              {t('faq_title', 'أسئلة شائعة')}
+            </h2>
+            <p className="text-sm text-slate-500 max-w-xl mx-auto">
+              {t('faq_subtitle', 'ستجد معظم أسئلتك وتساؤلاتك هنا. إن لم تجد سؤالك في هذه القائمة رجاء لا تتردد في الاتصال بنا')}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {[
+              { q: 'ما هي منصة سِين؟', a: 'سِين هي منصة تجارة إلكترونية سحابية متكاملة تتيح لك إنشاء متجرك الإلكتروني الخاص في اليمن بسهولة، وإدارته بشكل كامل دون الحاجة لأي خبرة برمجية.' },
+              { q: 'ما هي ميزات منصة سِين؟', a: 'توفر المنصة تصميمات جاهزة، إدارة للمخزون والطلبات، نظام تسعير متعدد العملات (صنعاء، عدن، سعودي)، وربط مع بوابات الدفع المحلية مثل الكريمي وجوالي وون كاش.' },
+              { q: 'كيف يمكنني إنشاء حساب ومتجر؟', a: 'يمكنك البدء فوراً بالنقر على "أنشئ متجرك مجاناً" وتعبئة بياناتك الأساسية، وسيتم تجهيز متجرك وإطلاقه خلال دقائق معدودة.' },
+              { q: 'هل يمكنني ربط طرق دفع محلية يمنية؟', a: 'نعم، المنصة مجهزة للربط المباشر مع أشهر طرق الدفع والمحافظ الإلكترونية في اليمن لتسهيل استلام أموالك من عملائك.' },
+              { q: 'هل أستطيع استخدام اسم نطاق (Domain) خاص بي؟', a: 'بالتأكيد، يمكنك في الباقات المتقدمة ربط متجرك باسم نطاق خاص بك (مثل www.yourstore.com) لتعزيز علامتك التجارية.' },
+              { q: 'هل تأخذ المنصة عمولة على المبيعات؟', a: 'لا، منصة سِين لا تفرض أي عمولات خفية على مبيعاتك. أنت تدفع فقط قيمة الاشتراك الشهري أو السنوي للباقة التي تختارها.' },
+              { q: 'ما هي وسائل الدفع المتاحة للاشتراك في المنصة؟', a: 'نوفر خيارات دفع متعددة تناسب الجميع في اليمن، بما في ذلك الحوالات البنكية المباشرة عبر الكريمي، القطيبي، أو عبر المحافظ الإلكترونية.' }
+            ].map((defaultItem, index) => {
+              const num = index + 1;
+              const q = t(`faq_q${num}`, defaultItem.q);
+              const a = t(`faq_a${num}`, defaultItem.a);
+              if (!q || !a) return null;
+              
+              const isOpen = openFaq === num;
+              
+              return (
+                <div key={num} className="border-b border-slate-200 dark:border-slate-800 last:border-0 pb-1">
+                  <button
+                    onClick={() => setOpenFaq(isOpen ? null : num)}
+                    className="w-full py-4 flex items-center justify-between text-right hover:text-brand-600 transition-colors"
+                  >
+                    <span className="font-bold text-slate-900 dark:text-white">{q}</span>
+                    <span className={`transform transition-transform duration-200 ${isOpen ? 'rotate-180 text-brand-600' : 'text-slate-400'}`}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </span>
+                  </button>
+                  <div
+                    className={`overflow-hidden transition-all duration-300 ${
+                      isOpen ? 'max-h-96 opacity-100 pb-4' : 'max-h-0 opacity-0'
+                    }`}
+                  >
+                    <p className="text-sm text-slate-500 leading-relaxed pr-2">
+                      {a}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-12 text-center">
+            <Link
+              href="https://wa.me/967777777777"
+              target="_blank"
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-sm shadow-xl hover:shadow-2xl transition-all"
+            >
+              <span>إتصل بنا</span>
+            </Link>
+          </div>
+        </section>
+
+              </main>
 
       {/* ========================================================================= */}
       {/* ⚓ COMPREHENSIVE FOOTER */}

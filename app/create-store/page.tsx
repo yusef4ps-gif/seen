@@ -23,12 +23,12 @@ export default function CreateStorePage() {
   const [currentStep, setCurrentStep] = useState<number>(1);
 
   // Store Basic Information
-  const [storeName, setStoreName] = useState('بوتيك عدن كولكشن');
-  const [slug, setSlug] = useState('aden-collection');
+  const [storeName, setStoreName] = useState('');
+  const [slug, setSlug] = useState('');
   const [category, setCategory] = useState('أزياء وملابس وعبايات');
   const [city, setCity] = useState('عدن');
-  const [phone, setPhone] = useState('777123456');
-  const [description, setDescription] = useState('أفضل وأرقى تشكيلات الأزياء العصرية بجودة عالية وتوصيل سريع.');
+  const [phone, setPhone] = useState('');
+  const [description, setDescription] = useState('');
 
   // Theme & Visual Identity State
   const [selectedPresetId, setSelectedPresetId] = useState<string>('fashion-luxury');
@@ -49,11 +49,11 @@ export default function CreateStorePage() {
   // Payments & Currency State
   const [baseCurrency, setBaseCurrency] = useState<CurrencyCode>('SAR');
   const [enableQutaibi, setEnableQutaibi] = useState(true);
-  const [qutaibiAccount, setQutaibiAccount] = useState('1249827361');
+  const [qutaibiAccount, setQutaibiAccount] = useState('');
   const [enableKuraimi, setEnableKuraimi] = useState(true);
-  const [kuraimiAccount, setKuraimiAccount] = useState('3012345678');
+  const [kuraimiAccount, setKuraimiAccount] = useState('');
   const [enableUnified, setEnableUnified] = useState(true);
-  const [unifiedAccount, setUnifiedAccount] = useState('777123456');
+  const [unifiedAccount, setUnifiedAccount] = useState('');
   const [googleAuthenticated, setGoogleAuthenticated] = useState<any>(null);
 
   // Generation status
@@ -286,6 +286,7 @@ export default function CreateStorePage() {
                     <input
                       type="text"
                       value={slug}
+                      placeholder="my-store"
                       onChange={(e) => setSlug(e.target.value)}
                       className="bg-transparent outline-none flex-1 text-brand-600 font-bold"
                     />
@@ -353,6 +354,7 @@ export default function CreateStorePage() {
                   <textarea
                     rows={2}
                     value={description}
+                    placeholder="مثال: أفضل متجر لبيع الملابس العصرية بجودة عالية وتوصيل سريع لكافة المحافظات."
                     onChange={(e) => setDescription(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs outline-none"
                   />

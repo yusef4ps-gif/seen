@@ -15,7 +15,7 @@ export async function generateCampaignAction(prompt: string, storeName: string, 
     const systemPrompt = `
       أنت مستشار ذكاء اصطناعي متخصص في كتابة حملات تسويقية وإعلانات جذابة لمتاجر إلكترونية.
       اسم المتجر: ${storeName}
-      رابط المتجر: https://mazn.app/store/${storeSlug}
+      رابط المتجر: https://seen.app/store/${storeSlug}
       المدينة المستهدفة: ${storeCity}
 
       المطلوب:

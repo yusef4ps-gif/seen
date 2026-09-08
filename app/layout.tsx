@@ -9,7 +9,8 @@ export const metadata: Metadata = {
 };
 
 import { ThemeProvider } from '@/components/ThemeProvider';
-import ThemeToggle from '@/components/ThemeToggle';
+import FloatingWhatsApp from '@/components/FloatingWhatsApp';
+import { Toaster } from 'react-hot-toast';
 
 export default function RootLayout({
   children,
@@ -41,7 +42,12 @@ export default function RootLayout({
       <body className="bg-slate-50 text-slate-900 dark:bg-slateDark-950 dark:text-slate-100 min-h-screen flex flex-col font-sans selection:bg-brand-500 selection:text-white transition-colors duration-300">
         <ThemeProvider>
           {children}
-          <ThemeToggle />
+          <FloatingWhatsApp />
+          <Toaster position="top-center" toastOptions={{ 
+            duration: 3000, 
+            style: { background: '#333', color: '#fff', borderRadius: '10px' },
+            success: { style: { background: '#059669', color: '#fff' } }
+          }} />
         </ThemeProvider>
       </body>
     </html>

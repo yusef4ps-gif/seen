@@ -92,7 +92,7 @@ export default function AdminUsersPage() {
 
     authEngine.createUserByAdmin({
       name: newName,
-      email: newEmail || `${newPhone}@mazn.app`,
+      email: newEmail || `${newPhone}@seen.app`,
       phone: newPhone,
       password: newPassword,
       role: newRole,

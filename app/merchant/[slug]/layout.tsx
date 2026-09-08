@@ -156,13 +156,6 @@ export default function MerchantLayout({
             >
               تصفح متجر {store?.name || 'المتجر'} للشراء 🛍️
             </Link>
-
-            <Link
-              href="/profile"
-              className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold block transition-all"
-            >
-              عرض مشترياتي وطلباتي السابقة
-            </Link>
           </div>
         </div>
       </div>
@@ -206,6 +199,12 @@ export default function MerchantLayout({
       title: 'إدارة وتدقيق الطلبات',
       href: `/merchant/${slug}/orders`,
       icon: ShoppingCart,
+    },
+    {
+      title: 'إدارة المرتجعات',
+      href: `/merchant/${slug}/returns`,
+      icon: RefreshCw,
+      badge: 'إجراء',
     },
     {
       title: 'استعادة السلات المتروكة',

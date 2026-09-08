@@ -48,7 +48,7 @@ export default function MerchantAIAdvisorPage() {
           type: 'عطلة نهاية الأسبوع',
           icon: Zap,
           description: 'خصم 15% على القطع الأكثر طلباً مع شحن سريع خلال 24 ساعة لزيادة المبيعات يومي الخميس والجمعة.',
-          whatsappTemplate: `🔥 *عروض نهاية الأسبوع الكبرى من ${store.name}!* 🔥\n\nاستمتعوا بخصم خاص *15%* على كافة المنتجات + توصيل فوري لعنوانك في ${store.city}!\n\n🛍️ للطلب السريع تصفح المتجر الآن:\nhttps://mazn.app/store/${store.slug}\n\n*العرض سارٍ حتى مساء السبت فقط.* ⏳`,
+          whatsappTemplate: `🔥 *عروض نهاية الأسبوع الكبرى من ${store.name}!* 🔥\n\nاستمتعوا بخصم خاص *15%* على كافة المنتجات + توصيل فوري لعنوانك في ${store.city}!\n\n🛍️ للطلب السريع تصفح المتجر الآن:\nhttps://seen.app/store/${store.slug}\n\n*العرض سارٍ حتى مساء السبت فقط.* ⏳`,
           isEditing: false
         },
         {
@@ -56,7 +56,7 @@ export default function MerchantAIAdvisorPage() {
           type: 'زيادة حجم السلة AOV',
           icon: Gift,
           description: 'تقديم توصيل مجاني عند شراء منتجين أو أكثر أو عند تجاوز قيمة السلة 100 ر.س لرفع متوسط الطلب.',
-          whatsappTemplate: `🚚 *بشرى سارة لزبائن ${store.name} الكرام!* ✨\n\nاحصل على *توصيل مجاني بالكامل* عند طلب منتجين أو أكثر اليوم!\n\n📦 تسوق الآن تشكيلتنا الجديدة:\nhttps://mazn.app/store/${store.slug}\n\nالدفع عند الاستلام أو عبر المحافظ متاح بكل سهولة. 💳`,
+          whatsappTemplate: `🚚 *بشرى سارة لزبائن ${store.name} الكرام!*\ ✨\n\nاحصل على *توصيل مجاني بالكامل* عند طلب منتجين أو أكثر اليوم!\n\n📦 تسوق الآن تشكيلتنا الجديدة:\nhttps://seen.app/store/${store.slug}\n\nالدفع عند الاستلام أو عبر المحافظ متاح بكل سهولة. 💳`,
           isEditing: false
         },
         {
@@ -64,7 +64,7 @@ export default function MerchantAIAdvisorPage() {
           type: 'موسمي وتراثي',
           icon: Sparkles,
           description: 'باقة مخصصة للهدايا والتجهيز للمناسبات مع تغليف مجاني وبطاقة إهداء.',
-          whatsappTemplate: `🎉 *أناقتك وفرحتك تكتمل مع ${store.name}!* ✨\n\nاخترنا لكم أجمل التشكيلات الفاخرة مع *تغليف هدايا مجاني فاخر* لكل طلب!\n\n👑 تصفح التشكيلة الحصرية واطلب الآن قبل نفاد الكميات:\nhttps://mazn.app/store/${store.slug}`,
+          whatsappTemplate: `🎉 *أناقتك وفرحتك تكتمل مع ${store.name}!* ✨\n\nاخترنا لكم أجمل التشكيلات الفاخرة مع *تغليف هدايا مجاني فاخر* لكل طلب!\n\n👑 تصفح التشكيلة الحصرية واطلب الآن قبل نفاد الكميات:\nhttps://seen.app/store/${store.slug}`,
           isEditing: false
         }
       ];

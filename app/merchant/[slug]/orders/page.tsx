@@ -5,11 +5,11 @@ import { useParams } from 'next/navigation';
 import { 
   ShoppingBag, Search, Filter, Eye, CheckCircle2, 
   Clock, AlertTriangle, Printer, Phone, MessageSquare, 
-  X, Check, DollarSign, Image as ImageIcon, ArrowLeft
+  X, Check, DollarSign, Image as ImageIcon, ArrowLeft, RefreshCw
 } from 'lucide-react';
 import { Store, Order, OrderStatus } from '@/lib/types';
 import { getStoreBySlugAction, getOrdersByStoreAction } from '@/app/actions/store';
-import { updateOrderStatusAction, verifyPaymentProofAction } from '@/app/actions/order';
+import { updateOrderStatusAction, verifyPaymentProofAction, createOrderReturnAction } from '@/app/actions/order';
 import { formatCurrency } from '@/lib/currency-engine';
 
 export default function MerchantOrdersPage() {
@@ -25,6 +25,10 @@ export default function MerchantOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [returnItems, setReturnItems] = useState<{index: number, quantity: number, item: any}[]>([]);
+  const [returnReason, setReturnReason] = useState('');
+  const [isReturning, setIsReturning] = useState(false);
   const [printFormat, setPrintFormat] = useState<'80mm' | 'A4'>('80mm');
 
   const loadOrders = async (storeId: string) => {
@@ -36,16 +40,28 @@ export default function MerchantOrdersPage() {
   };
 
   useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
     async function init() {
       if (slug) {
         const s = await getStoreBySlugAction(slug);
         if (s) {
           setStore(s as any);
           await loadOrders(s.id);
+
+          // Start polling after initial load
+          intervalId = setInterval(async () => {
+            await loadOrders(s.id);
+          }, 5000);
         }
       }
     }
+
     init();
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [slug]);
 
   const refreshOrders = async () => {
@@ -57,6 +73,33 @@ export default function MerchantOrdersPage() {
   const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
     await updateOrderStatusAction(orderId, newStatus);
     await refreshOrders();
+  };
+
+  const handleCreateReturn = async () => {
+    if (!selectedOrder || returnItems.length === 0) return;
+    setIsReturning(true);
+    
+    // Calculate refund amount
+    const refundAmount = returnItems.reduce((sum, ri) => sum + (ri.item.price * ri.quantity), 0);
+    
+    const res = await createOrderReturnAction({
+      orderId: selectedOrder.id,
+      storeId: store!.id,
+      refundAmount,
+      reason: returnReason,
+      items: returnItems
+    });
+
+    setIsReturning(false);
+    if (res.success) {
+      setIsReturnModalOpen(false);
+      setSelectedOrder(null);
+      setReturnItems([]);
+      setReturnReason('');
+      await refreshOrders();
+    } else {
+      alert(res.error || 'حدث خطأ أثناء معالجة المرتجع');
+    }
   };
 
   const handleVerifyProof = async (orderId: string, status: 'verified' | 'rejected') => {
@@ -351,6 +394,19 @@ export default function MerchantOrdersPage() {
             </div>
 
             <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-between gap-2">
+              {(selectedOrder.status === 'delivered' || selectedOrder.status === 'shipped') && (
+                <button
+                  onClick={() => {
+                    setIsReturnModalOpen(true);
+                    setReturnItems(selectedOrder.items.map((it: any, idx: number) => ({ index: idx, quantity: it.quantity, item: it })));
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>إنشاء مرتجع</span>
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   setIsPrintModalOpen(true);
@@ -423,6 +479,102 @@ export default function MerchantOrdersPage() {
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Create Return Modal */}
+      {isReturnModalOpen && selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fadeIn">
+          <div className="relative w-full max-w-lg bg-white dark:bg-slateDark-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <RefreshCw className="w-5 h-5 text-amber-500" />
+                <span>إنشاء مرتجع للطلب #{selectedOrder.orderNumber}</span>
+              </h3>
+              <button
+                onClick={() => setIsReturnModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto text-xs">
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-400">
+                <div className="font-bold mb-1">حدد الكميات المراد إرجاعها:</div>
+                <div>المبلغ المسترد سيتم حسابه تلقائياً. لن يتم إعادة المنتجات للمخزون إلا بعد موافقتك.</div>
+              </div>
+
+              <div className="space-y-2">
+                {selectedOrder.items.map((item, originalIdx) => {
+                  const ri = returnItems.find(r => r.index === originalIdx);
+                  const isReturning = !!ri && ri.quantity > 0;
+                  return (
+                    <div key={originalIdx} className={`p-3 rounded-xl border transition-colors ${isReturning ? 'border-amber-400 bg-amber-50/50 dark:bg-amber-900/10' : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40'}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <img src={item.productImage} alt={item.productName} className="w-10 h-10 rounded-lg object-cover" />
+                          <div>
+                            <div className="font-bold text-slate-900 dark:text-white">{item.productName}</div>
+                            <div className="text-[10px] text-slate-500">{item.quantity} مطلوب × {formatCurrency(item.price, selectedOrder.currency)}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-[10px] font-bold text-slate-500">الكمية المرتجعة:</label>
+                          <select
+                            value={ri?.quantity || 0}
+                            onChange={(e) => {
+                              const q = parseInt(e.target.value);
+                              const newArr = [...returnItems];
+                              const existingIdx = newArr.findIndex(r => r.index === originalIdx);
+                              if (existingIdx >= 0) {
+                                newArr[existingIdx].quantity = q;
+                              } else {
+                                newArr.push({ index: originalIdx, quantity: q, item });
+                              }
+                              setReturnItems(newArr);
+                            }}
+                            className="px-2 py-1.5 rounded-lg border outline-none font-bold text-sm bg-white dark:bg-slateDark-900"
+                          >
+                            {Array.from({ length: item.quantity + 1 }).map((_, i) => (
+                              <option key={i} value={i}>{i}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">السبب أو ملاحظات للمرتجع:</label>
+                <textarea
+                  rows={2}
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  placeholder="مثال: المنتج تالف أو لم يناسب الزبون..."
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none"
+                />
+              </div>
+
+              <div className="flex justify-between items-center p-3 rounded-xl bg-slate-100 dark:bg-slate-800 font-black text-sm text-slate-900 dark:text-white">
+                <span>المبلغ المسترد:</span>
+                <span className="text-amber-600 dark:text-amber-400">
+                  {formatCurrency(returnItems.reduce((sum, r) => sum + (r.item.price * r.quantity), 0), selectedOrder.currency)}
+                </span>
+              </div>
+
+              <button
+                onClick={handleCreateReturn}
+                disabled={isReturning || returnItems.every(r => r.quantity === 0)}
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm transition-all disabled:opacity-50 flex justify-center items-center gap-2"
+              >
+                {isReturning ? 'جاري المعالجة...' : 'تأكيد إنشاء المرتجع'}
+              </button>
+            </div>
           </div>
         </div>
       )}

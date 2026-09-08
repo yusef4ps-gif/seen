@@ -8,6 +8,7 @@ import {
   Building2, ShoppingBag, LogOut 
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
+import ThemeToggle from './ThemeToggle';
 import { authEngine } from '@/lib/auth-engine';
 import { User as AuthUser } from '@/lib/types';
 
@@ -78,9 +79,8 @@ export default function Navbar() {
 
           {/* Action Area with Dynamic Role-Based Buttons */}
           <div className="flex items-center gap-2 sm:gap-2.5">
+            <ThemeToggle />
             
-
-
             {/* If Logged In as STORE_OWNER or STORE_STAFF */}
             {(currentUser?.role === 'STORE_OWNER' || currentUser?.role === 'STORE_STAFF') && (
               <Link

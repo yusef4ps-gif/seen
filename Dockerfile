@@ -1,4 +1,4 @@
-# Multi-Stage Dockerfile for Mazn (Aden-Salla) SaaS Platform
+# Multi-Stage Dockerfile for SEEN (Aden-Salla) SaaS Platform
 # 1. Base Image
 FROM node:20-alpine AS base
 WORKDIR /app

@@ -7,8 +7,7 @@ import {
   Lock, Mail, Phone, User as UserIcon, CheckCircle2, 
   AlertCircle, Eye, EyeOff, ArrowRight, ShieldCheck, MapPin, Globe2
 } from 'lucide-react';
-import { authEngine } from '@/lib/auth-engine';
-import { setAuthCookieAction } from '@/app/actions/auth';
+import { loginMerchantAction, registerMerchantAction, setAuthCookieAction } from '@/app/actions/auth';
 import BrandLogo from '@/components/BrandLogo';
 
 declare global {
@@ -78,119 +77,63 @@ function LoginFormContent() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Google Sign-In Initialization
-  useEffect(() => {
-    // Load Google Identity Services script
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    document.body.appendChild(script);
 
-    script.onload = () => {
-      if (window.google) {
-        window.google.accounts.id.initialize({
-          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID_HERE',
-          callback: handleGoogleResponse
-        });
-        window.google.accounts.id.renderButton(
-          document.getElementById('google-signin-button'),
-          { theme: 'outline', size: 'large', text: 'continue_with', width: 300 }
-        );
-      }
-    };
 
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
-  }, []);
-
-  const handleGoogleResponse = (response: any) => {
+  // Submit Login
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
     setIsLoading(true);
-    try {
-      // Decode the JWT token returned by Google
-      const payload = JSON.parse(atob(response.credential.split('.')[1]));
-      
-      const result = authEngine.loginWithGoogle({
-        name: payload.name,
-        email: payload.email,
-        avatarUrl: payload.picture
-      });
 
-      if (result.success) {
-        setSuccessMessage('تم تسجيل الدخول عبر جوجل بنجاح!');
-        if (result.session) {
-          setAuthCookieAction(result.session.token, result.session.user.id, result.session.user.role, result.session.user.storeId);
-        }
-        setTimeout(() => {
-          router.push(redirectParam || result.redirectUrl || '/profile');
-        }, 500);
+    const result = await loginMerchantAction(loginIdentifier, loginPassword);
+    setIsLoading(false);
+
+    if (!result.success) {
+      setErrorMessage(result.error || 'فشل تسجيل الدخول. يرجى التحقق من البيانات.');
+    } else {
+      setSuccessMessage('تم تسجيل الدخول بنجاح! جاري التوجيه...');
+      if (result.userId && result.role) {
+        // dummy token since we removed JWT logic for simplicity
+        await setAuthCookieAction('temp-token', result.userId, result.role, result.storeId);
       }
-    } catch (e) {
-      setErrorMessage('فشل تسجيل الدخول عبر جوجل.');
-      setIsLoading(false);
+      setTimeout(() => {
+        router.push(redirectParam || (result.slug ? `/merchant/${result.slug}` : '/profile'));
+      }, 500);
     }
   };
 
-  // Submit Login
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  // Submit Merchant Register
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
-    setIsLoading(true);
-
-    setTimeout(async () => {
-      const result = authEngine.login(loginIdentifier, loginPassword);
-      setIsLoading(false);
-
-      if (!result.success) {
-        setErrorMessage(result.error || 'فشل تسجيل الدخول. يرجى التحقق من البيانات.');
-      } else {
-        setSuccessMessage('تم تسجيل الدخول بنجاح! جاري التوجيه...');
-        if (result.session) {
-          await setAuthCookieAction(result.session.token, result.session.user.id, result.session.user.role, result.session.user.storeId);
-        }
-        setTimeout(() => {
-          router.push(redirectParam || result.redirectUrl || '/profile');
-        }, 500);
-      }
-    }, 500);
-  };
-
-  // Submit Customer Register
-  const handleRegisterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage('');
-    if (!regName || !regPhone) {
-      setErrorMessage('يرجى كتابة الاسم ورقم الهاتف على الأقل.');
+    if (!regName || !regPhone || !regPassword) {
+      setErrorMessage('يرجى كتابة الاسم ورقم الهاتف وكلمة المرور.');
       return;
     }
 
     setIsLoading(true);
 
-    setTimeout(async () => {
-      const result = authEngine.registerCustomer({
-        name: regName,
-        phone: regPhone,
-        email: regEmail,
-        password: regPassword || '1234',
-      });
+    const result = await registerMerchantAction({
+      name: regName,
+      phone: regPhone,
+      password: regPassword,
+      country: regCountry,
+      city: regCity
+    });
 
-      setIsLoading(false);
+    setIsLoading(false);
 
-      if (!result.success) {
-        setErrorMessage(result.error || 'حدث خطأ أثناء إنشاء الحساب.');
-      } else {
-        setSuccessMessage('تم إنشاء حساب العميل بنجاح! جاري توجيهك...');
-        if (result.session) {
-          await setAuthCookieAction(result.session.token, result.session.user.id, result.session.user.role, result.session.user.storeId);
-        }
-        setTimeout(() => {
-          router.push(redirectParam || result.redirectUrl || '/profile');
-        }, 500);
+    if (!result.success) {
+      setErrorMessage(result.error || 'حدث خطأ أثناء إنشاء الحساب.');
+    } else {
+      setSuccessMessage('تم إنشاء حسابك ومتجرك بنجاح! جاري توجيهك...');
+      if (result.userId && result.role) {
+        await setAuthCookieAction('temp-token', result.userId, result.role, result.storeId);
       }
-    }, 500);
+      setTimeout(() => {
+        router.push(redirectParam || (result.slug ? `/merchant/${result.slug}` : '/profile'));
+      }, 500);
+    }
   };
 
   return (
@@ -220,22 +163,6 @@ function LoginFormContent() {
         {/* Card Frame */}
         <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-2xl text-right space-y-5">
           
-          {/* Top Google Sign-In Highlight */}
-          <div className="space-y-2 flex flex-col items-center">
-            <div id="google-signin-button" className="w-full flex justify-center"></div>
-            {(!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) && (
-              <p className="text-[10px] text-amber-500 text-center font-bold">
-                * عذراً، يجب إضافة (Google Client ID) في المتغيرات ليعمل تسجيل الدخول الفعلي.
-              </p>
-            )}
-            <div className="relative flex items-center justify-center pt-2">
-              <div className="border-t border-slate-200 dark:border-slate-700 w-full" />
-              <span className="bg-white dark:bg-slate-900 px-3 text-[11px] font-bold text-slate-400 shrink-0">
-                أو الدخول بالبريد / الهاتف
-              </span>
-              <div className="border-t border-slate-200 dark:border-slate-700 w-full" />
-            </div>
-          </div>
 
           {/* Mode Switcher */}
           <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs font-bold">
@@ -368,6 +295,30 @@ function LoginFormContent() {
                     onChange={(e) => setRegPhone(e.target.value)}
                     className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6]"
                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                  كلمة المرور <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    placeholder="••••••••"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    className="w-full pr-10 pl-10 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6] font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute left-3.5 top-3.5 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 

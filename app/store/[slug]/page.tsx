@@ -9,15 +9,18 @@ import {
   MapPin, Clock, ShieldCheck, X, Plus, Minus, Send, 
   Wallet, Image as ImageIcon, QrCode, ExternalLink, Flame, 
   Truck, RefreshCw, Star, Tag, Ticket, Cpu, Zap, Award, Coffee, Heart,
-  Facebook, Instagram, Twitter, Youtube, Linkedin, MessageCircle, Mail
+  Facebook, Instagram, Twitter, Youtube, Linkedin, MessageCircle, Mail, User, Settings
 } from 'lucide-react';
 import { Store, Product, ProductVariant, OrderItem, CurrencyCode, PaymentMethodType, ThemeConfig } from '@/lib/types';
 import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
-import { createOrderAction, captureAbandonedCartAction } from '@/app/actions/order';
+import { createOrderAction, captureAbandonedCartAction, getCustomerOrdersAction } from '@/app/actions/order';
 import { validateCouponAction } from '@/app/actions/coupon';
+import { getCurrentCustomerAction, logoutCustomerAction } from '@/app/actions/customer-auth';
+import CustomerAuthModal from '@/components/CustomerAuthModal';
 import { formatCurrency, convertCurrency, DEFAULT_CURRENCIES } from '@/lib/currency-engine';
 import { generateWhatsAppOrderMessage } from '@/lib/ai-generator';
 import { THEME_PRESETS } from '@/lib/theme-presets';
+import toast from 'react-hot-toast';
 
 export default function CustomerStorefrontPage() {
   const params = useParams();
@@ -29,6 +32,10 @@ export default function CustomerStorefrontPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  // Customer Auth State
+  const [currentCustomer, setCurrentCustomer] = useState<any>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -51,6 +58,7 @@ export default function CustomerStorefrontPage() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
@@ -76,9 +84,28 @@ export default function CustomerStorefrontPage() {
           const activeAcc = s.paymentAccounts.find((a: any) => a.isActive);
           if (activeAcc) setSelectedPayment(activeAcc.type);
         }
+        if (s.baseCurrency) {
+          setActiveCurrency(s.baseCurrency as CurrencyCode);
+        }
 
         const prods = await getProductsByStoreAction(s.id);
         setProducts(prods as any);
+      }
+      
+      const customer = await getCurrentCustomerAction();
+      if (customer && customer.storeId === s?.id) {
+        setCurrentCustomer(customer);
+        // Pre-fill checkout fields if available
+        setCustomerName(customer.name || '');
+        setCustomerPhone(customer.phone || '');
+        setCustomerEmail(customer.email || '');
+        
+        // Try to fetch last order to get city and address
+        const orders = await getCustomerOrdersAction(s.id, customer.customerId, 'id');
+        if (orders && orders.length > 0) {
+          setCity(orders[0].city || s?.city || '');
+          setAddress(orders[0].address || '');
+        }
       }
     }
     loadStorefront();
@@ -189,7 +216,9 @@ export default function CustomerStorefrontPage() {
     }
 
     setSelectedProduct(null);
-    setIsCartOpen(true);
+    toast.success('تم إضافة المنتج إلى السلة بنجاح', {
+      icon: '🛒',
+    });
   };
 
   const handleUpdateCartQuantity = (index: number, delta: number) => {
@@ -249,7 +278,20 @@ export default function CustomerStorefrontPage() {
   // Checkout submission
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName || !customerPhone || cart.length === 0) return;
+    if (cart.length === 0) {
+      alert('السلة فارغة!');
+      return;
+    }
+    
+    const finalName = currentCustomer ? (currentCustomer.name || customerName) : customerName;
+    const finalPhone = currentCustomer ? (currentCustomer.phone || customerPhone) : customerPhone;
+    const finalEmail = currentCustomer ? (currentCustomer.email || customerEmail) : customerEmail;
+
+    // We only require Name and Phone
+    if (!finalName || !finalPhone) {
+      alert('الرجاء التأكد من إدخال الاسم ورقم الهاتف.');
+      return;
+    }
 
     setIsSubmittingOrder(true);
 
@@ -260,8 +302,10 @@ export default function CustomerStorefrontPage() {
       id: orderId,
       orderNumber,
       storeId: store.id,
-      customerName,
-      customerPhone,
+      customerId: currentCustomer?.customerId || null,
+      customerName: finalName,
+      customerPhone: finalPhone,
+      customerEmail: finalEmail,
       city: city || store.city,
       address: deliveryType === 'pickup' ? 'استلام من الفرع' : address,
       deliveryType,
@@ -284,8 +328,9 @@ export default function CustomerStorefrontPage() {
       // Register or update customer in CRM
       import('@/lib/auth-engine').then(({ authEngine }) => {
         const custRes = authEngine.registerCustomer({
-          name: customerName,
-          phone: customerPhone,
+          name: finalName,
+          phone: finalPhone,
+          email: finalEmail,
           storeId: store.id,
           storeSlug: store.slug,
           storeName: store.name,
@@ -298,7 +343,6 @@ export default function CustomerStorefrontPage() {
           });
         }
       });
-
       // Prepare items list for WhatsApp formatting
       const formattedItems = cart.map((i) => ({
         name: i.variantName ? `${i.productName} (${i.variantName})` : i.productName,
@@ -309,32 +353,11 @@ export default function CustomerStorefrontPage() {
       const activeAccount = store.paymentAccounts.find(a => a.type === selectedPayment);
       const paymentName = activeAccount?.name || selectedPayment;
 
-      const waMessage = generateWhatsAppOrderMessage({
-        storeName: store.name,
-        orderNumber: newOrder?.orderNumber || 'Unknown',
-        customerName,
-        items: formattedItems,
-        totalFormatted: formatCurrency(cartTotalConverted, activeCurrency),
-        discountFormatted: discountConverted > 0 ? formatCurrency(discountConverted, activeCurrency) : undefined,
-        paymentMethodName: paymentName,
-        city: city || store.city,
-        address: deliveryType === 'pickup' ? 'استلام من المحل' : address,
-      });
-
       setCart([]);
       setIsCheckoutOpen(false);
       setIsSubmittingOrder(false);
 
-      const targetPhone = store.whatsapp || store.phone.replace(/[^0-9]/g, '');
-      if (targetPhone) {
-        // Push first so history is correct, then redirect directly
-        router.push(`/store/${store.slug}/track/${newOrder?.id}`);
-        setTimeout(() => {
-          window.location.href = `https://wa.me/${targetPhone}?text=${waMessage}`;
-        }, 100);
-      } else {
-        router.push(`/store/${store.slug}/track/${newOrder?.id}`);
-      }
+      router.push(`/store/${store.slug}/track/${newOrder?.id}`);
     } else {
       setIsSubmittingOrder(false);
       alert('حدث خطأ أثناء إنشاء الطلب. حاول مرة أخرى.');
@@ -450,23 +473,47 @@ export default function CustomerStorefrontPage() {
             {/* Currency Selector & Cart Trigger */}
             <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               
-              {/* Currency Selector */}
-              <select
-                value={activeCurrency}
-                onChange={(e) => setActiveCurrency(e.target.value as CurrencyCode)}
-                className={`px-2 py-1 sm:px-3 sm:py-2 text-[11px] sm:text-xs font-bold outline-none cursor-pointer ${
-                  presetId === 'tech-modern'
-                    ? 'bg-slate-800 border-slate-700 text-cyan-400 font-mono rounded-xl'
-                    : presetId === 'minimal-clean'
-                    ? 'bg-white border-2 border-black text-black rounded-none font-bold'
-                    : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl'
-                }`}
-              >
-                <option value="YER_ADEN">ر.ي (عدن) 🇾🇪</option>
-                <option value="YER_SANAA">ر.ي (صنعاء) 🇾🇪</option>
-                <option value="SAR">ر.س (سعودي) 🇸🇦</option>
-                <option value="USD">USD ($) 🇺🇸</option>
-              </select>
+              {/* Customer Account Button */}
+              {currentCustomer ? (
+                <div className="relative group">
+                  <button className="flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-3 sm:py-2 text-[11px] sm:text-xs font-bold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                    <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-600 dark:text-brand-400" />
+                    <span className="hidden sm:inline max-w-[80px] truncate">{currentCustomer.name}</span>
+                    <ChevronDown className="w-3 h-3 opacity-50" />
+                  </button>
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col overflow-hidden z-50">
+                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+                      <p className="text-sm font-bold truncate">{currentCustomer.name}</p>
+                      <p className="text-xs text-slate-500 truncate mt-0.5" dir="ltr">{currentCustomer.phone}</p>
+                    </div>
+                    <Link href={`/store/${store.slug}/account?tab=purchases`} className="px-4 py-2.5 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 text-right flex items-center justify-end gap-2">
+                      <span>مشترياتك</span>
+                      <ShoppingBag className="w-3.5 h-3.5 text-slate-400" />
+                    </Link>
+                    <Link href={`/store/${store.slug}/account?tab=settings`} className="px-4 py-2.5 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 text-right flex items-center justify-end gap-2 border-b border-slate-100 dark:border-slate-700">
+                      <span>إعدادات الحساب</span>
+                      <Settings className="w-3.5 h-3.5 text-slate-400" />
+                    </Link>
+                    <button 
+                      onClick={async () => {
+                        await logoutCustomerAction();
+                        setCurrentCustomer(null);
+                      }}
+                      className="px-4 py-3 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 text-red-600 text-right border-t border-slate-100 dark:border-slate-700"
+                    >
+                      تسجيل خروج
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full transition-colors flex items-center gap-1.5"
+                >
+                  <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">دخول</span>
+                </button>
+              )}
 
               {/* Cart Drawer Trigger Button */}
               <button
@@ -1289,35 +1336,43 @@ export default function CustomerStorefrontPage() {
                   1. معلومات المستلم والتوصيل:
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                      الاسم الكامل <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="مثال: سارة محمد"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
-                    />
-                  </div>
+                {(!currentCustomer || !currentCustomer.name || !currentCustomer.phone) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {(!currentCustomer || !currentCustomer.name) && (
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                          الاسم الكامل <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="مثال: سارة محمد"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                        />
+                      </div>
+                    )}
 
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                      رقم الواتساب / الهاتف <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="770 000 000"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none font-mono"
-                    />
+                    {(!currentCustomer || !currentCustomer.phone) && (
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                          رقم الواتساب / الهاتف <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="tel"
+                          required
+                          placeholder="770 000 000"
+                          value={customerPhone}
+                          onChange={(e) => setCustomerPhone(e.target.value)}
+                          className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none font-mono"
+                        />
+                      </div>
+                    )}
                   </div>
-                </div>
+                )}
+                
+
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
@@ -1512,7 +1567,7 @@ export default function CustomerStorefrontPage() {
                 className="w-full py-3.5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 active:scale-95"
               >
                 <Send className="w-4 h-4" />
-                <span>{isSubmittingOrder ? 'جاري تأكيد الطلب...' : 'تأكيد الطلب وإرسال إشعار WhatsApp فوراً ✨'}</span>
+                <span>{isSubmittingOrder ? 'جاري تأكيد الطلب...' : 'تأكيد الطلب'}</span>
               </button>
 
             </form>
@@ -1622,6 +1677,27 @@ export default function CustomerStorefrontPage() {
           <img src="/seen-horizontal-transparent.png" alt="SEEN" className="h-6 w-auto object-contain opacity-80 group-hover:opacity-100 transition-opacity" />
         </a>
       </footer>
+
+      {/* Customer Auth Modal */}
+      <CustomerAuthModal
+        storeId={store.id}
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={async () => {
+          setIsAuthModalOpen(false);
+          const customer = await getCurrentCustomerAction();
+          if (customer) {
+            setCurrentCustomer(customer);
+            setCustomerName(customer.name || '');
+            setCustomerPhone(customer.phone || '');
+            const orders = await getCustomerOrdersAction(store.id, customer.customerId, 'id');
+            if (orders && orders.length > 0) {
+              setCity(orders[0].city || store.city || '');
+              setAddress(orders[0].address || '');
+            }
+          }
+        }}
+      />
 
     </div>
   );

@@ -119,7 +119,7 @@ export const StoreWizardModal: React.FC<StoreWizardModalProps> = ({ isOpen, onCl
                 </label>
                 <div className="relative flex items-center" dir="ltr">
                   <span className="px-3 py-2.5 text-xs text-slate-500 bg-slate-100 dark:bg-slate-800/60 border border-r-0 border-slate-200 dark:border-slate-700 rounded-l-xl">
-                    mazn.app/store/
+                    seen.app/store/
                   </span>
                   <input
                     type="text"

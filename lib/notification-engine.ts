@@ -60,7 +60,8 @@ export const EmailTemplates = {
     storeName: string, 
     orderId: string, 
     total: number, 
-    currency: string
+    currency: string,
+    trackingLink: string
   ) => {
     return `
       <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
@@ -71,6 +72,12 @@ export const EmailTemplates = {
         <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin-top: 0; color: #334155;">ملخص الطلب:</h3>
           <p style="font-size: 18px; font-weight: bold; color: #0f172a;">الإجمالي: ${total.toLocaleString()} ${currency}</p>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${trackingLink}" style="background: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+            عرض وتتبع حالة الطلب
+          </a>
         </div>
         
         <p>سيقوم فريق المتجر بالتواصل معك قريباً لتأكيد تفاصيل الشحن والتسليم.</p>
@@ -155,3 +162,30 @@ export const EmailTemplates = {
     `;
   }
 };
+
+// ---------------------------------------------------------------------------
+// WhatsApp Messaging (Mock for Development)
+// ---------------------------------------------------------------------------
+
+export interface WhatsAppPayload {
+  to: string;
+  message: string;
+}
+
+/**
+ * Sends a WhatsApp message.
+ * Currently mocked for development until an API provider (e.g. UltraMsg) is connected.
+ */
+export async function sendWhatsAppMessage(payload: WhatsAppPayload) {
+  // In a real scenario, this would call the API of your WhatsApp provider.
+  // Example for UltraMsg:
+  // await fetch('https://api.ultramsg.com/instanceXXX/messages/chat', { ... })
+  
+  console.log('====================================================');
+  console.log(`[WhatsApp Engine - MOCKED]`);
+  console.log(`To: ${payload.to}`);
+  console.log(`Message:\n${payload.message}`);
+  console.log('====================================================');
+  
+  return { success: true, simulated: true };
+}

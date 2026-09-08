@@ -42,3 +42,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const storeId = searchParams.get('storeId');
+
+    if (!storeId) {
+      return NextResponse.json({ error: 'Missing storeId' }, { status: 400 });
+    }
+
+    if (!activeVisitors[storeId]) {
+      return NextResponse.json({ success: true, activeVisitorsNow: 0 });
+    }
+
+    const now = Date.now();
+    let currentActive = 0;
+
+    for (const [vId, timestamp] of Object.entries(activeVisitors[storeId])) {
+      if (now - timestamp > 10000) {
+        delete activeVisitors[storeId][vId];
+      } else {
+        currentActive++;
+      }
+    }
+
+    return NextResponse.json({ success: true, activeVisitorsNow: currentActive });
+  } catch (error) {
+    console.error('Error in ping API GET:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}

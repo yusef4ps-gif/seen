@@ -66,7 +66,7 @@ export const DEFAULT_THEME_SECTIONS: ThemeSection[] = [
     settings: {
       bannerTitle: 'خصم خاص 20% لفترة محدودة!',
       bannerSubtitle: 'استخدم كود الخصم عند إتمام الطلب واحصل على توفير فوري',
-      discountCode: 'MAZN20',
+      discountCode: 'SEEN20',
       bannerImageUrl: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&auto=format&fit=crop&q=80',
       ctaText: 'تسوق العرض الآن',
     },

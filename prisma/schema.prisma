@@ -42,7 +42,9 @@ model Store {
 
   products          Product[]
   orders            Order[]
+  customers         Customer[]
   abandonedCarts    AbandonedCart[]
+  returns           OrderReturn[]
   
   ownerId           String?
   owner             User?     @relation(fields: [ownerId], references: [id], onDelete: SetNull)
@@ -124,7 +126,7 @@ model ProductVariant {
 
 model Order {
   id                 String   @id @default(cuid())
-  orderNumber        String   @unique
+  orderNumber        String
   storeId            String
   customerName       String
   customerPhone      String
@@ -140,12 +142,56 @@ model Order {
   paymentMethod      String   @default("cod")
   paymentProofUrl    String?  @default("")
   paymentProofStatus String?  @default("unverified") // unverified, verified, rejected
-  status             String   @default("new")        // pending_payment, new, processing, shipped, delivered, cancelled
+  status             String   @default("new")        // pending_payment, new, processing, shipped, delivered, cancelled, returned, partially_returned
   notes              String?  @default("")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   store              Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customerId         String?
+  customer           Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  returns            OrderReturn[]
+
+  @@unique([storeId, orderNumber])
+}
+
+model OrderReturn {
+  id             String   @id @default(cuid())
+  orderId        String
+  storeId        String
+  refundAmount   Float
+  reason         String?
+  items          String   // JSON containing returned items and quantities
+  status         String   @default("pending_inspection") // pending_inspection, restocked, damaged
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model Customer {
+  id            String   @id @default(cuid())
+  storeId       String
+  name          String
+  email         String?
+  phone         String?
+  password      String?  // Can be null if signed in via Google
+  authProvider  String   @default("credentials") // credentials, google
+  avatarUrl     String?  @db.Text
+  totalSpent    Float    @default(0)
+  ordersCount   Int      @default(0)
+  lastLoginAt   DateTime @default(now())
+  resetToken    String?
+  resetTokenExpiry DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orders        Order[]
+
+  @@unique([storeId, email])
+  @@unique([storeId, phone])
 }
 
 model AbandonedCart {

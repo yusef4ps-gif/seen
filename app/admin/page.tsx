@@ -538,7 +538,65 @@ export default function SuperAdminPage() {
                     </button>
                   </div>
 
-                  <div className="space-y-4 border-b border-slate-100 dark:border-slateDark-800 pb-6">
+                  <div className="space-y-4 border-b border-slate-100 dark:border-slateDark-800 pb-6 mt-6">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white border-r-2 border-brand-500 pr-3">القسم: مراحل إنشاء المتجر</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      {/* Step 1 */}
+                      <div className="space-y-3 p-4 border border-brand-200 dark:border-brand-900/50 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30">
+                        <div className="text-[11px] font-black text-brand-600">الخطوة 1</div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500">العنوان</label>
+                          <input type="text" value={siteTexts['step1_title'] || 'وثّق حسابك'} onChange={(e) => setSiteTexts({ ...siteTexts, step1_title: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500">الوصف</label>
+                          <textarea rows={2} value={siteTexts['step1_desc'] || 'قم بتسجيل الدخول بأمان عبر حساب Google الخاص بك بثوانٍ معدودة أو أنشئ حساباً جديداً.'} onChange={(e) => setSiteTexts({ ...siteTexts, step1_desc: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
+                        </div>
+                      </div>
+
+                      {/* Step 2 */}
+                      <div className="space-y-3 p-4 border border-brand-200 dark:border-brand-900/50 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30">
+                        <div className="text-[11px] font-black text-brand-600">الخطوة 2</div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500">العنوان</label>
+                          <input type="text" value={siteTexts['step2_title'] || 'تفاصيل المتجر'} onChange={(e) => setSiteTexts({ ...siteTexts, step2_title: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500">الوصف</label>
+                          <textarea rows={2} value={siteTexts['step2_desc'] || 'اختر اسم متجرك ورابطه الفريد، وحدد نشاطك التجاري ورقم الواتساب للطلبات.'} onChange={(e) => setSiteTexts({ ...siteTexts, step2_desc: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
+                        </div>
+                      </div>
+
+                      {/* Step 3 */}
+                      <div className="space-y-3 p-4 border border-brand-200 dark:border-brand-900/50 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30">
+                        <div className="text-[11px] font-black text-brand-600">الخطوة 3</div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500">العنوان</label>
+                          <input type="text" value={siteTexts['step3_title'] || 'اختر القالب والهوية'} onChange={(e) => setSiteTexts({ ...siteTexts, step3_title: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500">الوصف</label>
+                          <textarea rows={2} value={siteTexts['step3_desc'] || 'استعرض القوالب الجاهزة، وارفع شعارك الخاص ليتناسب تصميم المتجر مع هويتك فوراً.'} onChange={(e) => setSiteTexts({ ...siteTexts, step3_desc: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
+                        </div>
+                      </div>
+
+                      {/* Step 4 */}
+                      <div className="space-y-3 p-4 border border-brand-200 dark:border-brand-900/50 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30">
+                        <div className="text-[11px] font-black text-brand-600">الخطوة 4</div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500">العنوان</label>
+                          <input type="text" value={siteTexts['step4_title'] || 'جاهز للانطلاق!'} onChange={(e) => setSiteTexts({ ...siteTexts, step4_title: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500">الوصف</label>
+                          <textarea rows={2} value={siteTexts['step4_desc'] || 'اكتمل الإعداد! سيتم توجيهك للوحة تحكم متجرك لإضافة منتجاتك واستقبال الطلبات.'} onChange={(e) => setSiteTexts({ ...siteTexts, step4_desc: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 border-b border-slate-100 dark:border-slateDark-800 pb-6 mt-6">
                     <h3 className="text-sm font-black text-slate-900 dark:text-white border-r-2 border-brand-500 pr-3">القسم: خطط الأسعار والعملات (Pricing & Currencies)</h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50/50 dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
