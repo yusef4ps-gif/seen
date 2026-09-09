@@ -28,7 +28,7 @@ export default function ActiveVisitorsCounter({ storeId }: Props) {
     };
 
     fetchVisitors();
-    const interval = setInterval(fetchVisitors, 5000);
+    const interval = setInterval(fetchVisitors, 10000);
     return () => clearInterval(interval);
   }, [storeId]);
 

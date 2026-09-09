@@ -114,7 +114,12 @@ export default function CustomerStorefrontPage() {
   // Visitor Tracking Ping
   useEffect(() => {
     if (!slug) return;
-    const visitorId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
+    let visitorId = sessionStorage.getItem(`seen_visitor_${slug}`);
+    if (!visitorId) {
+      visitorId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      sessionStorage.setItem(`seen_visitor_${slug}`, visitorId);
+    }
     
     const ping = () => {
       fetch('/api/ping', {
@@ -160,7 +165,9 @@ export default function CustomerStorefrontPage() {
   }
 
   // Active theme configuration
-  const theme: ThemeConfig = store.themeConfig || THEME_PRESETS[0].config;
+  const parsedThemeConfig = store.themeConfig;
+  const isThemeEmpty = !parsedThemeConfig || Object.keys(parsedThemeConfig).length === 0;
+  const theme: ThemeConfig = isThemeEmpty ? THEME_PRESETS[0].config : parsedThemeConfig;
   const presetId = theme.presetId || 'fashion-luxury';
   const primaryColor = theme.colors.primary || store.primaryColor || '#0d9488';
   const secondaryColor = theme.colors.secondary || '#d97706';
@@ -791,7 +798,7 @@ export default function CustomerStorefrontPage() {
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-6">
                       {filteredProducts.map((prod) => {
-                        const isLow = prod.stock <= (prod.lowStockAlert || 5) && prod.stock > 0;
+                        const isLow = prod.stock <= 3 && prod.stock > 0;
                         const isOut = prod.stock === 0;
 
                         // 1. Tech Cyber Product Card
@@ -953,7 +960,6 @@ export default function CustomerStorefrontPage() {
                               <div>
                                 <div className="flex justify-between items-center text-[9px] sm:text-[10px] text-slate-400 font-medium mb-0.5">
                                   <span>{prod.category}</span>
-                                  <span className="text-emerald-600 font-bold">المتوفر: {prod.stock}</span>
                                 </div>
                                 <h3 
                                   onClick={() => {

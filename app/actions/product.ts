@@ -55,32 +55,41 @@ export async function updateProductAction(id: string, data: any) {
       });
     }
 
+    const updateData: any = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.price !== undefined) updateData.price = data.price;
+    if (data.comparePrice !== undefined || data.compareAtPrice !== undefined) {
+      updateData.comparePrice = data.comparePrice || data.compareAtPrice;
+    }
+    if (data.stock !== undefined) updateData.stock = data.stock;
+    if (data.lowStockAlert !== undefined) updateData.lowStockAlert = data.lowStockAlert;
+    if (data.images !== undefined) updateData.images = JSON.stringify(data.images);
+    if (data.category !== undefined) updateData.category = data.category;
+    if (data.tags !== undefined) updateData.tags = JSON.stringify(data.tags);
+    if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured;
+
+    if (data.variants) {
+      updateData.variants = {
+        create: data.variants.map((v: any) => ({
+          name: v.name,
+          attributes: JSON.stringify(v.attributes || {}),
+          priceOverride: v.priceOverride,
+          stock: v.stock,
+          sku: v.sku
+        }))
+      };
+    }
+
     const product = await prisma.product.update({
       where: { id },
-      data: {
-        name: data.name,
-        description: data.description,
-        price: data.price,
-        comparePrice: data.comparePrice || data.compareAtPrice,
-        stock: data.stock,
-        lowStockAlert: data.lowStockAlert,
-        images: JSON.stringify(data.images || []),
-        category: data.category,
-        tags: JSON.stringify(data.tags || []),
-        isFeatured: data.isFeatured,
-        ...(data.variants && {
-          variants: {
-            create: data.variants.map((v: any) => ({
-              name: v.name,
-              attributes: JSON.stringify(v.attributes || {}),
-              priceOverride: v.priceOverride,
-              stock: v.stock,
-              sku: v.sku
-            }))
-          }
-        })
-      }
+      data: updateData
     });
+    
+    // Revalidate paths so the UI reflects changes
+    revalidatePath(`/merchant/[slug]/inventory`, 'page');
+    revalidatePath(`/merchant/[slug]/products`, 'page');
+    revalidatePath(`/store/[slug]`, 'page');
     return { success: true, product };
   } catch (error) {
     console.error('Error updating product:', error);

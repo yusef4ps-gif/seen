@@ -36,7 +36,7 @@ export default function ThemeBuilderPage() {
         const s = await getStoreBySlugAction(slug);
         if (s) {
           setStore(s as any);
-          if (s.themeConfig) {
+          if (s.themeConfig && Object.keys(s.themeConfig).length > 0) {
             setThemeConfig(s.themeConfig as any);
           } else {
             const matched = THEME_PRESETS.find(p => p.id === (s.category.includes('إلكترونيات') ? 'tech-modern' : s.category.includes('بن') ? 'yemen-roastery' : 'fashion-luxury'));

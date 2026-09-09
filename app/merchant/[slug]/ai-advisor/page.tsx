@@ -2,13 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { 
-  Bot, Sparkles, Send, Copy, Check, MessageSquare, Edit2, 
-  Lightbulb, TrendingUp, Gift, Zap, Layers, RefreshCw
+import { Bot, Sparkles, Send, Copy, Check, MessageSquare, Edit2, 
+  Lightbulb, TrendingUp, Gift, Zap, Layers, RefreshCw, Image as ImageIcon, UploadCloud
 } from 'lucide-react';
 import { Store } from '@/lib/types';
 import { getStoreBySlugAction } from '@/app/actions/store';
-import { generateCampaignAction } from '@/app/actions/ai';
+import { generateCampaignAction, generateAdDesignAction } from '@/app/actions/ai';
 import { Pin, Trash } from 'lucide-react';
 
 export default function MerchantAIAdvisorPage() {
@@ -22,6 +21,12 @@ export default function MerchantAIAdvisorPage() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [editableTemplates, setEditableTemplates] = useState<Record<number, string>>({});
 
+  // Image Ad Generator State
+  const [adImageGoal, setAdImageGoal] = useState('');
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedMimeType, setUploadedMimeType] = useState<string | null>(null);
+  const [isGeneratingAd, setIsGeneratingAd] = useState(false);
+  const [generatedAd, setGeneratedAd] = useState<any | null>(null);
   
   const [customCampaigns, setCustomCampaigns] = useState<{title: string, text: string, date: string, isEditing?: boolean}[]>([]);
   const [savedStrategies, setSavedStrategies] = useState<any[]>([]);
@@ -110,6 +115,35 @@ export default function MerchantAIAdvisorPage() {
     setTimeout(() => setCopiedIndex(null), 2500);
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setUploadedImage(event.target?.result as string);
+        setUploadedMimeType(file.type);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleGenerateAd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adImageGoal || !store) return;
+    
+    setIsGeneratingAd(true);
+    const res = await generateAdDesignAction(adImageGoal, store.name, uploadedImage || undefined, uploadedMimeType || undefined);
+    
+    if (res.success && res.data) {
+      setGeneratedAd(res.data);
+    } else if (res.error === 'MISSING_KEY') {
+      alert('الرجاء إضافة مفتاح GEMINI_API_KEY في ملف .env');
+    } else {
+      alert('حدث خطأ: ' + res.error);
+    }
+    setIsGeneratingAd(false);
+  };
+
   return (
     <div className="space-y-8 animate-fadeIn">
       
@@ -158,11 +192,121 @@ export default function MerchantAIAdvisorPage() {
             <span>{isGenerating ? 'جاري التوليد...' : 'توليد الحملة فوراً'}</span>
           </button>
         </form>
-
-        
       </div>
 
-      
+      {/* New Feature: AI Image Ad Generator */}
+      <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <ImageIcon className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              تصميم صورة إعلانية بالذكاء الاصطناعي (جديد) ✨
+            </h3>
+            <p className="text-xs text-slate-500">ارفع صورة للمنتج (اختياري) واكتب الوصف، وسيقوم الذكاء الاصطناعي بإنشاء ملصق إعلاني مذهل!</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-6">
+          <form onSubmit={handleGenerateAd} className="flex-1 space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">وصف الحملة / المنتج</label>
+              <input
+                type="text"
+                required
+                placeholder="مثال: ايفون 17 برو ماكس 256 جيجا مستخدم شبه جديد..."
+                value={adImageGoal}
+                onChange={(e) => setAdImageGoal(e.target.value)}
+                className="w-full px-4 py-3 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">صورة المنتج (اختياري)</label>
+              <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                {uploadedImage ? (
+                  <img src={uploadedImage} alt="Uploaded" className="h-24 object-contain rounded-lg" />
+                ) : (
+                  <div className="text-center">
+                    <UploadCloud className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <span className="text-xs text-slate-500 font-medium">اضغط لرفع صورة المنتج</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isGeneratingAd}
+              className="w-full px-6 py-3 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
+            >
+              <ImageIcon className="w-4 h-4" />
+              <span>{isGeneratingAd ? 'جاري التصميم...' : 'إنشاء ملصق إعلاني'}</span>
+            </button>
+          </form>
+
+          {/* Ad Canvas Display */}
+          <div className="flex-1 border border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 min-h-[300px] overflow-hidden">
+            {isGeneratingAd ? (
+              <div className="text-center space-y-3">
+                <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-xs font-bold text-slate-500 animate-pulse">جاري التحليل والتصميم...</p>
+              </div>
+            ) : generatedAd ? (
+              <div 
+                className={`relative w-full max-w-sm aspect-[4/5] rounded-2xl shadow-2xl overflow-hidden flex flex-col justify-end p-6 transition-all transform hover:scale-[1.02] ${
+                  generatedAd.colorTheme === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'
+                }`}
+                style={uploadedImage ? {
+                  backgroundImage: `url(${uploadedImage})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                } : {
+                  background: 'linear-gradient(135deg, #4f46e5, #ec4899)'
+                }}
+              >
+                {/* Gradient overlay to ensure text is readable */}
+                <div className={`absolute inset-0 ${
+                  generatedAd.colorTheme === 'dark' 
+                    ? 'bg-gradient-to-t from-black/90 via-black/40 to-transparent' 
+                    : 'bg-gradient-to-t from-white/90 via-white/40 to-transparent'
+                }`} />
+
+                {/* Badge */}
+                <div className="absolute top-4 right-4 z-10">
+                  <span className="px-3 py-1.5 rounded-full bg-red-500 text-white text-[10px] font-black shadow-lg uppercase tracking-wider">
+                    {generatedAd.badge}
+                  </span>
+                </div>
+
+                {/* Texts */}
+                <div className="relative z-10 text-center space-y-2 mt-auto">
+                  <h2 className={`text-3xl font-black drop-shadow-md leading-tight ${
+                    generatedAd.colorTheme === 'dark' ? 'text-white' : 'text-slate-900'
+                  }`}>
+                    {generatedAd.headline}
+                  </h2>
+                  <p className={`text-sm font-bold opacity-90 drop-shadow-sm ${
+                    generatedAd.colorTheme === 'dark' ? 'text-slate-200' : 'text-slate-700'
+                  }`}>
+                    {generatedAd.subheadline}
+                  </p>
+                  <button className="mt-4 w-full py-3 rounded-xl bg-brand-600 text-white text-xs font-black shadow-lg">
+                    اطلب الآن
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-slate-400">
+                <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p className="text-xs">سيتم عرض التصميم هنا</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       {/* Custom Generated Campaigns */}
       {customCampaigns.length > 0 && (
         <div className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-800">

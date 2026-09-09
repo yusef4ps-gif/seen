@@ -12,6 +12,7 @@ import { generateAIProductDescription } from '@/lib/ai-generator';
 import ImageUploader from '@/components/ImageUploader';
 import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
 import { createProductAction, updateProductAction, deleteProductAction } from '@/app/actions/product';
+import { useStoreData, useStoreProducts } from '@/lib/swr-hooks';
 import { bulkCreateProductsAction } from '@/app/actions/importProducts';
 import Papa from 'papaparse';
 import { logActivityAction } from '@/app/actions/activity';
@@ -22,8 +23,8 @@ export default function MerchantProductsPage() {
   const searchParams = useSearchParams();
   const slug = params.slug as string;
 
-  const [store, setStore] = useState<Store | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
+  const { store } = useStoreData(slug);
+  const { products = [], isLoading, mutate } = useStoreProducts(store?.id);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
@@ -149,26 +150,13 @@ export default function MerchantProductsPage() {
   };
 
   useEffect(() => {
-    async function init() {
-      if (slug) {
-        const s = await getStoreBySlugAction(slug);
-        if (s) {
-          setStore(s as any);
-          await loadProducts(s.id);
-        }
-      }
-    }
-    init();
-
     if (searchParams.get('action') === 'new') {
       handleOpenNewModal();
     }
-  }, [slug, searchParams]);
+  }, [searchParams]);
 
   const refreshProducts = async () => {
-    if (store) {
-      await loadProducts(store.id);
-    }
+    mutate();
   };
 
   const handleOpenNewModal = () => {

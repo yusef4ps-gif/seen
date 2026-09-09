@@ -13,8 +13,9 @@ import { storeEngine } from '@/lib/store-engine';
 import { Store, SystemBroadcast } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
 import BrandLogo from '@/components/BrandLogo';
-import { getStoreBySlugAction, getStoresAction } from '@/app/actions/store';
+import { getStoreBySlugAction } from '@/app/actions/store';
 import { getStoreNotificationsAction } from '@/app/actions/notifications';
+import LiveVisitorPill from '@/components/LiveVisitorPill';
 
 import { authEngine } from '@/lib/auth-engine';
 import { User as AuthUser } from '@/lib/types';
@@ -34,11 +35,9 @@ export default function MerchantLayout({
   const [broadcasts, setBroadcasts] = useState<SystemBroadcast[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [allStores, setAllStores] = useState<Store[]>([]);
   
   
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
 
@@ -92,9 +91,7 @@ export default function MerchantLayout({
               const diffTime = Math.abs(now.getTime() - createdAt.getTime());
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
               const maxTrialDays = 14;
-              
               const remaining = maxTrialDays - diffDays;
-              setTrialDaysLeft(remaining);
 
               if (notifsRes.data.storeDetails.planStatus === 'trial') {
                 if (remaining <= 3 && remaining > 0) {
@@ -124,8 +121,6 @@ export default function MerchantLayout({
           }
         }
       }
-      const all = await getStoresAction();
-      setAllStores(all as any);
     }
     
     loadData();
@@ -454,11 +449,7 @@ export default function MerchantLayout({
             </div>
 
             {/* Live Visitors Pill Indicator */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 text-[10px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span className="hidden sm:inline">{store.activeVisitorsNow} متسوق متصل</span>
-              <span className="sm:hidden">{store.activeVisitorsNow} متصل</span>
-            </div>
+            <LiveVisitorPill storeId={store.slug} />
 
             {/* Quick Visit Customer Storefront Link */}
             <Link
@@ -475,48 +466,93 @@ export default function MerchantLayout({
 
         </header>
 
-        {/* Trial Countdown & Subscription Status Banner */}
-        
-        {store.planStatus === 'trial' && trialDaysLeft !== null && (
-          <div className={`mx-3 sm:mx-8 mt-3 p-3 sm:p-3.5 rounded-2xl text-white flex flex-wrap items-center justify-between gap-3 shadow-md ${trialDaysLeft <= 0 ? 'bg-gradient-to-r from-red-900 via-red-800 to-red-600' : 'bg-gradient-to-r from-[#0f2b48] via-[#144b7a] to-[#14b8a6]'}`}>
-            <div className="flex items-center gap-2.5">
-              <span className="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center text-sm shrink-0">
-                {trialDaysLeft <= 0 ? '⚠️' : '🎁'}
-              </span>
-              <div>
-                <div className="text-xs font-black flex items-center gap-2">
-                  <span>
-                    {trialDaysLeft > 0 
-                      ? `أنت حالياً في الفترة التجريبية المجانية (${trialDaysLeft} يوماً متبقية)` 
-                      : 'لقد انتهت الفترة التجريبية المجانية الخاصة بك'}
-                  </span>
-                  {trialDaysLeft > 0 && (
-                    <span className="px-2 py-0.5 rounded-full bg-[#2dd4bf] text-[#0f2b48] text-[10px] font-black">
-                      تجربة مجانية نشطة
+        {/* Unified Subscription Banner */}
+        {(() => {
+          let startDateStr = store.planStartDate;
+          let endDateStr = store.planEndDate;
+          
+          if (!startDateStr) startDateStr = store.createdAt;
+          if (!endDateStr) {
+            const fallbackEnd = new Date(store.createdAt);
+            fallbackEnd.setDate(fallbackEnd.getDate() + 14);
+            endDateStr = fallbackEnd;
+          }
+
+          const startDate = new Date(startDateStr);
+          const endDate = new Date(endDateStr);
+          const now = new Date();
+          
+          const diffMs = endDate.getTime() - now.getTime();
+          const daysLeft = Math.ceil(diffMs / (1000 * 3600 * 24));
+          const isExpired = daysLeft <= 0;
+          const isWarning = daysLeft <= 7 && daysLeft > 0;
+          
+          const planNames: Record<string, string> = {
+            'free': 'الفترة المجانية',
+            'starter': 'باقة الانطلاقة',
+            'pro': 'الباقة الاحترافية',
+            'vip': 'باقة كبار الشخصيات (VIP)'
+          };
+          
+          // Use planTier to display the Arabic name, or fallback
+          let planName = planNames[store.planTier] || 'باقة غير معروفة';
+          if (store.planStatus === 'trial' && store.planTier === 'starter') {
+             planName = 'الفترة المجانية (انطلاقة)';
+          }
+          
+          let bannerBg = 'bg-gradient-to-r from-[#0f2b48] via-[#144b7a] to-[#14b8a6]'; 
+          let icon = '🎁';
+          let statusText = 'اشتراك نشط';
+          let statusColor = 'bg-[#2dd4bf] text-[#0f2b48]';
+          
+          if (isExpired) {
+            bannerBg = 'bg-gradient-to-r from-red-900 via-red-800 to-red-600';
+            icon = '⚠️';
+            statusText = 'الاشتراك منتهي';
+            statusColor = 'bg-red-100 text-red-900 animate-pulse';
+          } else if (isWarning) {
+            bannerBg = 'bg-gradient-to-r from-amber-600 via-amber-500 to-amber-400';
+            icon = '⏳';
+            statusText = 'قارب على الانتهاء';
+            statusColor = 'bg-amber-100 text-amber-900';
+          } else if (store.planStatus === 'trial') {
+             icon = '✨';
+             statusText = 'تجربة مجانية';
+          }
+
+          return (
+            <div className={`mx-3 sm:mx-8 mt-3 p-3 sm:p-3.5 rounded-2xl text-white flex flex-wrap items-center justify-between gap-3 shadow-md transition-all ${bannerBg}`}>
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-sm shrink-0 shadow-sm">
+                  {icon}
+                </span>
+                <div>
+                  <div className="text-xs font-black flex items-center gap-2">
+                    <span>
+                      {isExpired 
+                        ? `لقد انتهى اشتراكك في ${planName}`
+                        : `أنت مشترك في ${planName} (${daysLeft} يوماً متبقية)`}
                     </span>
-                  )}
-                  {trialDaysLeft <= 0 && (
-                    <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-900 text-[10px] font-black animate-pulse">
-                      الاشتراك منتهي
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${statusColor}`}>
+                      {statusText}
                     </span>
-                  )}
-                </div>
-                <div className="text-[11px] text-slate-200">
-                  {trialDaysLeft > 0 
-                    ? `بدأت تجربتك بتاريخ ${new Date(store.createdAt).toLocaleDateString('ar-YE')}، استمتع بكافة الميزات الاحترافية مجاناً.`
-                    : 'يرجى ترقية الباقة لاستعادة وصولك إلى كافة ميزات المتجر وتفعيل استقبال الطلبات.'}
+                  </div>
+                  <div className="text-[11px] text-white/90 mt-0.5 font-medium flex items-center gap-3">
+                    <span>تاريخ الاشتراك: <b className="text-white">{startDate.toLocaleDateString('ar-YE')}</b></span>
+                    <span>تاريخ التجديد: <b className="text-white">{endDate.toLocaleDateString('ar-YE')}</b></span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <Link
-              href={`/merchant/${store.slug}/settings`}
-              className="px-4 py-1.5 rounded-xl bg-white text-[#0f2b48] hover:bg-slate-100 text-xs font-black shadow-sm transition-all"
-            >
-              ترقية واختيار باقة ⚡
-            </Link>
-          </div>
-        )}
+              <Link
+                href={`/merchant/${store.slug}/settings`}
+                className="px-4 py-1.5 rounded-xl bg-white text-slate-900 hover:bg-slate-100 text-xs font-black shadow-sm transition-all"
+              >
+                {isExpired ? 'تجديد الاشتراك ⚡' : 'إدارة الباقة ⚡'}
+              </Link>
+            </div>
+          );
+        })()}
 
 
         {/* Global Broadcast Banner (if any) */}

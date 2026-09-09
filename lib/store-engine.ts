@@ -13,6 +13,7 @@ const STORAGE_KEYS = {
 
 class StoreEngine {
   private isClient: boolean;
+  private isLoaded: boolean = false;
   private stores: Store[] = INITIAL_STORES;
   private products: Product[] = INITIAL_PRODUCTS;
   private orders: Order[] = INITIAL_ORDERS;
@@ -27,6 +28,7 @@ class StoreEngine {
 
   private loadFromStorage() {
     if (!this.isClient) return;
+    if (this.isLoaded) return;
 
     try {
       const storedStores = localStorage.getItem(STORAGE_KEYS.STORES);
@@ -48,6 +50,8 @@ class StoreEngine {
       const storedBroadcasts = localStorage.getItem(STORAGE_KEYS.BROADCASTS);
       if (storedBroadcasts) this.broadcasts = JSON.parse(storedBroadcasts);
       else this.saveToStorage(STORAGE_KEYS.BROADCASTS, this.broadcasts);
+
+      this.isLoaded = true;
     } catch (e) {
       console.error('Error loading store state from localStorage:', e);
     }

@@ -11,13 +11,14 @@ import { Store, Order, OrderStatus } from '@/lib/types';
 import { getStoreBySlugAction, getOrdersByStoreAction } from '@/app/actions/store';
 import { updateOrderStatusAction, verifyPaymentProofAction, createOrderReturnAction } from '@/app/actions/order';
 import { formatCurrency } from '@/lib/currency-engine';
+import { useStoreData, useStoreOrders } from '@/lib/swr-hooks';
 
 export default function MerchantOrdersPage() {
   const params = useParams();
   const slug = params.slug as string;
 
-  const [store, setStore] = useState<Store | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { store } = useStoreData(slug);
+  const { orders = [], isLoading, mutate } = useStoreOrders(store?.id);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -31,43 +32,15 @@ export default function MerchantOrdersPage() {
   const [isReturning, setIsReturning] = useState(false);
   const [printFormat, setPrintFormat] = useState<'80mm' | 'A4'>('80mm');
 
-  const loadOrders = async (storeId: string) => {
-    const ords = await getOrdersByStoreAction(storeId);
-    setOrders(ords as any);
-    if (selectedOrder) {
-      setSelectedOrder((ords.find((o: any) => o.id === selectedOrder.id) as any) || null);
-    }
-  };
-
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-
-    async function init() {
-      if (slug) {
-        const s = await getStoreBySlugAction(slug);
-        if (s) {
-          setStore(s as any);
-          await loadOrders(s.id);
-
-          // Start polling after initial load
-          intervalId = setInterval(async () => {
-            await loadOrders(s.id);
-          }, 5000);
-        }
-      }
+    if (selectedOrder) {
+      const updated = orders.find((o: any) => o.id === selectedOrder.id);
+      if (updated) setSelectedOrder(updated as any);
     }
-
-    init();
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [slug]);
+  }, [orders]);
 
   const refreshOrders = async () => {
-    if (store) {
-      await loadOrders(store.id);
-    }
+    mutate();
   };
 
   const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {

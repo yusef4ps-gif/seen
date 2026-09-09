@@ -90,6 +90,8 @@ export async function createStoreAction(data: any) {
         shippingMethods: DEFAULT_SHIPPING_METHODS,
         planTier: 'free',
         planStatus: 'trial',
+        planStartDate: new Date(),
+        planEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         activeVisitorsNow: 1,
         totalSalesGMV: 0,
         themeConfig: data.themeConfig ? JSON.stringify(data.themeConfig) : "{}",

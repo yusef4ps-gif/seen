@@ -39,6 +39,7 @@ export const INITIAL_USERS: (User & { username?: string })[] = [
 
 class AuthEngine {
   private isClient: boolean;
+  private isLoaded: boolean = false;
   private users: (User & { username?: string })[] = INITIAL_USERS;
   private currentSession: AuthSession | null = null;
 
@@ -49,6 +50,7 @@ class AuthEngine {
 
   private loadFromStorage() {
     if (!this.isClient) return;
+    if (this.isLoaded) return;
 
     try {
       const storedUsers = localStorage.getItem(STORAGE_KEYS.USERS);
@@ -62,6 +64,7 @@ class AuthEngine {
       if (storedSession) {
         this.currentSession = JSON.parse(storedSession);
       }
+      this.isLoaded = true;
     } catch (e) {
       console.error('Error loading auth state:', e);
     }

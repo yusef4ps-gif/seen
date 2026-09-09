@@ -12,41 +12,17 @@ import {
 } from 'lucide-react';
 import { Store, Order, Product } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
-import { getStoreBySlugAction, getOrdersByStoreAction, getProductsByStoreAction } from '@/app/actions/store';
 import ActiveVisitorsCounter from '@/components/ActiveVisitorsCounter';
+import { useStoreData, useStoreOrders, useStoreProducts } from '@/lib/swr-hooks';
 
 export default function MerchantOverviewPage() {
   const params = useParams();
   const slug = params.slug as string;
 
-  const [store, setStore] = useState<Store | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const { store } = useStoreData(slug);
+  const { orders = [] } = useStoreOrders(store?.id);
+  const { products = [] } = useStoreProducts(store?.id);
   const [isOrdersVisible, setIsOrdersVisible] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-    async function loadDashboard() {
-      if (!slug) return;
-      const s = await getStoreBySlugAction(slug);
-      if (s && isMounted) {
-        setStore(s as any);
-        const [ords, prods] = await Promise.all([
-          getOrdersByStoreAction(s.id),
-          getProductsByStoreAction(s.id)
-        ]);
-        if (isMounted) {
-          setOrders(ords as any);
-          setProducts(prods as any);
-        }
-      }
-    }
-    loadDashboard();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [slug]);
 
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'custom' | 'all'>('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });

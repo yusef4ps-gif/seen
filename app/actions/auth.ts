@@ -148,6 +148,8 @@ export async function registerMerchantAction(data: { name: string; phone: string
     // slug must be unique, so we'll generate a random one based on the name or a timestamp
     const baseSlug = data.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'store';
     const slug = `${baseSlug}-${Math.random().toString(36).substr(2, 5)}`;
+    const now = new Date();
+    const planEndDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days trial
     
     const newStore = await prisma.store.create({
       data: {
@@ -156,7 +158,9 @@ export async function registerMerchantAction(data: { name: string; phone: string
         ownerId: newUser.id,
         phone: data.phone,
         city: `${data.country} - ${data.city}`, // Store country/city here to avoid DB migrations
-        address: `${data.country}, ${data.city}`
+        address: `${data.country}, ${data.city}`,
+        planStartDate: now,
+        planEndDate: planEndDate
       }
     });
 

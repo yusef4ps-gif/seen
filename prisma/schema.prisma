@@ -28,8 +28,8 @@ model Store {
   customRates       String   @default("{\"YER_ADEN\":1910,\"YER_SANAA\":535,\"SAR\":3.75,\"USD\":1}")
   paymentAccounts   String   @default("[]") // JSON string of payment methods
   shippingMethods   String   @default("[]") // JSON string of shipping methods
-  planTier          String   @default("starter") // free, starter, pro, vip
-  planStatus        String   @default("active")  // active, suspended
+  planTier          String   @default("free") // free, starter, pro, vip
+  planStatus        String   @default("trial")  // trial, active, suspended
   activeVisitorsNow Int      @default(8)
   totalSalesGMV     Float    @default(0)
   themeConfig       String   @default("{}") // JSON string
@@ -37,6 +37,8 @@ model Store {
   marketingPixels   String   @default("{}") // JSON string for tracking IDs
   socialLinks       String   @default("{}") // JSON string for social links (fb, ig, etc)
   apiKeys           String   @default("[]") // JSON string for API Keys
+  planStartDate     DateTime @default(now())
+  planEndDate       DateTime?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

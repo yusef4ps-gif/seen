@@ -66,6 +66,20 @@ export async function createOrderAction(data: any) {
     // 3. Get Store info for emails
     const store = await prisma.store.findUnique({ where: { id: data.storeId } });
 
+    // 4. Mark Abandoned Cart as recovered (if any)
+    if (data.customerPhone) {
+      await prisma.abandonedCart.updateMany({
+        where: {
+          storeId: data.storeId,
+          customerPhone: data.customerPhone,
+          recovered: false
+        },
+        data: {
+          recovered: true
+        }
+      });
+    }
+
     // 4. Send Email Notification to Merchant
     if (store && store.email) {
       try {
@@ -380,5 +394,32 @@ export async function getCustomerOrdersAction(storeId: string, identifier: strin
   } catch (error) {
     console.error('Error fetching customer orders:', error);
     return [];
+  }
+}
+export async function getAbandonedCartsAction(storeId: string) {
+  try {
+    const carts = await prisma.abandonedCart.findMany({
+      where: { storeId },
+      orderBy: { abandonedAt: 'desc' }
+    });
+    return carts.map(cart => ({
+      ...cart,
+      items: typeof cart.items === 'string' ? JSON.parse(cart.items) : cart.items
+    }));
+  } catch (error) {
+    console.error('Error fetching abandoned carts:', error);
+    return [];
+  }
+}
+export async function markAbandonedCartRecoveredAction(cartId: string) {
+  try {
+    const updated = await prisma.abandonedCart.update({
+      where: { id: cartId },
+      data: { recoverySentAt: new Date(), recovered: true }
+    });
+    return { success: true, cart: updated };
+  } catch (error) {
+    console.error('Error marking cart recovered:', error);
+    return { success: false, error: String(error) };
   }
 }

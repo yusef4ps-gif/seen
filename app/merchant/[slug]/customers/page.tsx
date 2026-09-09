@@ -11,35 +11,22 @@ import {
 import { authEngine } from '@/lib/auth-engine';
 import { User, Store } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
-import { getStoreBySlugAction } from '@/app/actions/store';
+import { useStoreData } from '@/lib/swr-hooks';
 
 export default function MerchantCustomersPage() {
   const params = useParams();
   const slug = params.slug as string;
 
-  const [store, setStore] = useState<Store | null>(null);
+  const { store } = useStoreData(slug);
   const [customers, setCustomers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    async function init() {
-      if (slug) {
-        const s = await getStoreBySlugAction(slug);
-        if (s) {
-          setStore(s as any);
-          // Get all customers assigned to this store or registered generally
-        const custs = authEngine.getUsers(s.id, 'CUSTOMER');
-        // If empty, get general customers
-        if (custs.length === 0) {
-          setCustomers(authEngine.getUsers(undefined, 'CUSTOMER'));
-        } else {
-          setCustomers(custs);
-        }
-      }
+    if (store) {
+      const custs = authEngine.getUsers(store.id, 'CUSTOMER');
+      setCustomers(custs);
     }
-    }
-    init();
-  }, [slug]);
+  }, [store]);
 
   if (!store) return null;
 
@@ -92,11 +79,11 @@ export default function MerchantCustomersPage() {
 
         <div className="p-4 rounded-2xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span>إجمالي مشتريات العملاء</span>
+            <span>إجمالي مبيعات العملاء</span>
             <DollarSign className="w-4 h-4 text-teal-600" />
           </div>
           <div className="text-2xl font-black text-slate-900 dark:text-white">
-            {formatCurrency(totalSpentAll || 3250, store.baseCurrency)}
+            {formatCurrency(totalSpentAll || 0, store.baseCurrency)}
           </div>
           <div className="text-[10px] text-slate-400 mt-1">القيمة الدائمة (LTV)</div>
         </div>
@@ -106,7 +93,7 @@ export default function MerchantCustomersPage() {
             <span>الطلبات المكتملة للعملاء</span>
             <ShoppingBag className="w-4 h-4 text-purple-600" />
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white">{totalOrdersAll || 8} طلبات</div>
+          <div className="text-2xl font-black text-slate-900 dark:text-white">{totalOrdersAll || 0} طلبات</div>
           <div className="text-[10px] text-brand-600 font-bold mt-1">معدل تكرار الشراء ممتاز</div>
         </div>
       </div>
@@ -137,7 +124,7 @@ export default function MerchantCustomersPage() {
                 <th className="p-4">العميل</th>
                 <th className="p-4">رقم الواتساب / الهاتف</th>
                 <th className="p-4">إجمالي الطلبات</th>
-                <th className="p-4">إجمالي المشتريات</th>
+                <th className="p-4">إجمالي المبيعات</th>
                 <th className="p-4">تاريخ الانضمام</th>
                 <th className="p-4 text-center">التواصل السريع</th>
               </tr>
@@ -169,12 +156,12 @@ export default function MerchantCustomersPage() {
 
                     <td className="p-4">
                       <span className="px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 font-bold text-[11px]">
-                        {cust.ordersCount || 1} طلبات
+                        {cust.ordersCount || 0} طلبات
                       </span>
                     </td>
 
                     <td className="p-4 font-bold text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(cust.totalSpent || 250, store.baseCurrency)}
+                      {formatCurrency(cust.totalSpent || 0, store.baseCurrency)}
                     </td>
 
                     <td className="p-4 text-[10px] text-slate-400 font-mono">

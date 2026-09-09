@@ -9,6 +9,7 @@ import {
 import { Store, AbandonedCart } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
 import { getStoreBySlugAction } from '@/app/actions/store';
+import { getAbandonedCartsAction, markAbandonedCartRecoveredAction } from '@/app/actions/order';
 
 export default function MerchantAbandonedCartsPage() {
   const params = useParams();
@@ -25,50 +26,9 @@ export default function MerchantAbandonedCartsPage() {
         const s = await getStoreBySlugAction(slug);
         if (s) {
           setStore(s as any);
-        // Realistic mock abandoned carts for demo
-        setCarts([
-          {
-            id: 'cart-1',
-            storeId: s.id,
-            customerName: 'أميرة عبد الله',
-            customerPhone: '+967 774 556 778',
-            items: [
-              {
-                productId: 'prod-1',
-                productName: 'فستان حرير ملكي بتطريز يدوي فاخر',
-                productImage: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=200',
-                price: 180,
-                quantity: 1,
-                total: 180,
-              },
-            ],
-            total: 180,
-            currency: 'SAR',
-            abandonedAt: new Date(Date.now() - 3600000 * 3).toISOString(), // 3 hours ago
-            recovered: false,
-          },
-          {
-            id: 'cart-2',
-            storeId: s.id,
-            customerName: 'ياسر محمد صالح',
-            customerPhone: '+967 735 990 112',
-            items: [
-              {
-                productId: 'prod-3',
-                productName: 'حقيبة يد جلد إيطالي فاخر',
-                productImage: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=200',
-                price: 95,
-                quantity: 1,
-                total: 95,
-              },
-            ],
-            total: 95,
-            currency: 'SAR',
-            abandonedAt: new Date(Date.now() - 3600000 * 8).toISOString(), // 8 hours ago
-            recovered: false,
-          }
-        ]);
-      }
+          const abandoned = await getAbandonedCartsAction(s.id);
+          setCarts(abandoned as any);
+        }
     }
     }
     init();
@@ -98,8 +58,9 @@ export default function MerchantAbandonedCartsPage() {
     return encodeURIComponent(text);
   };
 
-  const handleMarkRecovered = (cartId: string) => {
+  const handleMarkRecovered = async (cartId: string) => {
     setCarts(carts.map(c => c.id === cartId ? { ...c, recovered: true } : c));
+    await markAbandonedCartRecoveredAction(cartId);
   };
 
   return (
