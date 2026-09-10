@@ -62,12 +62,25 @@ export default function MerchantSettingsPage() {
   const [logo, setLogo] = useState('');
   const [banner, setBanner] = useState('');
   const [baseCurrency, setBaseCurrency] = useState<CurrencyCode>('SAR');
-  const [customRates, setCustomRates] = useState({
-    YER_ADEN: 1910,
-    YER_SANAA: 535,
-    SAR: 3.75,
-    USD: 1,
+  const [deliveryCurrency, setDeliveryCurrency] = useState<CurrencyCode>('YER_SANAA');
+  const [activeYemeniMarket, setActiveYemeniMarket] = useState<'YER_ADEN' | 'YER_SANAA'>('YER_ADEN');
+  const [ratesByBase, setRatesByBase] = useState<Record<string, any>>({
+    SAR: { YER_ADEN: 0, YER_SANAA: 0, SAR: 0, USD: 0 },
+    USD: { YER_ADEN: 0, YER_SANAA: 0, SAR: 0, USD: 0 },
+    YER_ADEN: { YER_ADEN: 0, YER_SANAA: 0, SAR: 0, USD: 0 },
+    YER_SANAA: { YER_ADEN: 0, YER_SANAA: 0, SAR: 0, USD: 0 },
   });
+
+  const customRates = ratesByBase[baseCurrency] || { YER_ADEN: 0, YER_SANAA: 0, SAR: 0, USD: 0 };
+  const updateCustomRate = (currency: string, val: number) => {
+    setRatesByBase(prev => ({
+      ...prev,
+      [baseCurrency]: {
+        ...(prev[baseCurrency] || {}),
+        [currency]: val
+      }
+    }));
+  };
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccountConfig[]>([]);
   const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
   
@@ -104,7 +117,18 @@ export default function MerchantSettingsPage() {
           setLogo(s.logo || '');
           setBanner(s.banner || '');
           setBaseCurrency(s.baseCurrency as any);
-          setCustomRates(s.customRates || { YER_ADEN: 1910, YER_SANAA: 535, SAR: 3.75, USD: 1 });
+          setDeliveryCurrency(s.deliveryCurrency as any || 'YER_SANAA');
+          setActiveYemeniMarket((s as any).activeYemeniMarket || 'YER_ADEN');
+          
+          let parsedRates = s.customRates;
+          if (parsedRates && parsedRates[s.baseCurrency as string] && typeof parsedRates[s.baseCurrency as string] === 'object') {
+             setRatesByBase(prev => ({ ...prev, ...parsedRates }));
+          } else if (parsedRates) {
+             setRatesByBase(prev => ({
+                ...prev,
+                [s.baseCurrency as string]: { ...prev[s.baseCurrency as string], ...parsedRates }
+             }));
+          }
           setPaymentAccounts(s.paymentAccounts || []);
           setShippingMethods(s.shippingMethods || []);
           const keys = await getApiKeysAction(s.id);
@@ -148,7 +172,9 @@ export default function MerchantSettingsPage() {
       logo,
       banner,
       baseCurrency,
-      customRates: JSON.stringify(customRates),
+      deliveryCurrency,
+      activeYemeniMarket,
+      customRates: JSON.stringify(ratesByBase),
       paymentAccounts: JSON.stringify(paymentAccounts),
       shippingMethods: JSON.stringify(shippingMethods),
       marketingPixels: JSON.stringify(marketingPixels),
@@ -601,64 +627,129 @@ export default function MerchantSettingsPage() {
               </p>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                العملة الأساسية لمتجرك
-              </label>
-              <select
-                value={baseCurrency}
-                onChange={(e) => setBaseCurrency(e.target.value as CurrencyCode)}
-                className="w-full sm:w-64 px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
-              >
-                <option value="SAR">ريال سعودي (SAR)</option>
-                <option value="USD">دولار أمريكي (USD)</option>
-                <option value="YER_ADEN">ريال يمني - عدن (YER)</option>
-                <option value="YER_SANAA">ريال يمني - صنعاء (YER)</option>
-              </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  العملة الأساسية لمتجرك
+                </label>
+                <select
+                  value={baseCurrency}
+                  onChange={(e) => setBaseCurrency(e.target.value as CurrencyCode)}
+                  className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                >
+                  <option value="SAR">ريال سعودي (SAR)</option>
+                  <option value="USD">دولار أمريكي (USD)</option>
+                  <option value="YER_ADEN">ريال يمني - عدن (YER)</option>
+                  <option value="YER_SANAA">ريال يمني - صنعاء (YER)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  العملة الأساسية للتوصيل
+                </label>
+                <select
+                  value={deliveryCurrency}
+                  onChange={(e) => setDeliveryCurrency(e.target.value as CurrencyCode)}
+                  className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                >
+                  <option value="SAR">ريال سعودي (SAR)</option>
+                  <option value="USD">دولار أمريكي (USD)</option>
+                  <option value="YER_ADEN">ريال يمني - عدن (YER)</option>
+                  <option value="YER_SANAA">ريال يمني - صنعاء (YER)</option>
+                </select>
+              </div>
             </div>
 
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
               <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-3">
-                أسعار الصرف المعتمدة مقابل الدولار الأمريكي ($1 USD =)
+                {baseCurrency === 'SAR' ? 'أسعار الصرف المعتمدة مقابل الريال السعودي' : 
+                 baseCurrency === 'USD' ? 'أسعار الصرف المعتمدة مقابل الدولار الأمريكي' :
+                 'أسعار الصرف المعتمدة'}
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    سعر صرف ريال عدن (YER)
-                  </label>
-                  <input
-                    type="number"
-                    value={customRates.YER_ADEN}
-                    onChange={(e) => setCustomRates({ ...customRates, YER_ADEN: parseFloat(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                  />
-                </div>
+                {baseCurrency !== 'YER_ADEN' && (
+                  <div className={`transition-all ${(baseCurrency === 'SAR' || baseCurrency === 'USD') && activeYemeniMarket !== 'YER_ADEN' ? 'opacity-50 grayscale' : ''}`}>
+                    <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 cursor-pointer">
+                      {(baseCurrency === 'SAR' || baseCurrency === 'USD') && (
+                        <input 
+                          type="radio" 
+                          name="yemeni_market" 
+                          checked={activeYemeniMarket === 'YER_ADEN'} 
+                          onChange={() => setActiveYemeniMarket('YER_ADEN')}
+                          className="w-3.5 h-3.5 text-brand-600 accent-brand-600 cursor-pointer"
+                        />
+                      )}
+                      <span className={(baseCurrency === 'SAR' || baseCurrency === 'USD') && activeYemeniMarket !== 'YER_ADEN' ? 'line-through' : ''}>
+                        {baseCurrency === 'SAR' ? 'سعر صرف الريال السعودي مقابل الريال اليمني (عدن)' : 'سعر صرف الريال اليمني في عدن مقابل ' + (baseCurrency === 'USD' ? 'الدولار' : 'العملة الأساسية')}
+                      </span>
+                    </label>
+                    <input
+                      type="number"
+                      disabled={(baseCurrency === 'SAR' || baseCurrency === 'USD') && activeYemeniMarket !== 'YER_ADEN'}
+                      value={customRates.YER_ADEN}
+                      onChange={(e) => updateCustomRate('YER_ADEN', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                )}
 
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    سعر صرف ريال صنعاء (YER)
-                  </label>
-                  <input
-                    type="number"
-                    value={customRates.YER_SANAA}
-                    onChange={(e) => setCustomRates({ ...customRates, YER_SANAA: parseFloat(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                  />
-                </div>
+                {baseCurrency !== 'YER_SANAA' && (
+                  <div className={`transition-all ${(baseCurrency === 'SAR' || baseCurrency === 'USD') && activeYemeniMarket !== 'YER_SANAA' ? 'opacity-50 grayscale' : ''}`}>
+                    <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 cursor-pointer">
+                      {(baseCurrency === 'SAR' || baseCurrency === 'USD') && (
+                        <input 
+                          type="radio" 
+                          name="yemeni_market" 
+                          checked={activeYemeniMarket === 'YER_SANAA'} 
+                          onChange={() => setActiveYemeniMarket('YER_SANAA')}
+                          className="w-3.5 h-3.5 text-brand-600 accent-brand-600 cursor-pointer"
+                        />
+                      )}
+                      <span className={(baseCurrency === 'SAR' || baseCurrency === 'USD') && activeYemeniMarket !== 'YER_SANAA' ? 'line-through' : ''}>
+                        {baseCurrency === 'SAR' ? 'سعر صرف الريال السعودي مقابل الريال اليمني (صنعاء)' : 'سعر صرف الريال اليمني في صنعاء مقابل ' + (baseCurrency === 'USD' ? 'الدولار' : 'العملة الأساسية')}
+                      </span>
+                    </label>
+                    <input
+                      type="number"
+                      disabled={(baseCurrency === 'SAR' || baseCurrency === 'USD') && activeYemeniMarket !== 'YER_SANAA'}
+                      value={customRates.YER_SANAA}
+                      onChange={(e) => updateCustomRate('YER_SANAA', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                )}
 
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    سعر صرف الريال السعودي (SAR)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={customRates.SAR}
-                    onChange={(e) => setCustomRates({ ...customRates, SAR: parseFloat(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                  />
-                </div>
+                {baseCurrency !== 'SAR' && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      سعر صرف الريال السعودي مقابل {baseCurrency === 'USD' ? 'الدولار' : 'العملة الأساسية'}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={customRates.SAR}
+                      onChange={(e) => updateCustomRate('SAR', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                  </div>
+                )}
+                
+                {baseCurrency !== 'USD' && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      سعر صرف {baseCurrency === 'SAR' ? 'الريال السعودي' : 'العملة الأساسية'} مقابل الدولار
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={customRates.USD}
+                      onChange={(e) => updateCustomRate('USD', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>

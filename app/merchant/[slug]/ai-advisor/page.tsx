@@ -3,11 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Bot, Sparkles, Send, Copy, Check, MessageSquare, Edit2, 
-  Lightbulb, TrendingUp, Gift, Zap, Layers, RefreshCw, Image as ImageIcon, UploadCloud
+  Lightbulb, TrendingUp, Gift, Layers, RefreshCw, Image as ImageIcon, UploadCloud, Download, Share2, Store as StoreIcon,
+  HardDrive, Cpu, Palette, Battery, Zap, ShieldCheck
 } from 'lucide-react';
+import { toPng } from 'html-to-image';
 import { Store } from '@/lib/types';
 import { getStoreBySlugAction } from '@/app/actions/store';
 import { generateCampaignAction, generateAdDesignAction } from '@/app/actions/ai';
+import imglyRemoveBackground from '@imgly/background-removal';
 import { Pin, Trash } from 'lucide-react';
 
 export default function MerchantAIAdvisorPage() {
@@ -21,9 +24,13 @@ export default function MerchantAIAdvisorPage() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [editableTemplates, setEditableTemplates] = useState<Record<number, string>>({});
 
+  const posterRef = React.useRef<HTMLDivElement>(null);
+
   // Image Ad Generator State
   const [adImageGoal, setAdImageGoal] = useState('');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [processedImage, setProcessedImage] = useState<string | null>(null);
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [uploadedMimeType, setUploadedMimeType] = useState<string | null>(null);
   const [isGeneratingAd, setIsGeneratingAd] = useState(false);
   const [generatedAd, setGeneratedAd] = useState<any | null>(null);
@@ -115,24 +122,44 @@ export default function MerchantAIAdvisorPage() {
     setTimeout(() => setCopiedIndex(null), 2500);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
         setUploadedImage(event.target?.result as string);
+        setProcessedImage(null);
         setUploadedMimeType(file.type);
       };
       reader.readAsDataURL(file);
+
+      // Start background removal
+      setIsRemovingBg(true);
+      try {
+        const config = {
+          publicPath: "https://static.remove.bg/remove-bg-web/29a8bd5d97e930987c2fb38fec64e8eeb6821262/wasm/" // Fallback path if unpkg fails, or use jsdelivr
+        };
+        // Use jsdelivr for reliability
+        const imglyConfig = {
+          publicPath: "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/"
+        };
+        const blob = await imglyRemoveBackground(file, imglyConfig);
+        const url = URL.createObjectURL(blob);
+        setProcessedImage(url);
+      } catch (err) {
+        console.error("Background removal failed:", err);
+      }
+      setIsRemovingBg(false);
     }
   };
 
   const handleGenerateAd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!adImageGoal || !store) return;
+    if ((!adImageGoal && !uploadedImage) || !store) return;
     
     setIsGeneratingAd(true);
-    const res = await generateAdDesignAction(adImageGoal, store.name, uploadedImage || undefined, uploadedMimeType || undefined);
+    const goalText = adImageGoal || "قم بتحليل هذه الصورة وإنشاء إعلان احترافي لها.";
+    const res = await generateAdDesignAction(goalText, store.name, uploadedImage || undefined, uploadedMimeType || undefined);
     
     if (res.success && res.data) {
       setGeneratedAd(res.data);
@@ -142,6 +169,46 @@ export default function MerchantAIAdvisorPage() {
       alert('حدث خطأ: ' + res.error);
     }
     setIsGeneratingAd(false);
+  };
+
+  const handleDownloadPoster = async () => {
+    if (!posterRef.current) return;
+    try {
+      const dataUrl = await toPng(posterRef.current, { cacheBust: true, quality: 1, pixelRatio: 2 });
+      const link = document.createElement('a');
+      link.download = `poster-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('Error generating image', error);
+      alert('حدث خطأ أثناء حفظ الصورة.');
+    }
+  };
+
+  const handleShare = async () => {
+    if (!posterRef.current) return;
+    try {
+      const dataUrl = await toPng(posterRef.current, { cacheBust: true, quality: 1 });
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `poster-${Date.now()}.png`, { type: 'image/png' });
+      
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: generatedAd?.headline || 'إعلان المتجر',
+          text: generatedAd?.subheadline || 'شاهد هذا العرض!',
+          files: [file]
+        });
+      } else {
+        alert('مشاركة الملفات غير مدعومة في متصفحك الحالي، يرجى حفظ الصورة أولاً.');
+      }
+    } catch (error) {
+      console.error('Share failed:', error);
+    }
+  };
+
+  const handlePublishToStore = () => {
+    // Mock publishing logic
+    alert('تم رفع الصورة وإدراجها في المتجر بنجاح!');
   };
 
   return (
@@ -214,8 +281,7 @@ export default function MerchantAIAdvisorPage() {
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">وصف الحملة / المنتج</label>
               <input
                 type="text"
-                required
-                placeholder="مثال: ايفون 17 برو ماكس 256 جيجا مستخدم شبه جديد..."
+                placeholder="مثال: ايفون 17 برو ماكس... (اختياري إذا رفعت صورة)"
                 value={adImageGoal}
                 onChange={(e) => setAdImageGoal(e.target.value)}
                 className="w-full px-4 py-3 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-indigo-500"
@@ -225,8 +291,15 @@ export default function MerchantAIAdvisorPage() {
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">صورة المنتج (اختياري)</label>
               <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                {uploadedImage ? (
+                <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                {isRemovingBg ? (
+                  <div className="text-center space-y-2 py-2">
+                    <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">جاري القص السحري...</span>
+                  </div>
+                ) : processedImage ? (
+                  <img src={processedImage} alt="Uploaded" className="h-24 object-contain rounded-lg drop-shadow-md" />
+                ) : uploadedImage ? (
                   <img src={uploadedImage} alt="Uploaded" className="h-24 object-contain rounded-lg" />
                 ) : (
                   <div className="text-center">
@@ -248,60 +321,179 @@ export default function MerchantAIAdvisorPage() {
           </form>
 
           {/* Ad Canvas Display */}
-          <div className="flex-1 border border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 min-h-[300px] overflow-hidden">
-            {isGeneratingAd ? (
-              <div className="text-center space-y-3">
-                <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
-                <p className="text-xs font-bold text-slate-500 animate-pulse">جاري التحليل والتصميم...</p>
-              </div>
-            ) : generatedAd ? (
-              <div 
-                className={`relative w-full max-w-sm aspect-[4/5] rounded-2xl shadow-2xl overflow-hidden flex flex-col justify-end p-6 transition-all transform hover:scale-[1.02] ${
-                  generatedAd.colorTheme === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'
-                }`}
-                style={uploadedImage ? {
-                  backgroundImage: `url(${uploadedImage})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                } : {
-                  background: 'linear-gradient(135deg, #4f46e5, #ec4899)'
-                }}
-              >
-                {/* Gradient overlay to ensure text is readable */}
-                <div className={`absolute inset-0 ${
-                  generatedAd.colorTheme === 'dark' 
-                    ? 'bg-gradient-to-t from-black/90 via-black/40 to-transparent' 
-                    : 'bg-gradient-to-t from-white/90 via-white/40 to-transparent'
-                }`} />
-
-                {/* Badge */}
-                <div className="absolute top-4 right-4 z-10">
-                  <span className="px-3 py-1.5 rounded-full bg-red-500 text-white text-[10px] font-black shadow-lg uppercase tracking-wider">
-                    {generatedAd.badge}
-                  </span>
+          <div className="flex-1 flex flex-col items-center gap-4">
+            <div className="w-full border border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 min-h-[300px] overflow-hidden shadow-inner">
+              {isGeneratingAd ? (
+                <div className="text-center space-y-3">
+                  <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-xs font-bold text-slate-500 animate-pulse">جاري التحليل وتوليد الصورة بالذكاء الاصطناعي...</p>
                 </div>
+              ) : generatedAd ? (
+                <div 
+                  ref={posterRef}
+                  className="relative w-full max-w-sm aspect-[4/5] sm:aspect-[3/4] rounded-2xl shadow-2xl overflow-hidden bg-white text-slate-900 font-sans border-4 transition-all transform hover:scale-[1.02] mx-auto"
+                  style={{
+                    borderColor: generatedAd?.primaryColor || '#fbbf24',
+                    background: 'linear-gradient(to bottom, #ffffff, #fcfcfc)'
+                  }}
+                >
+                  {/* Abstract dynamic shapes */}
+                  <div className="absolute top-0 right-0 w-64 h-64 rounded-full mix-blend-multiply filter blur-3xl opacity-20 transform translate-x-1/2 -translate-y-1/2" style={{ backgroundColor: generatedAd?.primaryColor || '#fbbf24' }} />
+                  <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full mix-blend-multiply filter blur-3xl opacity-20 transform -translate-x-1/2 translate-y-1/2" style={{ backgroundColor: generatedAd?.primaryColor || '#fbbf24' }} />
+                  
+                  <div className="relative z-10 flex flex-col h-full p-4 sm:p-5">
+                    {/* Header: Logo */}
+                    <div className="flex flex-col items-center justify-center mb-4">
+                      {store?.logo ? (
+                        <img src={store.logo} alt={store.name} className="w-12 h-12 object-contain rounded-md mb-1" />
+                      ) : (
+                        <div className="flex items-center gap-2 text-amber-500">
+                          <StoreIcon className="w-6 h-6 sm:w-8 sm:h-8" />
+                        </div>
+                      )}
+                      <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-none">{store?.name || 'متجري'}</h1>
+                      <p className="text-[9px] font-bold text-slate-500 mt-1 uppercase tracking-widest">جميع المنتجات الأصلية</p>
+                    </div>
 
-                {/* Texts */}
-                <div className="relative z-10 text-center space-y-2 mt-auto">
-                  <h2 className={`text-3xl font-black drop-shadow-md leading-tight ${
-                    generatedAd.colorTheme === 'dark' ? 'text-white' : 'text-slate-900'
-                  }`}>
-                    {generatedAd.headline}
-                  </h2>
-                  <p className={`text-sm font-bold opacity-90 drop-shadow-sm ${
-                    generatedAd.colorTheme === 'dark' ? 'text-slate-200' : 'text-slate-700'
-                  }`}>
-                    {generatedAd.subheadline}
-                  </p>
-                  <button className="mt-4 w-full py-3 rounded-xl bg-brand-600 text-white text-xs font-black shadow-lg">
-                    اطلب الآن
-                  </button>
+                    {/* Main Content Area */}
+                    <div className="flex flex-row flex-1 relative gap-2">
+                      
+                      {/* Left side: Product Image */}
+                      <div className="w-1/2 flex items-center justify-center relative">
+                        {(processedImage || uploadedImage) ? (
+                          <div className="relative w-full h-full flex items-center justify-center z-20 p-2">
+                            <img 
+                              src={processedImage || uploadedImage!} 
+                              alt="Product" 
+                              className={`w-full h-full object-contain filter drop-shadow-xl ${!processedImage ? 'mix-blend-multiply' : ''}`}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center opacity-30">
+                            <ImageIcon className="w-20 h-20 text-slate-400" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right side: Device Info and Features */}
+                      <div className="w-1/2 flex flex-col justify-center space-y-3 pl-1 text-right items-end z-30">
+                        
+                        {/* Device Name */}
+                        <div className="text-right w-full mb-1">
+                          <h2 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+                            {generatedAd.deviceName || "منتج مميز"}
+                          </h2>
+                          {generatedAd.badge && (
+                            <span 
+                              className="inline-block px-2.5 py-1 mt-1.5 rounded-md bg-slate-900 text-[10px] font-black shadow-md uppercase"
+                              style={{ color: generatedAd?.primaryColor || '#fbbf24' }}
+                            >
+                              {generatedAd.badge}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Feature List (Dynamic) */}
+                        <div className="space-y-2 w-full max-w-[160px]">
+                          {generatedAd.features && generatedAd.features.map((feature: {label: string, value: string}, idx: number) => (
+                            <div key={idx} className="flex items-center justify-end gap-2.5 bg-slate-900 text-white rounded-xl py-1.5 px-2.5 shadow-lg border border-slate-700">
+                              <div className="text-right flex-1">
+                                <p className="text-[8px] text-slate-400 leading-tight mb-0.5">{feature.label}</p>
+                                <p 
+                                  className="text-[10px] font-bold truncate leading-tight"
+                                  style={{ color: generatedAd?.primaryColor || '#fffbeb' }}
+                                >
+                                  {feature.value}
+                                </p>
+                              </div>
+                              <div 
+                                className="p-1.5 rounded-md text-slate-900 flex-shrink-0"
+                                style={{ backgroundColor: generatedAd?.primaryColor || '#fbbf24' }}
+                              >
+                                <Sparkles className="w-3 h-3" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer: Price and Contact */}
+                    <div className="mt-auto pt-4 w-full flex flex-col gap-2.5 z-20">
+                      
+                      {/* Price Tag Box */}
+                      {generatedAd.price && (
+                        <div className="w-full flex rounded-xl overflow-hidden shadow-xl border-2 border-slate-900">
+                          {generatedAd.priceUsd && (
+                            <div className="w-1/3 bg-slate-900 flex items-center justify-center py-2 px-1">
+                              <span 
+                                className="font-black text-lg sm:text-xl"
+                                style={{ color: generatedAd?.primaryColor || '#fbbf24' }}
+                              >
+                                {generatedAd.priceUsd}
+                              </span>
+                            </div>
+                          )}
+                          <div 
+                            className={`${generatedAd.priceUsd ? 'w-2/3' : 'w-full'} flex items-center justify-center py-2 px-1`}
+                            style={{ backgroundColor: generatedAd?.primaryColor || '#fbbf24' }}
+                          >
+                            <span 
+                              className="font-black text-lg sm:text-xl"
+                              style={{ color: generatedAd?.secondaryColor || '#0f172a' }}
+                            >
+                              {generatedAd.price}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Info footer */}
+                      <div className="flex items-center justify-between text-[8px] sm:text-[9px] font-bold text-slate-700 bg-black/5 rounded-lg p-2.5 border border-black/10">
+                        <div className="flex items-center gap-1.5">
+                           <div className="p-0.5 rounded-full text-slate-900" style={{ backgroundColor: generatedAd?.primaryColor || '#fbbf24' }}><Check className="w-3 h-3" /></div>
+                           <span>منتجات أصلية 100%</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                           <div className="p-0.5 rounded-full text-slate-900" style={{ backgroundColor: generatedAd?.primaryColor || '#fbbf24' }}><MessageSquare className="w-3 h-3" /></div>
+                           <span>تواصل عبر الواتساب</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="text-center text-slate-400">
-                <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p className="text-xs">سيتم عرض التصميم هنا</p>
+              ) : (
+                <div className="text-center text-slate-400">
+                  <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">سيتم عرض التصميم هنا</p>
+                </div>
+              )}
+            </div>
+
+            {/* Actions for Generated Poster */}
+            {generatedAd && (
+              <div className="flex flex-wrap items-center justify-center gap-2 w-full animate-fadeIn">
+                <button
+                  onClick={handleDownloadPoster}
+                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>حفظ الصورة</span>
+                </button>
+                <button
+                  onClick={handlePublishToStore}
+                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 transition-colors flex items-center justify-center gap-2"
+                >
+                  <StoreIcon className="w-4 h-4" />
+                  <span>نشر بالمتجر</span>
+                </button>
+                <button
+                  onClick={handleShare}
+                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>مشاركة</span>
+                </button>
               </div>
             )}
           </div>

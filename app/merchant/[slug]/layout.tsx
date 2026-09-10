@@ -359,18 +359,7 @@ export default function MerchantLayout({
 
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2 bg-slate-50/50 dark:bg-slate-900/50">
-          {currentUser?.role === 'SUPER_ADMIN' && (
-            <Link
-              href="/admin"
-              className="flex items-center justify-between p-2 rounded-xl text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <div className="flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-brand-600" />
-                <span>لوحة الإدارة العليا (Admin)</span>
-              </div>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
-          )}
+
           <button
             onClick={() => {
               authEngine.logout();

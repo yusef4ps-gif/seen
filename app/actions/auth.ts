@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
-import { sendWhatsAppMessage } from '@/lib/notification-engine';
+import { sendWhatsAppMessage, sendEmail, EmailTemplates } from '@/lib/notification-engine';
 
 export async function setAuthCookieAction(token: string, userId: string, role: string, storeId?: string) {
   cookies().set('seen_session_token', token, { httpOnly: true, path: '/' });
@@ -79,11 +79,11 @@ export async function loginMerchantAction(phoneOrEmail: string, password: string
     });
 
     if (!user) {
-      return { success: false, error: 'البيانات غير صحيحة، يرجى التأكد من رقم الهاتف أو كلمة المرور.' };
+      return { success: false, error: 'الحساب غير مسجل.', isEmailValid: false };
     }
 
     if (user.password !== password) {
-      return { success: false, error: 'البيانات غير صحيحة، يرجى التأكد من رقم الهاتف أو كلمة المرور.' };
+      return { success: false, error: 'كلمة المرور غير صحيحة.', isEmailValid: true };
     }
 
     if (user.role !== 'STORE_OWNER' && user.role !== 'SUPER_ADMIN') {
@@ -113,30 +113,61 @@ export async function loginMerchantAction(phoneOrEmail: string, password: string
   }
 }
 
-export async function registerMerchantAction(data: { name: string; phone: string; password: string; country: string; city: string }) {
+export async function sendVerificationCodeAction(email: string, name: string) {
   try {
-    // 1. Check if user already exists
+    // 1. Check if email already exists
+    const existingUser = await prisma.user.findFirst({
+      where: { email }
+    });
+
+    if (existingUser) {
+      return { success: false, error: 'البريد الإلكتروني مسجل مسبقاً.' };
+    }
+
+    // 2. Generate a 4-digit code
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // 3. Send email using Resend
+    const result = await sendEmail({
+      to: email,
+      subject: 'كود التحقق الخاص بك من منصة سِين',
+      html: EmailTemplates.VerificationCode(name, code)
+    });
+
+    if (!result.success && !result.simulated) {
+      return { success: false, error: 'فشل إرسال كود التحقق. يرجى التأكد من صحة البريد الإلكتروني.' };
+    }
+
+    // Return code so the client can verify it
+    return { success: true, code };
+  } catch (error) {
+    console.error('Error in sendVerificationCodeAction:', error);
+    return { success: false, error: 'حدث خطأ في النظام، يرجى المحاولة لاحقاً.' };
+  }
+}
+
+export async function registerMerchantAction(data: { name: string; phone: string; email: string; password: string; country: string; city: string }) {
+  try {
+    // 1. Check if user already exists by phone or email
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
           { phone: data.phone },
+          { email: data.email }
         ]
       }
     });
 
     if (existingUser) {
-      return { success: false, error: 'رقم الهاتف مسجل مسبقاً.' };
+      if (existingUser.phone === data.phone) return { success: false, error: 'رقم الهاتف مسجل مسبقاً.' };
+      if (existingUser.email === data.email) return { success: false, error: 'البريد الإلكتروني مسجل مسبقاً.' };
     }
-
-    // Generate random string for email since we use Phone as primary identifier for Merchants now, 
-    // but schema requires unique email.
-    const tempEmail = `${data.phone}@seen.local`; 
 
     // 2. Create the User
     const newUser = await prisma.user.create({
       data: {
         name: data.name,
-        email: tempEmail,
+        email: data.email,
         phone: data.phone,
         password: data.password,
         role: 'STORE_OWNER',

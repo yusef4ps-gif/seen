@@ -160,6 +160,33 @@ export const EmailTemplates = {
         </p>
       </div>
     `;
+  },
+
+  /**
+   * Verification Code Email
+   */
+  VerificationCode: (
+    userName: string,
+    code: string
+  ) => {
+    return `
+      <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #0f2b48; text-align: center;">كود التحقق من سِين 🔐</h2>
+        <p>مرحباً <strong>${userName || 'عزيزي العميل'}</strong>،</p>
+        <p>لقد طلبت إنشاء حساب جديد في منصة سِين. يرجى استخدام كود التحقق التالي لإكمال عملية التسجيل:</p>
+        
+        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+          <p style="font-size: 32px; font-weight: bold; color: #14b8a6; letter-spacing: 10px; margin: 0;">${code}</p>
+        </div>
+        
+        <p style="color: #64748b; font-size: 14px;">إذا لم تطلب هذا الكود، يرجى تجاهل هذه الرسالة.</p>
+        
+        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+        <p style="text-align: center; color: #64748b; font-size: 12px;">
+          إدارة منصة سِين SEEN
+        </p>
+      </div>
+    `;
   }
 };
 

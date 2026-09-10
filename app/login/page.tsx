@@ -7,7 +7,7 @@ import {
   Lock, Mail, Phone, User as UserIcon, CheckCircle2, 
   AlertCircle, Eye, EyeOff, ArrowRight, ShieldCheck, MapPin, Globe2
 } from 'lucide-react';
-import { loginMerchantAction, registerMerchantAction, setAuthCookieAction } from '@/app/actions/auth';
+import { loginMerchantAction, registerMerchantAction, setAuthCookieAction, sendVerificationCodeAction } from '@/app/actions/auth';
 import BrandLogo from '@/components/BrandLogo';
 
 declare global {
@@ -63,14 +63,20 @@ function LoginFormContent() {
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loginAttempts, setLoginAttempts] = useState(0);
 
   // Customer register form state
   const [regName, setRegName] = useState('');
+  const [regPassword, setRegPassword] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regEmail, setRegEmail] = useState('');
-  const [regPassword, setRegPassword] = useState('');
   const [regCountry, setRegCountry] = useState('اليمن');
   const [regCity, setRegCity] = useState('صنعاء');
+
+  // Verification step state
+  const [verificationStep, setVerificationStep] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [expectedCode, setExpectedCode] = useState('');
 
   // Processing state
   const [isLoading, setIsLoading] = useState(false);
@@ -90,10 +96,12 @@ function LoginFormContent() {
 
     if (!result.success) {
       setErrorMessage(result.error || 'فشل تسجيل الدخول. يرجى التحقق من البيانات.');
+      if ((result as any).isEmailValid) {
+        setLoginAttempts(prev => prev + 1);
+      }
     } else {
       setSuccessMessage('تم تسجيل الدخول بنجاح! جاري التوجيه...');
       if (result.userId && result.role) {
-        // dummy token since we removed JWT logic for simplicity
         await setAuthCookieAction('temp-token', result.userId, result.role, result.storeId);
       }
       setTimeout(() => {
@@ -106,8 +114,31 @@ function LoginFormContent() {
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
-    if (!regName || !regPhone || !regPassword) {
-      setErrorMessage('يرجى كتابة الاسم ورقم الهاتف وكلمة المرور.');
+    
+    if (!verificationStep) {
+      if (!regName || !regPhone || !regPassword || !regEmail) {
+        setErrorMessage('يرجى تعبئة جميع الحقول المطلوبة (الاسم، كلمة المرور، الواتساب، البريد الإلكتروني).');
+        return;
+      }
+      
+      setIsLoading(true);
+      const res = await sendVerificationCodeAction(regEmail, regName);
+      setIsLoading(false);
+
+      if (!res.success) {
+        setErrorMessage(res.error || 'فشل إرسال كود التحقق. تأكد من صحة البريد الإلكتروني.');
+        return;
+      }
+
+      setExpectedCode(res.code!);
+      setVerificationStep(true);
+      setSuccessMessage('تم إرسال كود التحقق إلى بريدك الإلكتروني بنجاح، يرجى إدخاله أدناه.');
+      return;
+    }
+
+    // We are in verification step
+    if (verificationCode !== expectedCode) {
+      setErrorMessage('كود التحقق خطأ.');
       return;
     }
 
@@ -116,6 +147,7 @@ function LoginFormContent() {
     const result = await registerMerchantAction({
       name: regName,
       phone: regPhone,
+      email: regEmail,
       password: regPassword,
       country: regCountry,
       city: regCity
@@ -258,120 +290,196 @@ function LoginFormContent() {
                 <span>{isLoading ? 'جاري التحقق...' : 'تسجيل الدخول 🚀'}</span>
               </button>
 
+              {loginAttempts >= 2 && (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMessage('');
+                      setSuccessMessage('تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني. يرجى التحقق من صندوق الوارد.');
+                    }}
+                    className="w-full text-center text-xs font-bold text-brand-600 hover:text-brand-700 hover:underline transition-colors"
+                  >
+                    هل نسيت كلمة المرور؟
+                  </button>
+                </div>
+              )}
+
             </form>
           ) : (
             
             /* 2. CUSTOMER REGISTRATION FORM */
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
               
-              <div>
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
-                  الاسم الكامل <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <UserIcon className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثال: يوسف أحمد"
-                    value={regName}
-                    onChange={(e) => setRegName(e.target.value)}
-                    className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6]"
-                  />
-                </div>
-              </div>
+              {!verificationStep ? (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                      الاسم الكامل <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <UserIcon className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="مثال: يوسف أحمد"
+                        value={regName}
+                        onChange={(e) => setRegName(e.target.value)}
+                        className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6]"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
-                  رقم الواتساب / الهاتف <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
-                  <input
-                    type="tel"
-                    required
-                    placeholder="مثال: 775555123"
-                    value={regPhone}
-                    onChange={(e) => setRegPhone(e.target.value)}
-                    className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6]"
-                  />
-                </div>
-              </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                      كلمة المرور <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        placeholder="••••••••"
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        className="w-full pr-10 pl-10 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6] font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute left-3.5 top-3.5 text-slate-400 hover:text-slate-600"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
-                  كلمة المرور <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    placeholder="••••••••"
-                    value={regPassword}
-                    onChange={(e) => setRegPassword(e.target.value)}
-                    className="w-full pr-10 pl-10 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6] font-mono"
-                  />
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                      رقم الواتساب <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Phone className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+                      <input
+                        type="tel"
+                        required
+                        placeholder="مثال: 775555123"
+                        value={regPhone}
+                        onChange={(e) => setRegPhone(e.target.value)}
+                        className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                      البريد الإلكتروني <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+                      <input
+                        type="email"
+                        required
+                        placeholder="name@example.com"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                        الدولة
+                      </label>
+                      <div className="relative">
+                        <Globe2 className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+                        <select
+                          value={regCountry}
+                          onChange={(e) => {
+                            setRegCountry(e.target.value);
+                            const countryObj = COUNTRIES.find(c => c.name === e.target.value);
+                            if (countryObj) setRegCity(countryObj.cities[0]);
+                          }}
+                          className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6] appearance-none"
+                        >
+                          {COUNTRIES.map(c => (
+                            <option key={c.name} value={c.name}>{c.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                        المدينة
+                      </label>
+                      <div className="relative">
+                        <MapPin className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+                        <select
+                          value={regCity}
+                          onChange={(e) => setRegCity(e.target.value)}
+                          className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6] appearance-none"
+                        >
+                          {COUNTRIES.find(c => c.name === regCountry)?.cities.map(city => (
+                            <option key={city} value={city}>{city}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
                   <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute left-3.5 top-3.5 text-slate-400 hover:text-slate-600"
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-3.5 rounded-2xl bg-[#0f2b48] hover:bg-[#143d67] text-white text-xs sm:text-sm font-bold shadow-lg shadow-[#0f2b48]/25 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <span>{isLoading ? 'جاري الإرسال...' : 'إنشاء المتجر 🛍️'}</span>
                   </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
-                    الدولة
-                  </label>
-                  <div className="relative">
-                    <Globe2 className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
-                    <select
-                      value={regCountry}
-                      onChange={(e) => {
-                        setRegCountry(e.target.value);
-                        // Reset city to the first city of the new country
-                        const countryObj = COUNTRIES.find(c => c.name === e.target.value);
-                        if (countryObj) setRegCity(countryObj.cities[0]);
-                      }}
-                      className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6] appearance-none"
+                </>
+              ) : (
+                <div className="space-y-4 animate-fadeIn">
+                  <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-2xl text-center">
+                    <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">الرجاء إدخال كود التحقق</p>
+                    <p className="text-[11px] text-slate-500">تم إرسال كود من 4 أرقام إلى بريدك الإلكتروني.</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                      كود التحقق <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+                      <input
+                        type="text"
+                        required
+                        maxLength={6}
+                        placeholder="1234"
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                        className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6] text-center tracking-[0.5em] font-mono"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setVerificationStep(false)}
+                      className="w-1/3 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all flex items-center justify-center"
                     >
-                      {COUNTRIES.map(c => (
-                        <option key={c.name} value={c.name}>{c.name}</option>
-                      ))}
-                    </select>
+                      رجوع
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isLoading || verificationCode.length < 4}
+                      className="w-2/3 py-3.5 rounded-2xl bg-[#14b8a6] hover:bg-[#0d9488] text-white text-xs font-bold shadow-lg shadow-[#14b8a6]/25 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <span>{isLoading ? 'جاري التحقق...' : 'تأكيد الحساب'}</span>
+                    </button>
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
-                    المدينة
-                  </label>
-                  <div className="relative">
-                    <MapPin className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
-                    <select
-                      value={regCity}
-                      onChange={(e) => setRegCity(e.target.value)}
-                      className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6] appearance-none"
-                    >
-                      {COUNTRIES.find(c => c.name === regCountry)?.cities.map(city => (
-                        <option key={city} value={city}>{city}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-3.5 rounded-2xl bg-[#0f2b48] hover:bg-[#143d67] text-white text-xs sm:text-sm font-bold shadow-lg shadow-[#0f2b48]/25 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <span>{isLoading ? 'جاري الإنشاء...' : 'إنشاء حساب جديد والمتابعة 🛍️'}</span>
-              </button>
+              )}
 
             </form>
           )}

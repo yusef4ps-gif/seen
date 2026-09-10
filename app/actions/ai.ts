@@ -10,7 +10,7 @@ export async function generateCampaignAction(prompt: string, storeName: string, 
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     const systemPrompt = `
       أنت مستشار ذكاء اصطناعي متخصص في كتابة حملات تسويقية وإعلانات جذابة لمتاجر إلكترونية.
@@ -46,21 +46,27 @@ export async function generateAdDesignAction(prompt: string, storeName: string, 
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     const systemPrompt = `
-      You are an expert AI Marketing Designer for e-commerce.
+      You are an expert AI Marketing Designer and Art Director for e-commerce.
       Store Name: ${storeName}
       User Request: ${prompt}
       
-      Your job is to generate a highly compelling, short, and punchy Arabic ad copy for a promotional banner/image overlay.
-      If an image is provided, analyze the product in the image and make the copy relevant to it.
+      Your job is to act as a data extractor for a graphic design template.
+      Analyze the user request and the provided image (if any) to extract key specifications of the product (mobile phone, perfume, food, etc.).
+      If the user doesn't provide specific details, make a highly educated guess for the specific product mentioned, or invent compelling marketing values based on the product category.
       
       Respond STRICTLY in JSON format with the following keys:
-      - "headline": (string) Short, bold, catchy Arabic headline (2-4 words max).
-      - "subheadline": (string) A persuasive, engaging Arabic subheadline (5-8 words).
-      - "badge": (string) A short promotional badge (e.g., "خصم 20%", "وصل حديثاً", "تصفية", "عرض حصري").
-      - "colorTheme": (string) Either "dark" (if the text should be light) or "light" (if the text should be dark), or "brand" to use brand colors. Just guess the best contrast.
+      - "deviceName": (string) The exact name of the product (e.g., "iPhone 15 Pro Max", "عطر سوفاج", "وجبة برجر").
+      - "features": (array of objects) Generate 3 to 5 key features based on the product type. Each object MUST have:
+          - "label": (string) Short title (e.g., "السعة", "الرام", "الحجم", "الرائحة", "السعرات").
+          - "value": (string) The value (e.g., "256 جيجا", "12 جيجا", "100 مل", "أخشاب وزهور", "500 كالوري").
+      - "price": (string) Price in local currency (e.g., "2470 سعودي", "150 درهم").
+      - "priceUsd": (string) Price in USD (e.g., "$650", "$40").
+      - "badge": (string) A promotional badge or urgency tag (e.g., "خصم خاص", "حصري", "جديد").
+      - "primaryColor": (string) A hex color code representing the main theme color of the product/brand (e.g., "#FFB000", "#1E3A8A").
+      - "secondaryColor": (string) A contrasting hex color code for accents or text against the primary color (e.g., "#FFFFFF", "#0F172A").
       
       No markdown, no backticks, ONLY pure JSON object.
     `;

@@ -35,12 +35,34 @@ export function convertCurrency(
   amount: number,
   fromCode: CurrencyCode,
   toCode: CurrencyCode,
-  customRates?: Partial<Record<CurrencyCode, number>>
+  customRates?: any
 ): number {
   if (fromCode === toCode) return amount;
 
-  const rateFrom = customRates?.[fromCode] ?? DEFAULT_CURRENCIES[fromCode]?.rateToUSD ?? 1.0;
-  const rateTo = customRates?.[toCode] ?? DEFAULT_CURRENCIES[toCode]?.rateToUSD ?? 1.0;
+  // 1. If customRates is a nested profile mapped by base currency:
+  // e.g. { SAR: { YER_ADEN: 500, USD: 0.26 }, USD: { YER_ADEN: 1900 } }
+  if (customRates) {
+    // Check if we have a direct rate from -> to
+    if (customRates[fromCode] && typeof customRates[fromCode] === 'object') {
+      const directRate = customRates[fromCode][toCode];
+      if (directRate && directRate > 0) {
+        return Math.round(amount * directRate * 100) / 100;
+      }
+    }
+    // Check if we have a direct rate to -> from (reverse calculation)
+    if (customRates[toCode] && typeof customRates[toCode] === 'object') {
+      const reverseRate = customRates[toCode][fromCode];
+      if (reverseRate && reverseRate > 0) {
+        return Math.round((amount / reverseRate) * 100) / 100;
+      }
+    }
+  }
+
+  // 2. Fallback to old flat map logic (rates relative to USD)
+  // If customRates is nested, this flat fallback might not find the keys, which is fine, it will use defaults.
+  const flatRates = (customRates && typeof customRates[fromCode] !== 'object') ? customRates : {};
+  const rateFrom = flatRates?.[fromCode] ?? DEFAULT_CURRENCIES[fromCode]?.rateToUSD ?? 1.0;
+  const rateTo = flatRates?.[toCode] ?? DEFAULT_CURRENCIES[toCode]?.rateToUSD ?? 1.0;
 
   // Convert from source to USD baseline, then from USD to target
   const amountInUSD = amount / rateFrom;
@@ -55,7 +77,7 @@ export function convertCurrency(
 export function formatCurrency(
   amount: number,
   currencyCode: CurrencyCode,
-  customRates?: Partial<Record<CurrencyCode, number>>
+  customRates?: any
 ): string {
   const symbol = DEFAULT_CURRENCIES[currencyCode]?.symbol || currencyCode;
   

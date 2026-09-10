@@ -225,6 +225,8 @@ export interface Store {
   city: string;
   address: string;
   baseCurrency: CurrencyCode;
+  deliveryCurrency?: CurrencyCode;
+  activeYemeniMarket?: 'YER_ADEN' | 'YER_SANAA';
   customRates: {
     YER_ADEN: number;
     YER_SANAA: number;
