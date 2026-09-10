@@ -10,7 +10,7 @@ import { toPng } from 'html-to-image';
 import { Store } from '@/lib/types';
 import { getStoreBySlugAction } from '@/app/actions/store';
 import { generateCampaignAction, generateAdDesignAction } from '@/app/actions/ai';
-import imglyRemoveBackground from '@imgly/background-removal';
+import { removeBackground } from '@imgly/background-removal';
 import { Pin, Trash } from 'lucide-react';
 
 export default function MerchantAIAdvisorPage() {
@@ -143,7 +143,7 @@ export default function MerchantAIAdvisorPage() {
         const imglyConfig = {
           publicPath: "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/"
         };
-        const blob = await imglyRemoveBackground(file, imglyConfig);
+        const blob = await removeBackground(file, imglyConfig);
         const url = URL.createObjectURL(blob);
         setProcessedImage(url);
       } catch (err) {

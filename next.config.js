@@ -17,6 +17,21 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    serverComponentsExternalPackages: ['sharp', 'onnxruntime-node', 'onnxruntime-web'],
+  },
+  webpack: (config, { webpack, isServer }) => {
+    config.plugins.push(
+      new webpack.IgnorePlugin({
+        resourceRegExp: /onnxruntime-web/,
+      })
+    );
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "onnxruntime-web": false,
+    };
+    return config;
+  }
 }
 
 module.exports = nextConfig
