@@ -72,6 +72,8 @@ export default function CustomerStorefrontPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [couponError, setCouponError] = useState('');
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  
+  const [orderSuccess, setOrderSuccess] = useState<any>(null);
 
   useEffect(() => {
     async function loadStorefront() {
@@ -285,18 +287,23 @@ export default function CustomerStorefrontPage() {
   // Checkout submission
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (cart.length === 0) {
-      alert('السلة فارغة!');
+    if (!currentCustomer) {
+      alert('يرجى تسجيل الدخول أو إنشاء حساب لإتمام الشراء');
+      setIsAuthModalOpen(true);
       return;
     }
-    
-    const finalName = currentCustomer ? (currentCustomer.name || customerName) : customerName;
-    const finalPhone = currentCustomer ? (currentCustomer.phone || customerPhone) : customerPhone;
-    const finalEmail = currentCustomer ? (currentCustomer.email || customerEmail) : customerEmail;
 
-    // We only require Name and Phone
-    if (!finalName || !finalPhone) {
-      alert('الرجاء التأكد من إدخال الاسم ورقم الهاتف.');
+    const finalName = customerName || currentCustomer?.name;
+    const finalPhone = customerPhone || currentCustomer?.phone;
+    const finalEmail = customerEmail || currentCustomer?.email;
+
+    if (!finalName || !finalPhone || finalPhone.length < 8) {
+      alert('الرجاء تحديث بيانات حسابك (الاسم ورقم الهاتف) بشكل صحيح');
+      return;
+    }
+
+    if (cart.length === 0) {
+      alert('السلة فارغة!');
       return;
     }
 
@@ -364,7 +371,10 @@ export default function CustomerStorefrontPage() {
       setIsCheckoutOpen(false);
       setIsSubmittingOrder(false);
 
-      router.push(`/store/${store.slug}/track/${newOrder?.id}`);
+      // Show success modal instead of redirecting
+      setOrderSuccess(newOrder);
+      
+      // router.push(`/store/${store.slug}/track/${newOrder?.id}`); // Removed redirect
     } else {
       setIsSubmittingOrder(false);
       alert('حدث خطأ أثناء إنشاء الطلب. حاول مرة أخرى.');
@@ -585,7 +595,7 @@ export default function CustomerStorefrontPage() {
                       </div>
 
                       <div className="relative w-full md:w-80 aspect-video md:aspect-square rounded-2xl overflow-hidden border border-slate-700 shadow-xl shrink-0">
-                        <img src={section.settings.bannerImageUrl || store.banner} alt="Tech" className="w-full h-full object-cover" />
+                        <img src={(store.banner && store.banner.trim() !== '') ? store.banner : section.settings.bannerImageUrl} alt="Tech" className="w-full h-full object-cover" />
                       </div>
                     </div>
                   </section>
@@ -616,7 +626,7 @@ export default function CustomerStorefrontPage() {
                       </div>
 
                       <div className="w-full md:w-80 aspect-video md:aspect-square rounded-2xl overflow-hidden border-2 border-amber-700/50 shadow-lg shrink-0">
-                        <img src={section.settings.bannerImageUrl || store.banner} alt="Coffee" className="w-full h-full object-cover" />
+                        <img src={(store.banner && store.banner.trim() !== '') ? store.banner : section.settings.bannerImageUrl} alt="Coffee" className="w-full h-full object-cover" />
                       </div>
                     </div>
                   </section>
@@ -640,7 +650,7 @@ export default function CustomerStorefrontPage() {
               return (
                 <section key={section.id} className="relative h-44 sm:h-80 w-full bg-slate-950 overflow-hidden">
                   <img 
-                    src={section.settings.bannerImageUrl || store.banner} 
+                    src={(store.banner && store.banner.trim() !== '') ? store.banner : section.settings.bannerImageUrl} 
                     alt={store.name} 
                     className="w-full h-full object-cover opacity-60" 
                   />
@@ -1343,38 +1353,17 @@ export default function CustomerStorefrontPage() {
                 </div>
 
                 {(!currentCustomer || !currentCustomer.name || !currentCustomer.phone) && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {(!currentCustomer || !currentCustomer.name) && (
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                          الاسم الكامل <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="مثال: سارة محمد"
-                          value={customerName}
-                          onChange={(e) => setCustomerName(e.target.value)}
-                          className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
-                        />
-                      </div>
-                    )}
-
-                    {(!currentCustomer || !currentCustomer.phone) && (
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                          رقم الواتساب / الهاتف <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="tel"
-                          required
-                          placeholder="770 000 000"
-                          value={customerPhone}
-                          onChange={(e) => setCustomerPhone(e.target.value)}
-                          className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none font-mono"
-                        />
-                      </div>
-                    )}
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 text-center space-y-3">
+                    <p className="text-xs text-amber-800 dark:text-amber-300 font-bold">
+                      يرجى تسجيل الدخول أو إنشاء حساب لإتمام الشراء وتتبع طلبك بسهولة.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsAuthModalOpen(true)}
+                      className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-colors"
+                    >
+                      تسجيل الدخول / إنشاء حساب
+                    </button>
                   </div>
                 )}
                 
@@ -1704,6 +1693,44 @@ export default function CustomerStorefrontPage() {
           }
         }}
       />
+
+      {/* Order Success Modal */}
+      {orderSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-8 text-center shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+            
+            <h2 className="text-2xl font-black mb-2 text-slate-900 dark:text-white" style={{ fontFamily }}>تم استلام طلبك بنجاح! 🎉</h2>
+            <p className="text-slate-500 mb-6 leading-relaxed text-sm">
+              شكراً لتسوقك من {store.name}. تم تسجيل طلبك وهو الآن قيد المراجعة.
+            </p>
+            
+            <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 mb-8 border border-slate-100 dark:border-slate-700">
+              <div className="text-xs text-slate-500 mb-1">رقم الطلب</div>
+              <div className="text-xl font-bold font-mono tracking-wider text-brand-600 dark:text-brand-400">
+                {orderSuccess.orderNumber}
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <Link 
+                href={`/store/${store.slug}/track/${orderSuccess.id}`}
+                className="w-full py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-brand-600/20"
+              >
+                تتبع حالة الطلب <ArrowLeft className="w-4 h-4" />
+              </Link>
+              <button 
+                onClick={() => setOrderSuccess(null)}
+                className="w-full py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all"
+              >
+                الاستمرار في التسوق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

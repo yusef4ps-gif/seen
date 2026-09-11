@@ -228,7 +228,7 @@ export default function MerchantProductsPage() {
     if (!store || !name || price <= 0) return;
 
     if (editingProductId) {
-      await updateProductAction(editingProductId, {
+      const res = await updateProductAction(editingProductId, {
         name,
         description,
         category,
@@ -242,6 +242,11 @@ export default function MerchantProductsPage() {
         tags: [category],
         variants, // Ensure variants are passed
       });
+
+      if (!res.success) {
+        alert(res.error?.message || res.error || 'فشل تحديث المنتج');
+        return;
+      }
       const user = authEngine.getCurrentUser();
       if (user) {
         await logActivityAction({

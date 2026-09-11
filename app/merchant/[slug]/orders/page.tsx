@@ -44,8 +44,19 @@ export default function MerchantOrdersPage() {
   };
 
   const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
-    await updateOrderStatusAction(orderId, newStatus);
-    await refreshOrders();
+    // Optimistic update
+    mutate(
+      orders.map((o: any) => o.id === orderId ? { ...o, status: newStatus } : o),
+      false
+    );
+
+    const res = await updateOrderStatusAction(orderId, newStatus);
+    if (!res.success) {
+      alert(res.error || 'فشل تحديث حالة الطلب');
+      mutate(); // Revert on failure
+    } else {
+      mutate(); // Revalidate with server on success
+    }
   };
 
   const handleCreateReturn = async () => {

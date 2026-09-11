@@ -26,7 +26,7 @@ export async function createProductAction(data: any) {
         variants: {
           create: data.variants ? data.variants.map((v: any) => ({
             name: v.name,
-            attributes: JSON.stringify(v.attributes || {}),
+            attributes: typeof v.attributes === 'string' ? v.attributes : JSON.stringify(v.attributes || {}),
             priceOverride: v.priceOverride,
             stock: v.stock,
             sku: v.sku
@@ -35,9 +35,9 @@ export async function createProductAction(data: any) {
       }
     });
     return { success: true, product };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating product:', error);
-    return { success: false, error };
+    return { success: false, error: error.message || String(error) };
   }
 }
 
@@ -73,7 +73,7 @@ export async function updateProductAction(id: string, data: any) {
       updateData.variants = {
         create: data.variants.map((v: any) => ({
           name: v.name,
-          attributes: JSON.stringify(v.attributes || {}),
+          attributes: typeof v.attributes === 'string' ? v.attributes : JSON.stringify(v.attributes || {}),
           priceOverride: v.priceOverride,
           stock: v.stock,
           sku: v.sku
@@ -91,9 +91,9 @@ export async function updateProductAction(id: string, data: any) {
     revalidatePath(`/merchant/[slug]/products`, 'page');
     revalidatePath(`/store/[slug]`, 'page');
     return { success: true, product };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating product:', error);
-    return { success: false, error };
+    return { success: false, error: error.message || String(error) };
   }
 }
 
