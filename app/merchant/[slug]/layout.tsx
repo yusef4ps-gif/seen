@@ -127,34 +127,15 @@ export default function MerchantLayout({
     setBroadcasts(storeEngine.getBroadcasts());
   }, [slug]);
 
-
   // ⛔ Guard: If logged in as CUSTOMER, prevent them from accessing merchant management
+  useEffect(() => {
+    if (currentUser?.role === 'CUSTOMER') {
+      router.replace(`/store/${slug}`);
+    }
+  }, [currentUser, router, slug]);
+
   if (currentUser?.role === 'CUSTOMER') {
-    return (
-      <div className="min-h-screen bg-[#0a1317] text-white flex flex-col items-center justify-center p-4 text-center">
-        <div className="max-w-md w-full p-8 rounded-3xl bg-[#0f2a35]/90 border border-purple-500/30 shadow-2xl backdrop-blur-xl space-y-5">
-          <div className="w-16 h-16 rounded-3xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center mx-auto shadow-lg">
-            <StoreIcon className="w-8 h-8" />
-          </div>
-
-          <div>
-            <h2 className="text-xl font-black text-white">لوحة خاصة بالتاجر 🏪</h2>
-            <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-              أنت مسجل حالياً كـ <strong>عميل مشتري ({currentUser.name})</strong>. هذه اللوحة مخصصة لمالك المتجر وفريق العمل لإدارة المنتجات والمبيعات.
-            </p>
-          </div>
-
-          <div className="space-y-2 pt-2">
-            <Link
-              href={`/store/${slug}`}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-accent text-white text-xs font-bold block shadow-lg transition-all"
-            >
-              تصفح متجر {store?.name || 'المتجر'} للشراء 🛍️
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+    return null; // Return nothing while redirecting
   }
 
   if (!store) {
