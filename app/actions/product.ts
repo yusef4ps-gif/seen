@@ -85,11 +85,12 @@ export async function updateProductAction(id: string, data: any) {
       where: { id },
       data: updateData
     });
+    try {
+      revalidatePath(`/merchant/[slug]/inventory`, 'page');
+      revalidatePath(`/merchant/[slug]/products`, 'page');
+      revalidatePath(`/store/[slug]`, 'page');
+    } catch (e) {}
     
-    // Revalidate paths so the UI reflects changes
-    revalidatePath(`/merchant/[slug]/inventory`, 'page');
-    revalidatePath(`/merchant/[slug]/products`, 'page');
-    revalidatePath(`/store/[slug]`, 'page');
     return { success: true, product };
   } catch (error: any) {
     console.error('Error updating product:', error);

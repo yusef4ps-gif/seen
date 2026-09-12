@@ -275,6 +275,8 @@ export async function updateStoreAction(storeId: string, data: any) {
       data,
     });
     revalidatePath('/admin');
+    revalidatePath(`/merchant/${updatedStore.slug}`, 'layout');
+    revalidatePath(`/store/${updatedStore.slug}`, 'page');
     return { success: true, store: updatedStore };
   } catch (error: any) {
     console.error('Error updating store:', error);

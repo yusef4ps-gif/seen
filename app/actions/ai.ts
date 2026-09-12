@@ -104,3 +104,68 @@ export async function generateAdDesignAction(prompt: string, storeName: string, 
     return { success: false, error: error.message || 'FAILED' };
   }
 }
+
+export async function generateLegalPageAction(storeName: string, storeCategory: string, pageType: 'privacy' | 'terms' | 'returns' | 'faq') {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY_MISSING');
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
+
+    let typePrompt = '';
+    switch (pageType) {
+      case 'privacy':
+        typePrompt = 'سياسة الخصوصية وحماية بيانات المستخدمين.';
+        break;
+      case 'terms':
+        typePrompt = 'الشروط والأحكام الخاصة باستخدام المتجر والشراء.';
+        break;
+      case 'returns':
+        typePrompt = 'سياسة الاسترجاع والاستبدال والتوصيل.';
+        break;
+      case 'faq':
+        typePrompt = 'الأسئلة الشائعة (FAQ) مع أجوبتها.';
+        break;
+    }
+
+    const systemPrompt = `
+      أنت مستشار قانوني خبير في التجارة الإلكترونية في الجمهورية اليمنية.
+      المطلوب منك صياغة صفحة قانونية احترافية لمتجر إلكتروني يمني.
+
+      معلومات المتجر:
+      - اسم المتجر: ${storeName}
+      - مجال المتجر: ${storeCategory}
+      - نوع الصفحة المطلوبة: ${typePrompt}
+
+      الإرشادات الهامة:
+      1. يجب أن تكون الصياغة متوافقة مع القوانين والأعراف التجارية المتبعة في اليمن (مثل التعامل بالريال اليمني في بعض السياقات، وصعوبات الشحن بين المحافظات إذا لزم الأمر).
+      2. لا تذكر أو تشر إلى قوانين المملكة العربية السعودية أو وزارة التجارة السعودية إطلاقاً.
+      3. استخدم لغة عربية رسمية وواضحة (فصحى احترافية).
+      4. اجعل النص منسقاً ومنظماً في فقرات واضحة بدون استخدام أي أكواد أو علامات برمجية (نص عادي Plain Text فقط).
+      5. لا تضف أي مقدمات أو خاتمات لك كذكاء اصطناعي، فقط أرجع المحتوى النهائي الجاهز للنسخ والعرض مباشرة.
+      6. تأكد من شمولية النقاط لحماية حقوق التاجر والعميل بشكل عادل.
+    `;
+
+    const result = await model.generateContent(systemPrompt);
+    const response = await result.response;
+    let text = response.text().trim();
+    
+    // Clean markdown backticks if AI added them
+    if (text.startsWith('\`\`\`html')) {
+      text = text.replace('\`\`\`html', '').replace('\`\`\`', '').trim();
+    } else if (text.startsWith('\`\`\`')) {
+      text = text.replace('\`\`\`', '').replace('\`\`\`', '').trim();
+    }
+
+    return { success: true, text };
+  } catch (error: any) {
+    console.error('Error generating AI Legal Page:', error);
+    if (error.message === 'GEMINI_API_KEY_MISSING') {
+      return { success: false, error: 'MISSING_KEY' };
+    }
+    return { success: false, error: 'FAILED' };
+  }
+}

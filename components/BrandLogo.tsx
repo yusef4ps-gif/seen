@@ -84,9 +84,6 @@ export default function BrandLogo({
               SEEN
             </span>
           </div>
-          <span className={`font-semibold text-slate-500 dark:text-slate-400 mt-0.5 ${subTextSizes[size]}`}>
-            منصة التجارة الإلكترونية
-          </span>
         </div>
       )}
     </div>

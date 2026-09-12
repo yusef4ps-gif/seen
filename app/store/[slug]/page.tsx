@@ -17,6 +17,9 @@ import { createOrderAction, captureAbandonedCartAction, getCustomerOrdersAction 
 import { validateCouponAction } from '@/app/actions/coupon';
 import { getCurrentCustomerAction, logoutCustomerAction } from '@/app/actions/customer-auth';
 import CustomerAuthModal from '@/components/CustomerAuthModal';
+import BrandLogo from '@/components/BrandLogo';
+import LegalPagesModal from '@/components/LegalPagesModal';
+import { submitStoreReviewAction, getPublishedReviewsAction } from '@/app/actions/review';
 import { formatCurrency, convertCurrency, DEFAULT_CURRENCIES } from '@/lib/currency-engine';
 import { generateWhatsAppOrderMessage } from '@/lib/ai-generator';
 import { THEME_PRESETS } from '@/lib/theme-presets';
@@ -36,6 +39,10 @@ export default function CustomerStorefrontPage() {
   // Customer Auth State
   const [currentCustomer, setCurrentCustomer] = useState<any>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  // Legal Pages State
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+  const [legalPageType, setLegalPageType] = useState<'privacy' | 'terms' | 'returns' | 'faq' | null>(null);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -75,6 +82,13 @@ export default function CustomerStorefrontPage() {
   
   const [orderSuccess, setOrderSuccess] = useState<any>(null);
 
+  // Reviews states
+  const [storeReviews, setStoreReviews] = useState<any[]>([]);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewContent, setReviewContent] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
   useEffect(() => {
     async function loadStorefront() {
       if (!slug) return;
@@ -92,6 +106,12 @@ export default function CustomerStorefrontPage() {
 
         const prods = await getProductsByStoreAction(s.id);
         setProducts(prods as any);
+
+        // Fetch Published Reviews
+        const revRes = await getPublishedReviewsAction(s.id);
+        if (revRes.success && revRes.data) {
+          setStoreReviews(revRes.data);
+        }
       }
       
       const customer = await getCurrentCustomerAction();
@@ -154,6 +174,29 @@ export default function CustomerStorefrontPage() {
 
     return () => clearTimeout(timeout);
   }, [customerName, customerPhone, cart, store?.id, store?.baseCurrency]);
+
+  const handleSubmitReview = async () => {
+    if (!store || !currentCustomer) {
+      setShowReviewModal(false);
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (!reviewContent.trim()) {
+      alert('الرجاء كتابة التقييم');
+      return;
+    }
+    setIsSubmittingReview(true);
+    const res = await submitStoreReviewAction(store.id, reviewRating, reviewContent);
+    setIsSubmittingReview(false);
+    if (res.success) {
+      alert('تم إرسال تقييمك بنجاح وهو قيد المراجعة');
+      setShowReviewModal(false);
+      setReviewContent('');
+      setReviewRating(5);
+    } else {
+      alert(res.error || 'حدث خطأ');
+    }
+  };
 
   if (!store) {
     return (
@@ -1068,45 +1111,61 @@ export default function CustomerStorefrontPage() {
             if (section.type === 'testimonials') {
               return (
                 <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 space-y-4">
-                  <div className="text-center space-y-1">
-                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest" style={{ color: primaryColor }}>
-                      آراء وتجارب
-                    </span>
-                    <h3 className="text-sm sm:text-xl font-black">
-                      {section.settings.bannerTitle || 'ماذا يقول عملاؤنا عنا؟'}
-                    </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 text-center sm:text-right">
+                    <div className="space-y-1">
+                      <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest" style={{ color: primaryColor }}>
+                        آراء وتجارب
+                      </span>
+                      <h3 className="text-sm sm:text-xl font-black">
+                        {section.settings.bannerTitle || 'ماذا يقول عملاؤنا عنا؟'}
+                      </h3>
+                    </div>
+                    <button 
+                      onClick={() => setShowReviewModal(true)}
+                      className="px-4 py-2 bg-brand-50 text-brand-700 font-bold text-xs rounded-xl hover:bg-brand-100 transition-colors flex items-center justify-center gap-1.5 mx-auto sm:mx-0"
+                    >
+                      <Star className="w-3.5 h-3.5" />
+                      أضف تقييمك
+                    </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
-                    {[
-                      { name: 'سارة عبد الله', city: 'عدن', text: 'سرعة في التوصيل وتغليف راقي جداً، والمنتج أصلي ومطابق للوصف 100%.' },
-                      { name: 'محمد الصنعاني', city: 'صنعاء', text: 'سهولة خيالية في إتمام الطلب والدفع المباشر بالكريمي، شكراً على الاحترافية.' },
-                      { name: 'أنور الحضرمي', city: 'المكلا', text: 'أفضل متجر تعاملت معه في اليمن، خدمة عملاء سريعة جداً عبر الواتساب.' },
-                    ].map((t, idx) => (
-                      <div 
-                        key={idx}
-                        className={`p-4 sm:p-5 rounded-2xl space-y-2 text-right ${
-                          presetId === 'tech-modern'
-                            ? 'bg-slate-900 border border-slate-800 text-slate-200'
-                            : presetId === 'yemen-roastery'
-                            ? 'bg-[#f8f4eb] border border-amber-900/10 text-[#451a03]'
-                            : presetId === 'minimal-clean'
-                            ? 'border-2 border-black bg-white text-black rounded-none'
-                            : 'bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-xs'
-                        }`}
-                      >
-                        <div className="flex text-amber-400 gap-0.5">
-                          {[...Array(5)].map((_, i) => <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />)}
+                  {storeReviews.length === 0 ? (
+                    <div className="text-center py-10 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                      <MessageCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-slate-500 text-xs">لا توجد تقييمات منشورة حتى الآن. كن أول من يشارك تجربته!</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
+                      {storeReviews.map((review) => (
+                        <div 
+                          key={review.id}
+                          className={`p-4 sm:p-5 rounded-2xl space-y-2 text-right ${
+                            presetId === 'tech-modern'
+                              ? 'bg-slate-900 border border-slate-800 text-slate-200'
+                              : presetId === 'yemen-roastery'
+                              ? 'bg-[#f8f4eb] border border-amber-900/10 text-[#451a03]'
+                              : presetId === 'minimal-clean'
+                              ? 'border-2 border-black bg-white text-black rounded-none'
+                              : 'bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-xs'
+                          }`}
+                        >
+                          <div className="flex text-amber-400 gap-0.5">
+                            {[...Array(5)].map((_, i) => <Star key={i} className={`w-3.5 h-3.5 ${i < review.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-300 dark:text-slate-700'}`} />)}
+                          </div>
+                          <p className="text-xs leading-relaxed opacity-90">
+                            "{review.content}"
+                          </p>
+                          <div className="pt-2 border-t border-slate-200/40 text-[11px] font-bold flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+                              {review.customer.name.charAt(0)}
+                            </div>
+                            {review.customer.name}
+                            <CheckCircle2 className="w-3 h-3 text-green-500 mr-auto" />
+                          </div>
                         </div>
-                        <p className="text-xs leading-relaxed opacity-90">
-                          "{t.text}"
-                        </p>
-                        <div className="pt-2 border-t border-slate-200/40 text-[11px] font-bold">
-                          {t.name} <span className="opacity-60 font-normal">({t.city})</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </section>
               );
             }
@@ -1571,6 +1630,53 @@ export default function CustomerStorefrontPage() {
         </div>
       )}
 
+      {/* Review Modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-md bg-white dark:bg-slateDark-900 rounded-3xl p-6 shadow-2xl">
+            <button
+              onClick={() => setShowReviewModal(false)}
+              className="absolute top-4 left-4 p-2 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <h3 className="text-xl font-bold mb-2 text-right">إضافة تقييم جديد</h3>
+            <p className="text-xs text-slate-500 mb-6 text-right">يسعدنا سماع رأيك حول تجربتك معنا!</p>
+            
+            <div className="space-y-4 text-right">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">تقييمك</label>
+                <div className="flex gap-2 justify-center">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button key={star} type="button" onClick={() => setReviewRating(star)}>
+                      <Star className={`w-8 h-8 ${star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">النص والتجربة</label>
+                <textarea
+                  value={reviewContent}
+                  onChange={(e) => setReviewContent(e.target.value)}
+                  className="w-full h-24 p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-brand-500 text-right"
+                  placeholder="اكتب تقييمك هنا..."
+                />
+              </div>
+              
+              <button 
+                onClick={handleSubmitReview}
+                disabled={isSubmittingReview}
+                className="w-full py-3 rounded-xl bg-brand-600 text-white font-bold disabled:opacity-50"
+              >
+                {isSubmittingReview ? 'جاري الإرسال...' : 'إرسال التقييم'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Store Footer */}
       <div className="bg-white dark:bg-slate-900 border-t border-slate-200/60 dark:border-slate-800 mt-16 pt-12 pb-8 px-4 sm:px-6 md:px-8 relative z-0">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
@@ -1651,10 +1757,10 @@ export default function CustomerStorefrontPage() {
           <div className="space-y-4">
             <h4 className="text-sm font-bold text-slate-900 dark:text-white" style={{ fontFamily }}>روابط هامة</h4>
             <div className="space-y-2 flex flex-col items-start text-sm">
-              <Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">سياسة الخصوصية</Link>
-              <Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">الشروط والأحكام</Link>
-              <Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">سياسة الاسترجاع والتوصيل</Link>
-              <Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">الأسئلة الشائعة</Link>
+              <button onClick={() => { setLegalPageType('privacy'); setIsLegalModalOpen(true); }} className="text-slate-500 hover:text-brand-600 transition-colors text-right">سياسة الخصوصية</button>
+              <button onClick={() => { setLegalPageType('terms'); setIsLegalModalOpen(true); }} className="text-slate-500 hover:text-brand-600 transition-colors text-right">الشروط والأحكام</button>
+              <button onClick={() => { setLegalPageType('returns'); setIsLegalModalOpen(true); }} className="text-slate-500 hover:text-brand-600 transition-colors text-right">سياسة الاسترجاع والتوصيل</button>
+              <button onClick={() => { setLegalPageType('faq'); setIsLegalModalOpen(true); }} className="text-slate-500 hover:text-brand-600 transition-colors text-right">الأسئلة الشائعة</button>
             </div>
           </div>
 
@@ -1663,15 +1769,69 @@ export default function CustomerStorefrontPage() {
 
       {/* Powered By Footer */}
       <footer className="bg-slate-50 dark:bg-slate-950 border-t border-slate-200/60 dark:border-slate-800 py-6 text-center text-xs px-4">
-        <p className="opacity-75 mb-3 text-slate-500">© {new Date().getFullYear()} {store.name}. جميع الحقوق محفوظة.</p>
-        <a 
-          href="/" 
-          className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 group"
-        >
-          <span className="font-medium">تم إنشاء هذا المتجر بواسطة منصة سِين</span>
-          <img src="/seen-horizontal-transparent.png" alt="SEEN" className="h-6 w-auto object-contain opacity-80 group-hover:opacity-100 transition-opacity" />
-        </a>
+        <p className="opacity-75 mb-4 text-slate-500 font-medium">© {new Date().getFullYear()} {store.name}. جميع الحقوق محفوظة.</p>
+        <div className="flex flex-col items-center justify-center gap-3">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+            تم تطوير هذا المتجر بواسطة
+          </span>
+          <BrandLogo size="sm" showText={true} href="/" className="hover:opacity-80 transition-opacity" />
+        </div>
       </footer>
+
+      {/* Legal Pages Modal */}
+      <LegalPagesModal
+        store={store}
+        isOpen={isLegalModalOpen}
+        onClose={() => setIsLegalModalOpen(false)}
+        pageType={legalPageType}
+      />
+
+      {/* Review Modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-md bg-white dark:bg-slateDark-900 rounded-3xl p-6 shadow-2xl">
+            <button
+              onClick={() => setShowReviewModal(false)}
+              className="absolute top-4 left-4 p-2 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <h3 className="text-xl font-bold mb-2">إضافة تقييم جديد</h3>
+            <p className="text-xs text-slate-500 mb-6">يسعدنا سماع رأيك حول تجربتك معنا!</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">تقييمك</label>
+                <div className="flex gap-2 justify-center">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button key={star} type="button" onClick={() => setReviewRating(star)}>
+                      <Star className={`w-8 h-8 ${star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">النص والتجربة</label>
+                <textarea
+                  value={reviewContent}
+                  onChange={(e) => setReviewContent(e.target.value)}
+                  className="w-full h-24 p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-brand-500"
+                  placeholder="اكتب تقييمك هنا..."
+                />
+              </div>
+              
+              <button 
+                onClick={handleSubmitReview}
+                disabled={isSubmittingReview}
+                className="w-full py-3 rounded-xl bg-brand-600 text-white font-bold disabled:opacity-50"
+              >
+                {isSubmittingReview ? 'جاري الإرسال...' : 'إرسال التقييم'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Customer Auth Modal */}
       <CustomerAuthModal

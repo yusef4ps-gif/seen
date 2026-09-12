@@ -5,21 +5,30 @@ import { useParams } from 'next/navigation';
 import { 
   Settings, Wallet, RefreshCw, Truck, Store as StoreIcon, Database, 
   Save, CheckCircle2, Plus, Trash2, Building2, Phone, MapPin, Image as ImageIcon,
-  Target
+  Target, ShieldCheck, Sparkles
 } from 'lucide-react';
 import { Store, CurrencyCode, PaymentAccountConfig, ShippingMethod } from '@/lib/types';
 import { getStoreBySlugAction, updateStoreAction } from '@/app/actions/store';
 import { generateApiKeyAction, getApiKeysAction, deleteApiKeyAction } from '@/app/actions/apiKey';
+import { generateLegalPageAction } from '@/app/actions/ai';
 
 export default function MerchantSettingsPage() {
   const params = useParams();
   const slug = params.slug as string;
 
   const [store, setStore] = useState<Store | null>(null);
-  const [activeTab, setActiveTab] = useState<'general' | 'payments' | 'currencies' | 'shipping' | 'marketing' | 'accounting'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'payments' | 'currencies' | 'shipping' | 'marketing' | 'accounting' | 'legal'>('general');
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [isGeneratingKey, setIsGeneratingKey] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  
+  const [legalPages, setLegalPages] = useState({
+    privacy: '',
+    terms: '',
+    returns: '',
+    faq: ''
+  });
+  const [isGeneratingLegal, setIsGeneratingLegal] = useState<'privacy' | 'terms' | 'returns' | 'faq' | null>(null);
 
   
   const generateApiKey = async () => {
@@ -149,6 +158,16 @@ export default function MerchantSettingsPage() {
               // ignore
             }
           }
+          if ((s as any).themeConfig) {
+            try {
+              const parsed = typeof s.themeConfig === 'string' ? JSON.parse(s.themeConfig) : s.themeConfig;
+              if (parsed.legalPages) {
+                setLegalPages(parsed.legalPages);
+              }
+            } catch (e) {
+              // ignore
+            }
+          }
         }
       }
     }
@@ -161,7 +180,10 @@ export default function MerchantSettingsPage() {
     e.preventDefault();
     if (!store) return;
     
-    await updateStoreAction(store.id, {
+    const currentThemeConfig = typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig || '{}') : (store.themeConfig || {});
+    const updatedThemeConfig = { ...currentThemeConfig, legalPages };
+
+    const res = await updateStoreAction(store.id, {
       name,
       email,
       description,
@@ -172,17 +194,21 @@ export default function MerchantSettingsPage() {
       logo,
       banner,
       baseCurrency,
-      deliveryCurrency,
-      activeYemeniMarket,
       customRates: JSON.stringify(ratesByBase),
       paymentAccounts: JSON.stringify(paymentAccounts),
       shippingMethods: JSON.stringify(shippingMethods),
       marketingPixels: JSON.stringify(marketingPixels),
       socialLinks: JSON.stringify(socialLinks),
+      themeConfig: JSON.stringify(updatedThemeConfig),
     });
 
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+    if (res.success && res.store) {
+      setStore(res.store as any);
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    } else {
+      alert('فشل حفظ التعديلات: ' + (res.error || 'خطأ غير معروف'));
+    }
   };
 
   const handleTogglePayment = (id: string) => {
@@ -254,6 +280,22 @@ export default function MerchantSettingsPage() {
     }
   };
 
+  const handleGenerateLegal = async (type: 'privacy' | 'terms' | 'returns' | 'faq') => {
+    if (!store) return;
+    setIsGeneratingLegal(type);
+    try {
+      const res = await generateLegalPageAction(store.name, store.category || 'متجر عام', type);
+      if (res.success && res.text) {
+        setLegalPages(prev => ({ ...prev, [type]: res.text }));
+      } else {
+        alert('حدث خطأ أثناء التوليد. الرجاء المحاولة مرة أخرى.');
+      }
+    } catch (e) {
+      alert('حدث خطأ أثناء الاتصال بالخادم.');
+    }
+    setIsGeneratingLegal(null);
+  };
+
   return (
     <div className="space-y-8 animate-fadeIn max-w-4xl">
       
@@ -287,6 +329,7 @@ export default function MerchantSettingsPage() {
           { id: 'shipping', label: 'الشحن والتوصيل', icon: Truck },
           { id: 'marketing', label: 'التسويق والبكسلات', icon: Target },
           { id: 'accounting', label: 'الربط المحاسبي (ERP)', icon: Database },
+          { id: 'legal', label: 'الصفحات القانونية', icon: ShieldCheck },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
@@ -951,6 +994,57 @@ export default function MerchantSettingsPage() {
                </button>
             </div>
 
+          </div>
+        )}
+
+        {/* Tab 7: Legal Pages */}
+        {activeTab === 'legal' && (
+          <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 space-y-6">
+            <div className="border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-brand-600" />
+                الصفحات القانونية والسياسات
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                تظهر هذه الصفحات أسفل المتجر للعملاء في نوافذ منبثقة سريعة. يمكنك كتابتها بنفسك أو استخدام الذكاء الاصطناعي لتوليد سياسات متوافقة مع قوانين اليمن.
+              </p>
+            </div>
+
+            {[
+              { id: 'privacy', label: 'سياسة الخصوصية', desc: 'لحماية بيانات العميل وتوضيح كيف يتم استخدامها.' },
+              { id: 'terms', label: 'الشروط والأحكام', desc: 'شروط استخدام الموقع وضوابط الطلبات والمشتريات.' },
+              { id: 'returns', label: 'سياسة الاسترجاع والتوصيل', desc: 'حقوق العميل في إرجاع المنتجات ومناطق وأوقات التوصيل.' },
+              { id: 'faq', label: 'الأسئلة الشائعة', desc: 'الأسئلة المتكررة من العملاء وأجوبتها لتوفير الوقت.' }
+            ].map((pageType) => (
+              <div key={pageType.id} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">
+                      {pageType.label}
+                    </label>
+                    <p className="text-[10px] text-slate-500">{pageType.desc}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateLegal(pageType.id as any)}
+                    disabled={isGeneratingLegal !== null}
+                    className="px-3 py-1.5 rounded-lg bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 hover:bg-brand-100 transition-colors text-[11px] font-bold flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {isGeneratingLegal === pageType.id ? (
+                      <><RefreshCw className="w-3 h-3 animate-spin" /> جاري التوليد...</>
+                    ) : (
+                      <><Sparkles className="w-3 h-3" /> توليد بالذكاء الاصطناعي</>
+                    )}
+                  </button>
+                </div>
+                <textarea
+                  value={(legalPages as any)[pageType.id]}
+                  onChange={(e) => setLegalPages(prev => ({ ...prev, [pageType.id]: e.target.value }))}
+                  className="w-full h-32 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-sm font-medium focus:ring-2 focus:ring-brand-500/50 outline-none custom-scrollbar"
+                  placeholder={`اكتب ${pageType.label} هنا...`}
+                />
+              </div>
+            ))}
           </div>
         )}
 

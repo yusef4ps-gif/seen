@@ -44,17 +44,16 @@ export default function MerchantCouponsPage() {
     if (!store) return;
     setIsSubmitting(true);
     
-    const data = {
+    const res = await createCouponAction({
       storeId: store.id,
       code,
       type,
-      discount: parseFloat(discount) || 0,
-      maxUses: parseInt(maxUses) || 0,
+      discount: Number(discount) || 0,
+      maxUses: maxUses ? parseInt(maxUses) : 0,
       expiry: expiry || null,
       appliesTo: 'all'
-    };
+    });
 
-    const res = await createCouponAction(data as any);
     if (res.success) {
       setCoupons([res.coupon, ...coupons]);
       

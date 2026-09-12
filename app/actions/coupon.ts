@@ -53,16 +53,20 @@ export async function createCouponAction(data: {
     });
     
     // Attempt to get the store slug to revalidate path
-    const store = await prisma.store.findUnique({ where: { id: data.storeId } });
-    if (store) {
-      revalidatePath(`/merchant/${store.slug}/coupons`);
-      revalidatePath(`/store/${store.slug}`);
+    try {
+      const store = await prisma.store.findUnique({ where: { id: data.storeId } });
+      if (store) {
+        revalidatePath(`/merchant/${store.slug}/coupons`, 'page');
+        revalidatePath(`/store/${store.slug}`, 'page');
+      }
+    } catch (revalidateError) {
+      console.warn('Revalidate error (safe to ignore):', revalidateError);
     }
     
     return { success: true, coupon };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating coupon:', error);
-    return { success: false, error: 'حدث خطأ أثناء إنشاء الكوبون' };
+    return { success: false, error: error.message || String(error) };
   }
 }
 
@@ -74,12 +78,16 @@ export async function deleteCouponAction(id: string, storeId: string, slug: stri
         id,
       }
     });
-    revalidatePath(`/merchant/${slug}/coupons`);
-    revalidatePath(`/store/${slug}`);
+    try {
+      revalidatePath(`/merchant/${slug}/coupons`, 'page');
+      revalidatePath(`/store/${slug}`, 'page');
+    } catch (e) {
+      console.warn('Revalidate error (safe to ignore):', e);
+    }
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting coupon:', error);
-    return { success: false, error: 'حدث خطأ أثناء الحذف' };
+    return { success: false, error: error.message || String(error) };
   }
 }
 

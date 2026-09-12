@@ -7,7 +7,7 @@ import {
   Store as StoreIcon, LayoutDashboard, Package, Boxes, 
   ShoppingCart, Bot, Settings, ExternalLink, ShieldCheck, Bell, 
   Menu, X, Sparkles, RefreshCw, Users, ArrowUpRight, Palette,
-  Ticket, Tag, BarChart, History, LogOut
+  Ticket, Tag, BarChart, History, LogOut, Star
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
 import { Store, SystemBroadcast } from '@/lib/types';
@@ -183,6 +183,11 @@ export default function MerchantLayout({
       badge: 'إجراء',
     },
     {
+      title: 'الآراء والتقييمات',
+      href: `/merchant/${slug}/reviews`,
+      icon: Star,
+    },
+    {
       title: 'استعادة السلات المتروكة',
       href: `/merchant/${slug}/abandoned-carts`,
       icon: RefreshCw,
@@ -257,46 +262,42 @@ export default function MerchantLayout({
       >
         <div className="p-4 sm:p-5 flex-1 overflow-y-auto">
           
-          {/* Brand Header */}
+          {/* Store Header (Replaced BrandLogo) */}
           <div className="flex items-center justify-between pb-4 sm:pb-5 border-b border-slate-700/60">
-            <BrandLogo size="md" />
-
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className="lg:hidden p-1.5 text-slate-400 hover:text-white rounded-lg"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Active Store Selector Card */}
-          <div className="mt-4 p-3 rounded-2xl bg-slate-900/60 border border-slate-700/60 flex items-center justify-between">
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
               <img 
                 src={store.logo} 
                 alt={store.name} 
-                className="w-9 h-9 rounded-xl object-cover border border-slate-700 bg-white shrink-0" 
+                className="w-10 h-10 rounded-xl object-cover border border-slate-700 bg-white shrink-0" 
               />
-              <div className="min-w-0">
-                <h4 className="text-xs font-bold text-white truncate">
+              <div className="min-w-0 flex flex-col">
+                <h4 className="text-sm font-bold text-white truncate">
                   {store.name}
                 </h4>
-                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
-                  <span className="text-emerald-400">● نشط</span>
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium mt-0.5">
+                  <span className="text-emerald-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span> نشط</span>
                   <span>•</span>
                   <span>باقة {store.planTier.toUpperCase()}</span>
                 </div>
               </div>
             </div>
 
-            <Link
-              href={`/store/${store.slug}`}
-              target="_blank"
-              className="p-1.5 rounded-lg bg-slate-800 text-slate-200 hover:text-accent shadow-xs shrink-0"
-              title="معاينة متجر العميل"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </Link>
+            <div className="flex items-center gap-1">
+              <Link
+                href={`/store/${store.slug}`}
+                target="_blank"
+                className="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                title="معاينة المتجر"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </Link>
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="lg:hidden p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Navigation Links */}
@@ -549,19 +550,13 @@ export default function MerchantLayout({
         </main>
 
         {/* SEEN Platform Footer */}
-        <footer className="border-t border-slate-200 dark:border-slate-800 py-4 px-3 sm:px-8 text-center text-xs flex items-center justify-center">
-          <a 
-            href="/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-          >
-            <span>مدعوم ومستضاف بواسطة منصة</span>
-            <span className="font-black text-brand-600 dark:text-brand-400 tracking-wider flex items-center gap-1">
-              <Sparkles className="w-3 h-3" />
-              SEEN
+        <footer className="border-t border-slate-200 dark:border-slate-800 py-6 px-3 sm:px-8 flex flex-col items-center justify-center bg-slate-50 dark:bg-slateDark-950">
+          <div className="flex flex-col items-center gap-3 p-4">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              تم تطوير هذا المتجر بواسطة
             </span>
-          </a>
+            <BrandLogo size="sm" showText={true} href="/" className="hover:opacity-80 transition-opacity" />
+          </div>
         </footer>
 
       </div>

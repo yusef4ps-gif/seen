@@ -47,6 +47,7 @@ model Store {
   customers         Customer[]
   abandonedCarts    AbandonedCart[]
   returns           OrderReturn[]
+  reviews           StoreReview[]
   
   ownerId           String?
   owner             User?     @relation(fields: [ownerId], references: [id], onDelete: SetNull)
@@ -191,6 +192,7 @@ model Customer {
 
   store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   orders        Order[]
+  reviews       StoreReview[]
 
   @@unique([storeId, email])
   @@unique([storeId, phone])
@@ -240,4 +242,18 @@ model ActivityLog {
   createdAt DateTime @default(now())
 
   store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model StoreReview {
+  id          String   @id @default(cuid())
+  storeId     String
+  customerId  String
+  rating      Int      @default(5)
+  content     String   @db.Text
+  status      String   @default("pending") // pending, published, hidden
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 }

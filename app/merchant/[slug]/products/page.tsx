@@ -208,6 +208,8 @@ export default function MerchantProductsPage() {
     }, 600);
   };
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const handleAddVariant = () => {
     const newVar: ProductVariant = {
       id: `var-${Date.now()}`,
@@ -223,9 +225,11 @@ export default function MerchantProductsPage() {
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
-    const category = subCategory ? `${mainCategory.trim()} > ${subCategory.trim()}` : mainCategory.trim();
     e.preventDefault();
-    if (!store || !name || price <= 0) return;
+    const category = subCategory ? `${mainCategory.trim()} > ${subCategory.trim()}` : mainCategory.trim();
+    if (!store || !name || price <= 0 || isSaving) return;
+
+    setIsSaving(true);
 
     if (editingProductId) {
       const res = await updateProductAction(editingProductId, {
@@ -245,6 +249,7 @@ export default function MerchantProductsPage() {
 
       if (!res.success) {
         alert(res.error?.message || res.error || 'فشل تحديث المنتج');
+        setIsSaving(false);
         return;
       }
       const user = authEngine.getCurrentUser();
@@ -288,6 +293,7 @@ export default function MerchantProductsPage() {
       }
     }
 
+    setIsSaving(false);
     setIsModalOpen(false);
     await refreshProducts();
   };
@@ -734,9 +740,10 @@ export default function MerchantProductsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl font-bold text-xs bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-600/25"
+                  disabled={isSaving}
+                  className="px-5 py-2.5 rounded-xl font-bold text-xs bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-600/25 disabled:opacity-50"
                 >
-                  {editingProductId ? 'حفظ التعديلات' : 'إضافة المنتج فوراً'}
+                  {isSaving ? 'جاري الحفظ...' : (editingProductId ? 'حفظ التعديلات' : 'إضافة المنتج فوراً')}
                 </button>
               </div>
 
