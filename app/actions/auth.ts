@@ -5,11 +5,20 @@ import prisma from '@/lib/prisma';
 import { sendWhatsAppMessage, sendEmail, EmailTemplates } from '@/lib/notification-engine';
 
 export async function setAuthCookieAction(token: string, userId: string, role: string, storeId?: string) {
-  cookies().set('seen_session_token', token, { httpOnly: true, path: '/' });
-  cookies().set('seen_session_user_id', userId, { httpOnly: true, path: '/' });
-  cookies().set('seen_session_role', role, { httpOnly: true, path: '/' });
+  const isProd = process.env.NODE_ENV === 'production';
+  const options = { 
+    httpOnly: true, 
+    path: '/', 
+    secure: isProd,
+    sameSite: 'lax' as const,
+    maxAge: 10 * 365 * 24 * 60 * 60 // 10 years (effectively forever)
+  };
+  
+  cookies().set('seen_session_token', token, options);
+  cookies().set('seen_session_user_id', userId, options);
+  cookies().set('seen_session_role', role, options);
   if (storeId) {
-    cookies().set('seen_session_store_id', storeId, { httpOnly: true, path: '/' });
+    cookies().set('seen_session_store_id', storeId, options);
   } else {
     cookies().delete('seen_session_store_id');
   }
