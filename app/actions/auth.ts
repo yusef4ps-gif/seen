@@ -184,43 +184,15 @@ export async function registerMerchantAction(data: { name: string; phone: string
       }
     });
 
-    // 3. Create a default store for the merchant
-    // slug must be unique, so we'll generate a random one based on the name or a timestamp
-    const baseSlug = data.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'store';
-    const slug = `${baseSlug}-${Math.random().toString(36).substr(2, 5)}`;
-    const now = new Date();
-    const planEndDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days trial
-    
-    const newStore = await prisma.store.create({
-      data: {
-        name: `متجر ${data.name}`,
-        slug: slug,
-        ownerId: newUser.id,
-        phone: data.phone,
-        city: `${data.country} - ${data.city}`, // Store country/city here to avoid DB migrations
-        address: `${data.country}, ${data.city}`,
-        planStartDate: now,
-        planEndDate: planEndDate
-      }
-    });
-
-    // 4. Send Welcome WhatsApp Message
-    const trialDays = 14;
-    const startDate = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
-    const welcomeMessage = `أهلاً بك في منصة سِين! 🚀\nمرحباً ${data.name}،\nلقد تم إنشاء متجرك بنجاح.\n\nتاريخ الاشتراك: ${startDate}\nلديك فترة تجريبية مجانية لمدة ${trialDays} يوماً.\n\nرابط لوحة التحكم:\nhttps://seen.app/merchant/${newStore.slug}`;
-    
-    // Call in background
-    sendWhatsAppMessage({
-      to: data.phone,
-      message: welcomeMessage
-    });
+    // We removed automatic store creation.
+    // The user will be redirected to the /create-store onboarding page.
 
     return { 
       success: true, 
       userId: newUser.id, 
       role: newUser.role, 
-      storeId: newStore.id,
-      slug: newStore.slug
+      storeId: null,
+      slug: null
     };
 
   } catch (error) {

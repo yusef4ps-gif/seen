@@ -65,13 +65,14 @@ const DEFAULT_SHIPPING_METHODS = JSON.stringify([
 
 export async function createStoreAction(data: any) {
   try {
-    await requireAuth();
+    const user = await requireAuth();
     const cleanSlug = data.slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, '-');
     const existing = await prisma.store.findUnique({ where: { slug: cleanSlug } });
     const finalSlug = existing ? `${cleanSlug}-${Math.floor(100 + Math.random() * 900)}` : cleanSlug;
 
     const newStore = await prisma.store.create({
       data: {
+        ownerId: user.userId,
         slug: finalSlug,
         name: data.name,
         description: data.description || `المتجر الإلكتروني الرسمي لـ ${data.name}. تسوق أفضل المنتجات بأفضل الأسعار.`,
@@ -111,7 +112,6 @@ export async function createStoreAction(data: any) {
     revalidatePath('/admin');
     revalidatePath('/');
     
-    // Send Welcome Email
     try {
       if (newStore.email) {
         const dashboardLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/merchant/${newStore.slug}`;
@@ -131,6 +131,17 @@ export async function createStoreAction(data: any) {
     } catch (emailErr) {
       console.error('Failed to send welcome email:', emailErr);
     }
+    
+    // Update the auth cookie with the new storeId
+    const { cookies } = await import('next/headers');
+    const isProd = process.env.NODE_ENV === 'production';
+    cookies().set('seen_session_store_id', newStore.id, {
+      httpOnly: true, 
+      path: '/', 
+      secure: isProd,
+      sameSite: 'lax' as const,
+      maxAge: 10 * 365 * 24 * 60 * 60 // 10 years
+    });
 
     return { success: true, store: parsedStore };
   } catch (error: any) {

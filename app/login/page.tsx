@@ -102,10 +102,18 @@ function LoginFormContent() {
     } else {
       setSuccessMessage('تم تسجيل الدخول بنجاح! جاري التوجيه...');
       if (result.userId && result.role) {
-        await setAuthCookieAction('temp-token', result.userId, result.role, result.storeId);
+        await setAuthCookieAction('temp-token', result.userId, result.role, result.storeId || undefined);
       }
       setTimeout(() => {
-        router.push(redirectParam || (result.slug ? `/merchant/${result.slug}` : '/profile'));
+        if (redirectParam) {
+           router.push(redirectParam);
+        } else if (result.slug) {
+           router.push(`/merchant/${result.slug}`);
+        } else if (result.role === 'STORE_OWNER') {
+           router.push('/create-store');
+        } else {
+           router.push('/profile');
+        }
       }, 500);
     }
   };
@@ -160,10 +168,18 @@ function LoginFormContent() {
     } else {
       setSuccessMessage('تم إنشاء حسابك ومتجرك بنجاح! جاري توجيهك...');
       if (result.userId && result.role) {
-        await setAuthCookieAction('temp-token', result.userId, result.role, result.storeId);
+        await setAuthCookieAction('temp-token', result.userId, result.role, result.storeId || undefined);
       }
       setTimeout(() => {
-        router.push(redirectParam || (result.slug ? `/merchant/${result.slug}` : '/profile'));
+        if (redirectParam) {
+           router.push(redirectParam);
+        } else if (result.slug) {
+           router.push(`/merchant/${result.slug}`);
+        } else if (result.role === 'STORE_OWNER') {
+           router.push('/create-store');
+        } else {
+           router.push('/profile');
+        }
       }, 500);
     }
   };
