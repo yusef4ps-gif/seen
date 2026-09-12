@@ -26,7 +26,6 @@ export async function bulkCreateProductsAction(storeId: string, products: any[])
         lowStockAlert: 5,
         isAvailable: true,
         isFeatured: false,
-        status: 'active',
         tags: JSON.stringify(p.tags || []),
       };
     });

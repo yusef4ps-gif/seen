@@ -12,28 +12,34 @@ import { authEngine } from '@/lib/auth-engine';
 import { User, Store } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
 import { useStoreData } from '@/lib/swr-hooks';
+import { getStoreCustomersAction } from '@/app/actions/store';
 
 export default function MerchantCustomersPage() {
   const params = useParams();
   const slug = params.slug as string;
 
   const { store } = useStoreData(slug);
-  const [customers, setCustomers] = useState<User[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    if (store) {
-      const custs = authEngine.getUsers(store.id, 'CUSTOMER');
-      setCustomers(custs);
+    async function fetchCustomers() {
+      if (store) {
+        const res = await getStoreCustomersAction(store.id);
+        if (res.success && res.customers) {
+          setCustomers(res.customers);
+        }
+      }
     }
+    fetchCustomers();
   }, [store]);
 
   if (!store) return null;
 
   const filteredCustomers = customers.filter((c) =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone.includes(searchTerm) ||
-    c.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (c.phone || '').includes(searchTerm) ||
+    (c.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalSpentAll = customers.reduce((sum, c) => sum + (c.totalSpent || 0), 0);
@@ -131,7 +137,7 @@ export default function MerchantCustomersPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
               {filteredCustomers.map((cust) => {
-                const cleanPhone = cust.phone.replace(/[^0-9]/g, '');
+                const cleanPhone = (cust.phone || '').replace(/[^0-9]/g, '');
                 const waUrl = `https://wa.me/967${cleanPhone}?text=${encodeURIComponent(`مرحباً ${cust.name}، شكراً لتسوقك من متجر ${store.name}!`)}`;
 
                 return (

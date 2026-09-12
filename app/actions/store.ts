@@ -294,3 +294,16 @@ export async function updateStoreAction(storeId: string, data: any) {
     return { success: false, error: error.message };
   }
 }
+
+export async function getStoreCustomersAction(storeId: string) {
+  try {
+    const customers = await prisma.customer.findMany({
+      where: { storeId },
+      orderBy: { createdAt: 'desc' }
+    });
+    return { success: true, customers };
+  } catch (error: any) {
+    console.error('Error fetching store customers:', error);
+    return { success: false, error: 'حدث خطأ أثناء جلب العملاء' };
+  }
+}
