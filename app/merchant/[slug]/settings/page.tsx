@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { 
   Settings, Wallet, RefreshCw, Truck, Store as StoreIcon, Database, 
   Save, CheckCircle2, Plus, Trash2, Building2, Phone, MapPin, Image as ImageIcon,
-  Target, ShieldCheck, Sparkles
+  Target, ShieldCheck, Sparkles, X
 } from 'lucide-react';
 import { Store, CurrencyCode, PaymentAccountConfig, ShippingMethod } from '@/lib/types';
 import { getStoreBySlugAction, updateStoreAction } from '@/app/actions/store';
@@ -69,7 +69,6 @@ export default function MerchantSettingsPage() {
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
   const [logo, setLogo] = useState('');
-  const [banner, setBanner] = useState('');
   const [baseCurrency, setBaseCurrency] = useState<CurrencyCode>('SAR');
   const [deliveryCurrency, setDeliveryCurrency] = useState<CurrencyCode>('YER_SANAA');
   const [activeYemeniMarket, setActiveYemeniMarket] = useState<'YER_ADEN' | 'YER_SANAA'>('YER_ADEN');
@@ -124,7 +123,6 @@ export default function MerchantSettingsPage() {
           setCity(s.city || '');
           setAddress(s.address || '');
           setLogo(s.logo || '');
-          setBanner(s.banner || '');
           setBaseCurrency(s.baseCurrency as any);
           setDeliveryCurrency(s.deliveryCurrency as any || 'YER_SANAA');
           setActiveYemeniMarket((s as any).activeYemeniMarket || 'YER_ADEN');
@@ -192,7 +190,6 @@ export default function MerchantSettingsPage() {
       city,
       address,
       logo,
-      banner,
       baseCurrency,
       customRates: JSON.stringify(ratesByBase),
       paymentAccounts: JSON.stringify(paymentAccounts),
@@ -520,34 +517,6 @@ export default function MerchantSettingsPage() {
                         if (file) {
                           const reader = new FileReader();
                           reader.onloadend = () => setLogo(reader.result as string);
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  بانر المتجر (Banner)
-                </label>
-                <div className="flex items-center gap-3">
-                  {banner && banner.trim() !== '' && (
-                    <img src={banner} className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0" alt="Banner" />
-                  )}
-                  <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-all bg-slate-50 dark:bg-slate-800 text-slate-500">
-                    <ImageIcon className="w-4 h-4" />
-                    <span className="text-xs font-bold">رفع بانر...</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => setBanner(reader.result as string);
                           reader.readAsDataURL(file);
                         }
                       }}

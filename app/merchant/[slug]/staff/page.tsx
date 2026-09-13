@@ -72,7 +72,7 @@ export default function MerchantStaffPage() {
       storeId: store.id,
       action: 'إضافة',
       details: `تمت إضافة الموظف الجديد: ${newEmployee.name}`,
-      userName: newEmployee.name,
+      userName: authEngine.getCurrentUser()?.name || 'مجهول',
       entity: 'موظف',
       device: window.navigator.userAgent
     });
@@ -103,7 +103,7 @@ export default function MerchantStaffPage() {
       storeId: store.id,
       action: 'تعديل',
       details: `تم تعديل بيانات الموظف: ${editingEmployee.name}`,
-      userName: editingEmployee.name,
+      userName: authEngine.getCurrentUser()?.name || 'مجهول',
       entity: 'موظف',
       device: window.navigator.userAgent
     });
@@ -122,7 +122,7 @@ export default function MerchantStaffPage() {
         storeId: store.id,
         action: 'تعديل',
         details: `تم تغيير حالة حساب الموظف: ${user?.name || ''}`,
-        userName: user?.name || 'مجهول',
+        userName: authEngine.getCurrentUser()?.name || 'مجهول',
         entity: 'موظف',
         device: window.navigator.userAgent
       });
@@ -139,7 +139,7 @@ export default function MerchantStaffPage() {
         storeId: store.id,
         action: 'حذف',
         details: `تم حذف حساب الموظف: ${user?.name || ''}`,
-        userName: user?.name || 'مجهول',
+        userName: authEngine.getCurrentUser()?.name || 'مجهول',
         entity: 'موظف',
         device: window.navigator.userAgent
       });

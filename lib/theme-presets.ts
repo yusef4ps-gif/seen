@@ -23,6 +23,20 @@ export const DEFAULT_THEME_SECTIONS: ThemeSection[] = [
       bannerTitle: 'تشكيلة الموسم الفاخرة 2026',
       bannerSubtitle: 'أرقى المنتجات بتصاميم حصرية وجودة فائقة تلبي ذوقك الرفيع',
       bannerImageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&auto=format&fit=crop&q=80',
+      heroSlides: [
+        {
+          image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&auto=format&fit=crop&q=80',
+          title: 'تشكيلة الموسم الفاخرة 2026',
+          subtitle: 'أرقى المنتجات بتصاميم حصرية وجودة فائقة تلبي ذوقك الرفيع',
+          ctaText: 'استكشف التشكيلة الآن'
+        },
+        {
+          image: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1200&auto=format&fit=crop&q=80',
+          title: 'إطلالة عصرية أنيقة',
+          subtitle: 'أحدث صيحات الموضة العالمية بين يديك',
+          ctaText: 'تسوق الآن'
+        }
+      ],
       ctaText: 'استكشف التشكيلة الآن',
     },
   },

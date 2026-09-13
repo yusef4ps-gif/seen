@@ -25,6 +25,189 @@ import { generateWhatsAppOrderMessage } from '@/lib/ai-generator';
 import { THEME_PRESETS } from '@/lib/theme-presets';
 import toast from 'react-hot-toast';
 
+function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, legacyBannerInterval, secondaryColor }: any) {
+  const slides = (section.settings.heroSlides && section.settings.heroSlides.length > 0)
+    ? section.settings.heroSlides
+    : ((section.settings.bannerImages && section.settings.bannerImages.length > 0)
+        ? section.settings.bannerImages.map((img: string) => ({ image: img, title: section.settings.bannerTitle, subtitle: section.settings.bannerSubtitle }))
+        : (section.settings.bannerImageUrl ? [{ image: section.settings.bannerImageUrl, title: section.settings.bannerTitle, subtitle: section.settings.bannerSubtitle }] : []));
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState(0);
+  const interval = section.settings.bannerInterval || legacyBannerInterval || 5;
+
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % slides.length);
+    }, interval * 1000);
+    return () => clearInterval(timer);
+  }, [slides.length, interval]);
+
+  const handleTouchStart = (e: React.TouchEvent) => setTouchStart(e.touches[0].clientX);
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touchEnd = e.changedTouches[0].clientX;
+    if (touchStart - touchEnd > 50) {
+      setCurrentIndex(prev => (prev + 1) % slides.length);
+    } else if (touchStart - touchEnd < -50) {
+      setCurrentIndex(prev => (prev - 1 + slides.length) % slides.length);
+    }
+  };
+
+  if (slides.length === 0) return null;
+
+  const currentSlide = slides[currentIndex];
+  const title = currentSlide.title || store.name;
+  const subtitle = currentSlide.subtitle || store.description;
+
+  const renderSliderImages = (imgClassName: string) => {
+    const isDimmed = imgClassName.includes('opacity-60');
+    return (
+      <div 
+        className="relative overflow-hidden w-full h-full"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Blurred Background Layer (prevents empty sides when using object-contain) */}
+        {slides.map((slide: any, idx: number) => (
+          <img
+            key={`bg-${idx}`}
+            src={slide.image}
+            alt=""
+            className={`absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-50 transition-opacity duration-700 ease-in-out ${idx === currentIndex ? 'z-0' : '-z-10'}`}
+            style={{ opacity: idx === currentIndex ? (isDimmed ? 0.3 : 0.6) : 0 }}
+          />
+        ))}
+
+        {/* Foreground Image Layer (object-contain prevents cropping) */}
+        {slides.map((slide: any, idx: number) => (
+          <img
+            key={idx}
+            src={slide.image}
+            alt={`Slide ${idx + 1}`}
+            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${imgClassName.replace('opacity-60', '')} ${idx === currentIndex ? 'z-10' : 'z-0'}`}
+            style={{ opacity: idx === currentIndex ? (isDimmed ? 0.6 : 1) : 0 }}
+          />
+        ))}
+        {slides.length > 1 && (
+          <div className="absolute bottom-3 left-0 right-0 z-20 flex justify-center gap-2" dir="ltr">
+            {slides.map((_: any, idx: number) => (
+              <button 
+                key={idx} 
+                onClick={(e) => { e.stopPropagation(); setCurrentIndex(idx); }}
+                className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-6 bg-white' : 'w-2 bg-white/50 hover:bg-white/80'}`}
+                aria-label={`Go to slide ${idx + 1}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (presetId === 'tech-modern') {
+    return (
+      <section className="relative h-48 sm:h-64 lg:h-80 w-full bg-slate-950 overflow-hidden">
+        {renderSliderImages("w-full h-full object-contain")}
+        <div className="absolute inset-0 bg-slate-950/40" />
+        <div className="absolute inset-0 bg-gradient-to-l from-slate-950 via-slate-900/80 to-transparent pointer-events-none" />
+        
+        <div className="absolute inset-0 flex items-center">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8 w-full text-right pointer-events-auto">
+            <div className="relative z-10 space-y-5 max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] sm:text-xs font-mono font-bold shadow-[0_0_15px_rgba(59,130,246,0.3)] backdrop-blur-md">
+                <Zap className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
+                <span>الجيل القادم 2026</span>
+              </div>
+              <h2 className="text-2xl sm:text-5xl lg:text-6xl font-black text-white leading-tight animate-in fade-in slide-in-from-right-8 duration-700 drop-shadow-[0_0_30px_rgba(59,130,246,0.3)]" key={`title-${currentIndex}`}>
+                {title}
+              </h2>
+              <p className="text-sm sm:text-lg text-slate-300 leading-relaxed animate-in fade-in slide-in-from-right-8 duration-700 delay-100" key={`sub-${currentIndex}`}>
+                {subtitle}
+              </p>
+              <div className="flex flex-wrap gap-3 pt-2 font-mono text-[10px] sm:text-xs animate-in fade-in slide-in-from-right-8 duration-700 delay-200">
+                <span className="px-3 py-1.5 rounded-lg bg-slate-900/60 border border-slate-700/50 text-slate-300 backdrop-blur-sm">⚡ 5G ULTRA</span>
+                <span className="px-3 py-1.5 rounded-lg bg-slate-900/60 border border-slate-700/50 text-slate-300 backdrop-blur-sm">🛡️ ضمان سنتين</span>
+                <span className="px-3 py-1.5 rounded-lg bg-slate-900/60 border border-slate-700/50 text-slate-300 backdrop-blur-sm">🚚 شحن فوري</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (presetId === 'yemen-roastery') {
+    return (
+      <section className="relative h-48 sm:h-64 lg:h-80 w-full bg-[#2a1306] overflow-hidden">
+        {renderSliderImages("w-full h-full object-contain")}
+        <div className="absolute inset-0 bg-[#2a1306]/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1a0b02] via-[#2a1306]/50 to-transparent pointer-events-none" />
+        
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="max-w-4xl mx-auto px-4 sm:px-8 w-full text-center pointer-events-auto">
+            <div className="space-y-5 relative z-10 flex flex-col items-center">
+              <div className="inline-flex items-center gap-2 px-5 py-2 rounded-sm bg-amber-950/40 border border-amber-700/50 text-amber-400 text-xs sm:text-sm font-bold shadow-xl backdrop-blur-md">
+                <Coffee className="w-4 h-4" />
+                <span>أصالة البن اليماني المختص</span>
+              </div>
+              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black leading-tight text-amber-50 animate-in fade-in slide-in-from-bottom-8 duration-700 drop-shadow-2xl" key={`title-${currentIndex}`}>
+                {title}
+              </h2>
+              <p className="text-sm sm:text-lg text-amber-200/80 leading-relaxed max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150 drop-shadow-md" key={`sub-${currentIndex}`}>
+                {subtitle}
+              </p>
+              <div className="pt-4 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+                <button className="px-8 py-3 bg-amber-700 hover:bg-amber-600 text-amber-50 font-bold rounded-sm transition-colors border-b-2 border-amber-900">
+                  تسوق الآن
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (presetId === 'minimal-clean') {
+    return (
+      <section className="max-w-7xl mx-auto px-3 sm:px-8 pt-4">
+        <div className="border-2 border-black p-6 sm:p-12 text-black bg-white space-y-4">
+          <div className="text-xs font-mono font-bold uppercase tracking-widest">[01] COLLECTION // 2026</div>
+          <h2 className="text-2xl sm:text-5xl font-black tracking-tight">{title}</h2>
+          <p className="text-xs sm:text-base text-slate-600 max-w-xl">{subtitle}</p>
+        </div>
+      </section>
+    );
+  }
+
+  // Default / Fashion Luxury Lookbook Hero
+  return (
+    <section className="relative h-48 sm:h-64 lg:h-80 w-full bg-slate-950 overflow-hidden group">
+      {renderSliderImages("w-full h-full object-contain")}
+      <div className="absolute inset-0 bg-black/20 transition-colors group-hover:bg-black/30" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+      
+      <div className="absolute inset-0 flex items-end pointer-events-none">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-8 sm:pb-12 w-full text-white space-y-3 pointer-events-auto relative z-10 text-right">
+          <span 
+            className="inline-block text-[10px] sm:text-xs font-black uppercase px-4 py-1.5 rounded-full text-white shadow-lg animate-in fade-in duration-500"
+            style={{ backgroundColor: secondaryColor }}
+          >
+            تشكيلة الموسم الفاخرة
+          </span>
+          <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black animate-in fade-in slide-in-from-bottom-4 duration-500 drop-shadow-2xl" key={`title-${currentIndex}`}>
+            {title}
+          </h2>
+          <p className="text-sm sm:text-base text-slate-200 max-w-2xl line-clamp-2 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 drop-shadow-md" key={`sub-${currentIndex}`}>
+            {subtitle}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function CustomerStorefrontPage() {
   const params = useParams();
   const router = useRouter();
@@ -123,10 +306,12 @@ export default function CustomerStorefrontPage() {
         setCustomerEmail(customer.email || '');
         
         // Try to fetch last order to get city and address
-        const orders = await getCustomerOrdersAction(s.id, customer.customerId, 'id');
-        if (orders && orders.length > 0) {
-          setCity(orders[0].city || s?.city || '');
-          setAddress(orders[0].address || '');
+        if (s) {
+          const orders = await getCustomerOrdersAction(s.id, customer.customerId, 'id');
+          if (orders && orders.length > 0) {
+            setCity(orders[0].city || s.city || '');
+            setAddress(orders[0].address || '');
+          }
         }
       }
     }
@@ -226,6 +411,25 @@ export default function CustomerStorefrontPage() {
     try {
       socialLinks = JSON.parse(store.socialLinks);
     } catch(e) {}
+  }
+
+  // Legacy Banner Support (for backwards compatibility with settings page uploads)
+  let legacyBannerImages: string[] = [];
+  let legacyBannerInterval = 5;
+  if (store.banner && store.banner.trim() !== '') {
+    try {
+      const parsed = JSON.parse(store.banner);
+      if (Array.isArray(parsed)) {
+        legacyBannerImages = parsed.filter(url => url && url.trim() !== '');
+      } else if (parsed && typeof parsed === 'object' && parsed.images) {
+        legacyBannerImages = (parsed.images as string[]).filter(url => url && url.trim() !== '');
+        legacyBannerInterval = parsed.interval || 5;
+      } else {
+        legacyBannerImages = [store.banner];
+      }
+    } catch(e) {
+      legacyBannerImages = [store.banner];
+    }
   }
 
   // Currency conversion helper for current active currency
@@ -443,10 +647,10 @@ export default function CustomerStorefrontPage() {
 
   const getBrandLogo = (brandName: string) => {
     const n = brandName.toLowerCase();
-    if (n.includes('samsung') || n.includes('سامسونج')) return 'https://upload.wikimedia.org/wikipedia/commons/2/24/Samsung_Logo.svg';
-    if (n.includes('apple') || n.includes('ابل') || n.includes('آبل') || n.includes('ايفون')) return 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg';
-    if (n.includes('xiaomi') || n.includes('شاومي')) return 'https://upload.wikimedia.org/wikipedia/commons/2/29/Xiaomi_logo.svg';
-    if (n.includes('huawei') || n.includes('هواوي')) return 'https://upload.wikimedia.org/wikipedia/commons/0/00/Huawei_Logo.svg';
+    if (n.includes('samsung') || n.includes('سامسونج')) return 'https://api.iconify.design/simple-icons:samsung.svg';
+    if (n.includes('apple') || n.includes('ابل') || n.includes('آبل') || n.includes('ايفون')) return 'https://api.iconify.design/simple-icons:apple.svg';
+    if (n.includes('xiaomi') || n.includes('شاومي') || n.includes('ريدمي') || n.includes('redmi')) return 'https://api.iconify.design/simple-icons:xiaomi.svg';
+    if (n.includes('huawei') || n.includes('هواوي')) return 'https://api.iconify.design/simple-icons:huawei.svg';
     return null;
   };
 
@@ -609,109 +813,16 @@ export default function CustomerStorefrontPage() {
             
             // --- SECTION: HERO BANNER ---
             if (section.type === 'hero_slider') {
-              
-              // Tech Modern Cyber Hero
-              if (presetId === 'tech-modern') {
-                return (
-                  <section key={section.id} className="relative max-w-7xl mx-auto px-3 sm:px-8 pt-4">
-                    <div className="relative rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 p-6 sm:p-12 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-900/30 via-cyan-900/10 to-transparent pointer-events-none" />
-                      
-                      <div className="relative z-10 space-y-3 sm:space-y-4 max-w-xl text-right">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-400 text-[10px] sm:text-xs font-mono font-bold">
-                          <Zap className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-                          <span>NEW GENERATION TECH 2026</span>
-                        </div>
-                        <h2 className="text-xl sm:text-4xl font-black text-white leading-tight">
-                          {section.settings.bannerTitle}
-                        </h2>
-                        <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                          {section.settings.bannerSubtitle}
-                        </p>
-                        
-                        {/* Tech Spec Badges */}
-                        <div className="flex flex-wrap gap-2 pt-1 font-mono text-[10px]">
-                          <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-300">⚡ 5G ULTRA SPEED</span>
-                          <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-300">🛡️ ضمان رسمي سنتين</span>
-                          <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-300">🚚 شحن فوري للمحافظات</span>
-                        </div>
-                      </div>
-
-                      <div className="relative w-full md:w-80 aspect-video md:aspect-square rounded-2xl overflow-hidden border border-slate-700 shadow-xl shrink-0">
-                        <img src={(store.banner && store.banner.trim() !== '') ? store.banner : section.settings.bannerImageUrl} alt="Tech" className="w-full h-full object-cover" />
-                      </div>
-                    </div>
-                  </section>
-                );
-              }
-
-              // Artisan Roastery Story Hero
-              if (presetId === 'yemen-roastery') {
-                return (
-                  <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 pt-4">
-                    <div className="relative rounded-3xl overflow-hidden bg-[#3b1907] text-[#fefcf8] p-6 sm:p-12 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl border border-amber-900/30">
-                      <div className="space-y-3 sm:space-y-4 max-w-xl text-right">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-900/60 border border-amber-500/30 text-amber-300 text-xs font-bold">
-                          <Coffee className="w-3.5 h-3.5" />
-                          <span>أصالة البن اليماني المختص ☕</span>
-                        </div>
-                        <h2 className="text-xl sm:text-4xl font-black leading-tight text-amber-100">
-                          {section.settings.bannerTitle}
-                        </h2>
-                        <p className="text-xs sm:text-sm text-amber-200/90 leading-relaxed">
-                          {section.settings.bannerSubtitle}
-                        </p>
-                        <div className="pt-2">
-                          <span className="text-[11px] font-bold bg-[#572911] px-4 py-2 rounded-xl text-amber-200 inline-block border border-amber-700/40">
-                            🏔️ محاصيل حراز ومطر من ارتفاع 2200م
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="w-full md:w-80 aspect-video md:aspect-square rounded-2xl overflow-hidden border-2 border-amber-700/50 shadow-lg shrink-0">
-                        <img src={(store.banner && store.banner.trim() !== '') ? store.banner : section.settings.bannerImageUrl} alt="Coffee" className="w-full h-full object-cover" />
-                      </div>
-                    </div>
-                  </section>
-                );
-              }
-
-              // Swiss Minimalist Stark Hero
-              if (presetId === 'minimal-clean') {
-                return (
-                  <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 pt-4">
-                    <div className="border-2 border-black p-6 sm:p-12 text-black bg-white space-y-4">
-                      <div className="text-xs font-mono font-bold uppercase tracking-widest">[01] COLLECTION // 2026</div>
-                      <h2 className="text-2xl sm:text-5xl font-black tracking-tight">{section.settings.bannerTitle}</h2>
-                      <p className="text-xs sm:text-base text-slate-600 max-w-xl">{section.settings.bannerSubtitle}</p>
-                    </div>
-                  </section>
-                );
-              }
-
-              // Default / Fashion Luxury Lookbook Hero
               return (
-                <section key={section.id} className="relative h-44 sm:h-80 w-full bg-slate-950 overflow-hidden">
-                  <img 
-                    src={(store.banner && store.banner.trim() !== '') ? store.banner : section.settings.bannerImageUrl} 
-                    alt={store.name} 
-                    className="w-full h-full object-cover opacity-60" 
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex items-end">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-4 sm:pb-8 w-full text-white space-y-1 sm:space-y-2">
-                      <span 
-                        className="inline-block text-[9px] sm:text-[10px] font-black uppercase px-3 py-1 rounded-full text-white shadow-xs"
-                        style={{ backgroundColor: secondaryColor }}
-                      >
-                        تشكيلة الموسم الفاخرة
-                      </span>
-                      <h2 className="text-base sm:text-4xl font-black">{section.settings.bannerTitle || store.name}</h2>
-                      <p className="text-[11px] sm:text-base text-slate-300 max-w-2xl line-clamp-1 sm:line-clamp-2">
-                        {section.settings.bannerSubtitle || store.description}
-                      </p>
-                    </div>
-                  </div>
-                </section>
+                <HeroSectionRenderer 
+                  key={section.id} 
+                  section={section} 
+                  presetId={presetId} 
+                  store={store} 
+                  legacyBannerImages={legacyBannerImages} 
+                  legacyBannerInterval={legacyBannerInterval} 
+                  secondaryColor={secondaryColor} 
+                />
               );
             }
 
@@ -719,7 +830,7 @@ export default function CustomerStorefrontPage() {
             if (section.type === 'features_strip') {
               return (
                 <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 mt-4 sm:mt-6">
-                  <div className={`p-2 sm:p-4 rounded-2xl flex items-center gap-4 overflow-x-auto no-scrollbar shadow-sm ${
+                  <div className={`p-2 sm:p-4 rounded-2xl flex flex-wrap items-center gap-4 shadow-sm ${
                     presetId === 'tech-modern'
                       ? 'bg-slate-900 border border-slate-800 text-slate-200'
                       : presetId === 'yemen-roastery'
@@ -770,7 +881,6 @@ export default function CustomerStorefrontPage() {
                           >
                             <div className="py-2">
                               {cat.subs.map(sub => {
-                                const logo = getBrandLogo(sub);
                                 const fullCat = `${cat.main} > ${sub}`;
                                 const isSelected = selectedCategory === fullCat;
                                 return (
@@ -782,9 +892,6 @@ export default function CustomerStorefrontPage() {
                                     }`}
                                   >
                                     <span>{sub}</span>
-                                    {logo && (
-                                      <img src={logo} alt={sub} className="w-5 h-5 object-contain opacity-70" />
-                                    )}
                                   </button>
                                 );
                               })}
@@ -1412,23 +1519,51 @@ export default function CustomerStorefrontPage() {
                 </div>
 
                 {(!currentCustomer || !currentCustomer.name || !currentCustomer.phone) && (
-                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 text-center space-y-3">
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 text-center space-y-3 mb-4">
                     <p className="text-xs text-amber-800 dark:text-amber-300 font-bold">
-                      يرجى تسجيل الدخول أو إنشاء حساب لإتمام الشراء وتتبع طلبك بسهولة.
+                      {currentCustomer ? 'يرجى استكمال بياناتك لإتمام الطلب' : 'يمكنك تسجيل الدخول لحفظ بياناتك أو الاستمرار كزائر.'}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => setIsAuthModalOpen(true)}
-                      className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-colors"
-                    >
-                      تسجيل الدخول / إنشاء حساب
-                    </button>
+                    {!currentCustomer && (
+                      <button
+                        type="button"
+                        onClick={() => setIsAuthModalOpen(true)}
+                        className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-colors"
+                      >
+                        تسجيل الدخول / إنشاء حساب
+                      </button>
+                    )}
                   </div>
                 )}
-                
-
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      الاسم الكامل
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="الاسم الثلاثي"
+                      className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      رقم الهاتف (للتواصل)
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      placeholder="05xxxxxxxx أو 77xxxxxxx"
+                      dir="ltr"
+                      className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none text-left"
+                    />
+                  </div>
+                </div>                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
                       المدينة

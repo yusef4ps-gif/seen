@@ -8,6 +8,7 @@ import { getCouponsAction, createCouponAction, deleteCouponAction } from '@/app/
 import { logActivityAction } from '@/app/actions/activity';
 import { Store } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
+import { authEngine } from '@/lib/auth-engine';
 
 export default function MerchantCouponsPage() {
   const params = useParams();
@@ -61,7 +62,7 @@ export default function MerchantCouponsPage() {
         storeId: store.id,
         action: 'إضافة',
         details: `تمت إضافة كود خصم جديد: ${code}`,
-        userName: 'النظام / التاجر',
+        userName: authEngine.getCurrentUser()?.name || 'مجهول',
         entity: 'عروض وخصومات',
         device: window.navigator.userAgent
       });
@@ -89,7 +90,7 @@ export default function MerchantCouponsPage() {
           storeId: store.id,
           action: 'حذف',
           details: `تم حذف كود الخصم`,
-          userName: 'النظام / التاجر',
+          userName: authEngine.getCurrentUser()?.name || 'مجهول',
           entity: 'عروض وخصومات',
           device: window.navigator.userAgent
         });

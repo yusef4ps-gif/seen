@@ -12,8 +12,8 @@ import {
 import { createStoreAction } from '@/app/actions/store';
 import { ThemeConfig, ThemePreset, CurrencyCode } from '@/lib/types';
 import { THEME_PRESETS } from '@/lib/theme-presets';
+import { checkAuthStatusAction } from '@/app/actions/auth';
 import BrandLogo from '@/components/BrandLogo';
-import GoogleAuthButton from '@/components/GoogleAuthButton';
 import ImageUploader from '@/components/ImageUploader';
 
 export default function CreateStorePage() {
@@ -21,6 +21,19 @@ export default function CreateStorePage() {
 
   // Wizard Steps: 1 -> Details, 2 -> Theme & Visuals, 3 -> Payments & Currency, 4 -> Generation
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  React.useEffect(() => {
+    checkAuthStatusAction().then(res => {
+      if (!res.isAuthenticated) {
+        router.replace('/login');
+      } else {
+        setIsCheckingAuth(false);
+      }
+    }).catch(() => {
+      router.replace('/login');
+    });
+  }, [router]);
 
   // Store Basic Information
   const [storeName, setStoreName] = useState('');
@@ -54,7 +67,6 @@ export default function CreateStorePage() {
   const [kuraimiAccount, setKuraimiAccount] = useState('');
   const [enableUnified, setEnableUnified] = useState(true);
   const [unifiedAccount, setUnifiedAccount] = useState('');
-  const [googleAuthenticated, setGoogleAuthenticated] = useState<any>(null);
 
   // Generation status
   const [isGenerating, setIsGenerating] = useState(false);
@@ -192,6 +204,15 @@ export default function CreateStorePage() {
       }
   };
 
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-100 dark:bg-slateDark-950 flex flex-col items-center justify-center space-y-4">
+        <Sparkles className="w-8 h-8 text-brand-500 animate-spin" />
+        <p className="text-slate-500 font-bold text-sm">جاري التحقق من الصلاحيات...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slateDark-950 text-slate-900 dark:text-slate-100 font-sans flex flex-col">
       
@@ -236,31 +257,6 @@ export default function CreateStorePage() {
                 <p className="text-xs sm:text-sm text-slate-500 mt-1">
                   أدخل اسم متجرك ونشاطك التجاري ليتم تهيئة إعدادات المتجر تلقائياً مع 14 يوماً فترة تجريبية مجانية.
                 </p>
-              </div>
-
-              {/* Google Verified Merchant Account Card */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/70 to-indigo-50/70 dark:from-slate-800 dark:to-slate-800/80 border border-blue-200 dark:border-slate-700 space-y-2.5">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-white">
-                  <span className="flex items-center gap-1.5 text-blue-700 dark:text-blue-400">
-                    <Sparkles className="w-4 h-4" />
-                    <span>توثيق حساب التاجر الرسمي عبر Google</span>
-                  </span>
-                  {googleAuthenticated && (
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">
-                      ✓ موثق رسمياً
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  سجل دخولك بحساب Google ليتم ربط المتجر تلقائياً ببياناتك الموثقة ومنع أي حسابات وهمية.
-                </p>
-                <GoogleAuthButton
-                  buttonText={googleAuthenticated ? `موثق بحساب: ${googleAuthenticated.user.email}` : "توثيق المتجر بحساب Google المعتمد"}
-                  onSuccess={(session) => {
-                    setGoogleAuthenticated(session);
-                    if (session?.user?.name) handleNameChange(session.user.name + ' ستور');
-                  }}
-                />
               </div>
 
               <div className="space-y-4">

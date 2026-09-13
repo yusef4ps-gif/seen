@@ -169,8 +169,16 @@ export interface ThemeSection {
   order: number;
   settings: {
     bannerImageUrl?: string;
+    bannerImages?: string[];
+    bannerInterval?: number;
     bannerTitle?: string;
     bannerSubtitle?: string;
+    heroSlides?: {
+      image: string;
+      title?: string;
+      subtitle?: string;
+      ctaText?: string;
+    }[];
     ctaText?: string;
     discountCode?: string;
     backgroundColor?: string;

@@ -8,7 +8,7 @@ import {
   Eye, EyeOff, ArrowUp, ArrowDown, Check, Save, RotateCcw, 
   ExternalLink, Type, Sliders, CheckCircle2, ChevronDown, ChevronUp, 
   Flame, ShoppingCart, Star, ShieldCheck, Truck, RefreshCw, Send, 
-  Zap, Cpu, Coffee, Award, Tag, Ticket, Image as ImageIcon
+  Zap, Cpu, Coffee, Award, Tag, Ticket, Image as ImageIcon, X
 } from 'lucide-react';
 import { Store, ThemeConfig, ThemeSection, ThemePreset } from '@/lib/types';
 import { THEME_PRESETS, DEFAULT_THEME_SECTIONS } from '@/lib/theme-presets';
@@ -548,7 +548,7 @@ export default function ThemeBuilderPage() {
 
                         {isExpanded && (
                           <div className="p-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-3 text-xs">
-                            {sec.settings.bannerTitle !== undefined && (
+                            {sec.settings.bannerTitle !== undefined && sec.type !== 'hero_slider' && (
                               <div>
                                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
                                   العنوان الرئيسي للقسم:
@@ -562,7 +562,7 @@ export default function ThemeBuilderPage() {
                               </div>
                             )}
 
-                            {sec.settings.bannerSubtitle !== undefined && (
+                            {sec.settings.bannerSubtitle !== undefined && sec.type !== 'hero_slider' && (
                               <div>
                                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
                                   النص الفرعي / الوصف:
@@ -579,32 +579,162 @@ export default function ThemeBuilderPage() {
                             {sec.settings.bannerImageUrl !== undefined && (
                               <div>
                                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                                  صورة القسم (الرفع من الجهاز):
+                                  {sec.type === 'hero_slider' ? 'الشرائح (Sliders):' : 'صورة القسم (الرفع من الجهاز):'}
                                 </label>
-                                <div className="mt-1 flex items-center gap-3">
-                                  {sec.settings.bannerImageUrl && sec.settings.bannerImageUrl.trim() !== '' && (
-                                    <img src={sec.settings.bannerImageUrl} className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shadow-sm shrink-0" alt="Preview" />
-                                  )}
-                                  <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-all bg-white dark:bg-slate-900">
-                                    <ImageIcon className="w-4 h-4 text-slate-400" />
-                                    <span className="text-xs text-slate-500 font-bold">تصفح لرفع صورة...</span>
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      className="hidden"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                          const reader = new FileReader();
-                                          reader.onloadend = () => {
-                                            handleUpdateSectionSettings(sec.id, { bannerImageUrl: reader.result as string });
-                                          };
-                                          reader.readAsDataURL(file);
+                                
+                                {sec.type === 'hero_slider' ? (
+                                  <div className="mt-1 flex flex-col gap-4">
+                                    <div className="flex flex-col gap-3">
+                                      {(() => {
+                                        // Migration fallback for displaying in editor
+                                        let currentSlides = sec.settings.heroSlides;
+                                        if (!currentSlides || currentSlides.length === 0) {
+                                          const legacyImages = (sec.settings.bannerImages && sec.settings.bannerImages.length > 0) 
+                                            ? sec.settings.bannerImages 
+                                            : (sec.settings.bannerImageUrl ? [sec.settings.bannerImageUrl] : []);
+                                          currentSlides = legacyImages.map(img => ({
+                                            image: img,
+                                            title: sec.settings.bannerTitle || '',
+                                            subtitle: sec.settings.bannerSubtitle || '',
+                                          }));
                                         }
-                                      }}
-                                    />
-                                  </label>
-                                </div>
+
+                                        return (
+                                          <>
+                                            {currentSlides.map((slide, idx) => (
+                                              <div key={idx} className="relative p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
+                                                <button 
+                                                  type="button"
+                                                  onClick={() => {
+                                                    const newSlides = [...currentSlides!];
+                                                    newSlides.splice(idx, 1);
+                                                    handleUpdateSectionSettings(sec.id, { heroSlides: newSlides });
+                                                  }}
+                                                  className="absolute top-2 left-2 p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                                                >
+                                                  <X className="w-4 h-4" />
+                                                </button>
+                                                
+                                                <div className="flex items-start gap-3">
+                                                  <img src={slide.image} className="w-20 h-20 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0" alt={`Slide ${idx + 1}`} />
+                                                  <div className="flex-1 space-y-2 w-full">
+                                                    <input
+                                                      type="text"
+                                                      placeholder="عنوان الشريحة"
+                                                      value={slide.title || ''}
+                                                      onChange={(e) => {
+                                                        const newSlides = [...currentSlides!];
+                                                        newSlides[idx].title = e.target.value;
+                                                        handleUpdateSectionSettings(sec.id, { heroSlides: newSlides });
+                                                      }}
+                                                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                                    />
+                                                    <input
+                                                      type="text"
+                                                      placeholder="النص الفرعي (الوصف)"
+                                                      value={slide.subtitle || ''}
+                                                      onChange={(e) => {
+                                                        const newSlides = [...currentSlides!];
+                                                        newSlides[idx].subtitle = e.target.value;
+                                                        handleUpdateSectionSettings(sec.id, { heroSlides: newSlides });
+                                                      }}
+                                                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                                    />
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            ))}
+                                            
+                                            <label className="cursor-pointer flex flex-col items-center justify-center gap-2 w-full py-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-all bg-white dark:bg-slate-900 text-slate-400">
+                                              <div className="flex items-center gap-2">
+                                                <ImageIcon className="w-4 h-4" />
+                                                <span className="text-xs font-bold">إضافة شريحة جديدة</span>
+                                              </div>
+                                              <input
+                                                type="file"
+                                                accept="image/*"
+                                                multiple
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                  const files = Array.from(e.target.files || []);
+                                                  if (files.length > 0) {
+                                                    let processedCount = 0;
+                                                    const newSlidesToAppend: any[] = [];
+                                                    
+                                                    files.forEach((file, index) => {
+                                                      const reader = new FileReader();
+                                                      reader.onloadend = () => {
+                                                        newSlidesToAppend[index] = {
+                                                          image: reader.result as string,
+                                                          title: '',
+                                                          subtitle: ''
+                                                        };
+                                                        processedCount++;
+                                                        if (processedCount === files.length) {
+                                                          const finalSlides = [...currentSlides!, ...newSlidesToAppend.filter(Boolean)];
+                                                          handleUpdateSectionSettings(sec.id, { heroSlides: finalSlides });
+                                                        }
+                                                      };
+                                                      reader.readAsDataURL(file);
+                                                    });
+                                                  }
+                                                }}
+                                              />
+                                            </label>
+                                          </>
+                                        );
+                                      })()}
+                                    </div>
+
+                                    {((sec.settings.heroSlides && sec.settings.heroSlides.length > 1) || (sec.settings.bannerImages && sec.settings.bannerImages.length > 1)) && (
+                                      <div className="p-2 bg-slate-100/50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 mt-1">
+                                        <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-2">
+                                          سرعة التمرير التلقائي (بالثواني):
+                                        </label>
+                                        <div className="flex gap-4">
+                                          {[5, 7, 9].map(secVal => (
+                                            <label key={secVal} className="flex items-center gap-1.5 cursor-pointer">
+                                              <input 
+                                                type="radio" 
+                                                name={`bannerInterval-${sec.id}`}
+                                                value={secVal} 
+                                                checked={(sec.settings.bannerInterval || 5) === secVal}
+                                                onChange={(e) => handleUpdateSectionSettings(sec.id, { bannerInterval: Number(e.target.value) })}
+                                                className="w-3.5 h-3.5 text-brand-600 focus:ring-brand-500 border-slate-300"
+                                              />
+                                              <span className="text-[10px] font-medium">{secVal} ثواني</span>
+                                            </label>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="mt-1 flex items-center gap-3">
+                                    {sec.settings.bannerImageUrl && sec.settings.bannerImageUrl.trim() !== '' && (
+                                      <img src={sec.settings.bannerImageUrl} className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shadow-sm shrink-0" alt="Preview" />
+                                    )}
+                                    <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-all bg-white dark:bg-slate-900">
+                                      <ImageIcon className="w-4 h-4 text-slate-400" />
+                                      <span className="text-xs text-slate-500 font-bold">تصفح لرفع صورة...</span>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) {
+                                            const reader = new FileReader();
+                                            reader.onloadend = () => {
+                                              handleUpdateSectionSettings(sec.id, { bannerImageUrl: reader.result as string });
+                                            };
+                                            reader.readAsDataURL(file);
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                  </div>
+                                )}
                               </div>
                             )}
 
@@ -735,6 +865,19 @@ export default function ThemeBuilderPage() {
                   
                   // 1. HERO SLIDER / BANNER
                   if (section.type === 'hero_slider') {
+                    let displayImage = section.settings.bannerImageUrl;
+                    if (section.settings.bannerImages && section.settings.bannerImages.length > 0) {
+                      displayImage = section.settings.bannerImages[0];
+                    } else if (!displayImage && store.banner) {
+                      try {
+                        const parsed = JSON.parse(store.banner);
+                        if (Array.isArray(parsed) && parsed.length > 0) displayImage = parsed[0];
+                        else if (parsed && typeof parsed === 'object' && parsed.images && parsed.images.length > 0) displayImage = parsed.images[0];
+                      } catch(e) {
+                        if (!store.banner.startsWith('{') && !store.banner.startsWith('[')) displayImage = store.banner;
+                      }
+                    }
+
                     if (presetId === 'tech-modern') {
                       return (
                         <div key={section.id} className="relative rounded-2xl bg-slate-900 border border-slate-800 p-4 text-white space-y-2 flex flex-col sm:flex-row items-center gap-4">
@@ -744,7 +887,7 @@ export default function ThemeBuilderPage() {
                             <p className="text-[10px] text-slate-400">{section.settings.bannerSubtitle}</p>
                           </div>
                           <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden border border-slate-700 shrink-0">
-                            <img src={section.settings.bannerImageUrl || store.banner} alt="Hero" className="w-full h-full object-cover" />
+                            <img src={displayImage} alt="Hero" className="w-full h-full object-cover" />
                           </div>
                         </div>
                       );
@@ -758,7 +901,7 @@ export default function ThemeBuilderPage() {
                             <p className="text-[10px] text-amber-200/80">{section.settings.bannerSubtitle}</p>
                           </div>
                           <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden border-2 border-amber-700/50 shrink-0">
-                            <img src={section.settings.bannerImageUrl || store.banner} alt="Hero" className="w-full h-full object-cover" />
+                            <img src={displayImage} alt="Hero" className="w-full h-full object-cover" />
                           </div>
                         </div>
                       );
@@ -774,7 +917,7 @@ export default function ThemeBuilderPage() {
                     }
                     return (
                       <div key={section.id} className="relative rounded-2xl overflow-hidden bg-slate-900 text-white min-h-[140px] flex items-center p-4 shadow-sm">
-                        <img src={section.settings.bannerImageUrl || store.banner} alt="Hero" className="absolute inset-0 w-full h-full object-cover opacity-50" />
+                        <img src={displayImage} alt="Hero" className="absolute inset-0 w-full h-full object-cover opacity-50" />
                         <div className="relative z-10 space-y-1.5 max-w-sm">
                           <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md text-white" style={{ backgroundColor: secondaryColor }}>
                             عرض حصري

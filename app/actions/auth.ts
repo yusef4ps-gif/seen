@@ -33,6 +33,26 @@ export async function clearAuthCookieAction() {
   return { success: true };
 }
 
+export async function checkAuthStatusAction() {
+  const userId = cookies().get('seen_session_user_id')?.value;
+  if (!userId) return { isAuthenticated: false };
+  
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      // Clear invalid cookies
+      cookies().delete('seen_session_token');
+      cookies().delete('seen_session_user_id');
+      cookies().delete('seen_session_role');
+      cookies().delete('seen_session_store_id');
+      return { isAuthenticated: false };
+    }
+    return { isAuthenticated: true, user: { id: user.id, role: user.role } };
+  } catch (error) {
+    return { isAuthenticated: false };
+  }
+}
+
 // Authentication Utility for Server Actions
 export async function requireAuth() {
   const userId = cookies().get('seen_session_user_id')?.value;
