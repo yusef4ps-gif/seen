@@ -109,7 +109,7 @@ export async function createStoreAction(data: any) {
       shippingMethods: newStore.shippingMethods ? JSON.parse(newStore.shippingMethods) : [],
     };
 
-    revalidatePath('/admin');
+    revalidatePath('/seenayhq7x');
     revalidatePath('/');
     
     try {
@@ -270,7 +270,7 @@ export async function deleteStoreAction(storeId: string) {
     await prisma.store.delete({
       where: { id: storeId }
     });
-    revalidatePath('/admin');
+    revalidatePath('/seenayhq7x');
     return { success: true };
   } catch (error: any) {
     console.error('Error deleting store:', error);
@@ -278,14 +278,49 @@ export async function deleteStoreAction(storeId: string) {
   }
 }
 
+import { convertCurrency } from '@/lib/currency-engine';
+
 export async function updateStoreAction(storeId: string, data: any) {
   try {
     await requireStoreOwner(storeId);
+    
+    const currentStore = await prisma.store.findUnique({ where: { id: storeId } });
+    if (!currentStore) throw new Error('Store not found');
+
+    if (data.baseCurrency && data.baseCurrency !== currentStore.baseCurrency) {
+      const products = await prisma.product.findMany({
+        where: { storeId },
+        include: { variants: true }
+      });
+
+      for (const product of products) {
+        const newPrice = convertCurrency(product.price, currentStore.baseCurrency as any, data.baseCurrency as any, currentStore.customRates);
+        const newComparePrice = product.comparePrice ? convertCurrency(product.comparePrice, currentStore.baseCurrency as any, data.baseCurrency as any, currentStore.customRates) : null;
+        
+        await prisma.product.update({
+          where: { id: product.id },
+          data: {
+            price: newPrice,
+            comparePrice: newComparePrice,
+            baseCurrency: data.baseCurrency,
+            variants: {
+              update: product.variants.map((v) => ({
+                where: { id: v.id },
+                data: {
+                  priceOverride: v.priceOverride ? convertCurrency(v.priceOverride, currentStore.baseCurrency as any, data.baseCurrency as any, currentStore.customRates) : null
+                }
+              }))
+            }
+          }
+        });
+      }
+    }
+
     const updatedStore = await prisma.store.update({
       where: { id: storeId },
       data,
     });
-    revalidatePath('/admin');
+    revalidatePath('/seenayhq7x');
     revalidatePath(`/merchant/${updatedStore.slug}`, 'layout');
     revalidatePath(`/store/${updatedStore.slug}`, 'page');
     return { success: true, store: updatedStore };

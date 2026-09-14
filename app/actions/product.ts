@@ -8,11 +8,14 @@ export async function createProductAction(data: any) {
   try {
     await requireAuth();
     await requireStoreOwner(data.storeId);
+    const store = await prisma.store.findUnique({ where: { id: data.storeId } });
+    if (!store) throw new Error("Store not found");
 
     const product = await prisma.product.create({
       data: {
         id: data.id,
         storeId: data.storeId,
+        baseCurrency: store.baseCurrency,
         name: data.name,
         description: data.description,
         price: data.price,

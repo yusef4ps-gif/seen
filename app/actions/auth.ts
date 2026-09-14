@@ -133,7 +133,9 @@ export async function loginMerchantAction(phoneOrEmail: string, password: string
       userId: user.id, 
       role: user.role, 
       storeId,
-      slug
+      slug,
+      email: user.email,
+      name: user.name
     };
 
   } catch (error) {
@@ -218,5 +220,27 @@ export async function registerMerchantAction(data: { name: string; phone: string
   } catch (error) {
     console.error('Error in registerMerchantAction:', error);
     return { success: false, error: 'حدث خطأ أثناء إنشاء الحساب، يرجى المحاولة لاحقاً.' };
+  }
+}
+
+export async function sendLoginVerificationCodeAction(email: string, name: string) {
+  try {
+    // Generate a 4-digit code
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // Send email using Resend
+    const result = await sendEmail({
+      to: email,
+      subject: 'كود تسجيل الدخول الخاص بك من منصة سِين',
+      html: EmailTemplates.VerificationCode(name, code)
+    });
+
+    if (!result.success && !result.simulated) {
+      return { success: false, error: 'فشل إرسال كود التحقق. يرجى التأكد من أن البريد الإلكتروني يعمل.' };
+    }
+
+    return { success: true, code };
+  } catch (error) {
+    return { success: false, error: 'حدث خطأ غير متوقع، حاول لاحقاً.' };
   }
 }

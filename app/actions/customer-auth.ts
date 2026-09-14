@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
+import { sendEmail, sendWhatsAppMessage, EmailTemplates } from '@/lib/notification-engine';
 
 const googleClient = new OAuth2Client(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
 
@@ -13,7 +14,7 @@ export async function registerCustomerAction(storeId: string, name: string, emai
   try {
     // Basic validation
     if (!name || (!email && !phone)) {
-      return { success: false, error: 'ط§ظ„ط§ط³ظ… ظˆط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ ط£ظˆ ط§ظ„ط¥ظٹظ…ظٹظ„ ظ…ط·ظ„ظˆط¨ط©' };
+      return { success: false, error: 'الاسم ورقم الهاتف أو الإيميل مطلوبة' };
     }
 
     // Check if customer already exists for this store
@@ -21,14 +22,14 @@ export async function registerCustomerAction(storeId: string, name: string, emai
       const existingEmail = await prisma.customer.findUnique({
         where: { storeId_email: { storeId, email } }
       });
-      if (existingEmail) return { success: false, error: 'ظ‡ط°ط§ ط§ظ„ط¥ظٹظ…ظٹظ„ ظ…ط³ط¬ظ„ ظ…ط³ط¨ظ‚ط§ظ‹ ظپظٹ ظ‡ط°ط§ ط§ظ„ظ…طھط¬ط±' };
+      if (existingEmail) return { success: false, error: 'هذا الإيميل مسجل مسبقاً في هذا المتجر' };
     }
 
     if (phone) {
       const existingPhone = await prisma.customer.findUnique({
         where: { storeId_phone: { storeId, phone } }
       });
-      if (existingPhone) return { success: false, error: 'ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ ظ…ط³ط¬ظ„ ظ…ط³ط¨ظ‚ط§ظ‹ ظپظٹ ظ‡ط°ط§ ط§ظ„ظ…طھط¬ط±' };
+      if (existingPhone) return { success: false, error: 'رقم الهاتف مسجل مسبقاً في هذا المتجر' };
     }
 
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
@@ -52,25 +53,17 @@ export async function registerCustomerAction(storeId: string, name: string, emai
       email: newCustomer.email
     };
     
-    cookies().set(CUSTOMER_SESSION_COOKIE, JSON.stringify(sessionData), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 30 // 30 days
-    });
-
     return { success: true, customer: sessionData };
   } catch (error: any) {
     console.error('Customer Registration Error:', error);
-    return { success: false, error: 'ط­ط¯ط« ط®ط·ط£ ط؛ظٹط± ظ…طھظˆظ‚ط¹ ط£ط«ظ†ط§ط، ط§ظ„طھط³ط¬ظٹظ„' };
+    return { success: false, error: 'حدث خطأ غير متوقع أثناء التسجيل' };
   }
 }
 
 export async function loginCustomerAction(storeId: string, emailOrPhone: string, password?: string) {
   try {
     if (!emailOrPhone) {
-      return { success: false, error: 'ظٹط±ط¬ظ‰ ط¥ط¯ط®ط§ظ„ ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ ط£ظˆ ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ' };
+      return { success: false, error: 'يرجى إدخال البريد الإلكتروني أو رقم الهاتف' };
     }
 
     // Find customer by email or phone for this store
@@ -85,16 +78,16 @@ export async function loginCustomerAction(storeId: string, emailOrPhone: string,
     });
 
     if (!customer) {
-      return { success: false, error: 'ط§ظ„ط­ط³ط§ط¨ ط؛ظٹط± ظ…ظˆط¬ظˆط¯ ظپظٹ ظ‡ط°ط§ ط§ظ„ظ…طھط¬ط±' };
+      return { success: false, error: 'الحساب غير موجود في هذا المتجر' };
     }
 
     if (customer.password && password) {
       const isMatch = await bcrypt.compare(password, customer.password);
       if (!isMatch) {
-        return { success: false, error: 'ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط؛ظٹط± طµط­ظٹط­ط©' };
+        return { success: false, error: 'كلمة المرور غير صحيحة' };
       }
     } else if (!customer.password && password) {
-       return { success: false, error: 'ظ‡ط°ط§ ط§ظ„ط­ط³ط§ط¨ ظ…ط³ط¬ظ„ ط¨ط§ط³طھط®ط¯ط§ظ… ط¬ظˆط¬ظ„' };
+       return { success: false, error: 'هذا الحساب مسجل باستخدام جوجل' };
     }
 
     // Update last login
@@ -111,18 +104,10 @@ export async function loginCustomerAction(storeId: string, emailOrPhone: string,
       email: customer.email
     };
     
-    cookies().set(CUSTOMER_SESSION_COOKIE, JSON.stringify(sessionData), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 30 // 30 days
-    });
-
     return { success: true, customer: sessionData };
   } catch (error: any) {
     console.error('Customer Login Error:', error);
-    return { success: false, error: 'ط­ط¯ط« ط®ط·ط£ ط؛ظٹط± ظ…طھظˆظ‚ط¹ ط£ط«ظ†ط§ط، طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„' };
+    return { success: false, error: 'حدث خطأ غير متوقع أثناء تسجيل الدخول' };
   }
 }
 
@@ -141,69 +126,8 @@ export async function getCurrentCustomerAction() {
   }
 }
 
-export async function verifyGoogleTokenAndLoginCustomer(storeId: string, token: string) {
-  try {
-    const ticket = await googleClient.verifyIdToken({
-      idToken: token,
-      audience: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-    });
-    
-    const payload = ticket.getPayload();
-    if (!payload || !payload.email) {
-      return { success: false, error: 'طھط¹ط°ط± ط§ظ„ط­طµظˆظ„ ط¹ظ„ظ‰ ظ…ط¹ظ„ظˆظ…ط§طھ ط§ظ„ط­ط³ط§ط¨ ظ…ظ† ط¬ظˆط¬ظ„' };
-    }
 
-    const email = payload.email;
-    const name = payload.name || 'ط¹ظ…ظٹظ„';
-    
-    // Check if customer exists
-    let customer = await prisma.customer.findUnique({
-      where: { storeId_email: { storeId, email } }
-    });
 
-    if (!customer) {
-      // Register new customer
-      customer = await prisma.customer.create({
-        data: {
-          storeId,
-          name,
-          email,
-          authProvider: 'google',
-        }
-      });
-    } else {
-      // Update last login
-      customer = await prisma.customer.update({
-        where: { id: customer.id },
-        data: { lastLoginAt: new Date() }
-      });
-    }
-
-    // Create session
-    const sessionData = {
-      customerId: customer.id,
-      storeId: customer.storeId,
-      name: customer.name,
-      email: customer.email
-    };
-    
-    cookies().set(CUSTOMER_SESSION_COOKIE, JSON.stringify(sessionData), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 30 // 30 days
-    });
-
-    return { success: true, customer: sessionData };
-  } catch (error: any) {
-    console.error('Google Auth Error:', error);
-    return { success: false, error: 'ظپط´ظ„ ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط­ط³ط§ط¨ ط¬ظˆط¬ظ„' };
-  }
-}
-
-import { sendEmail } from '@/lib/notification-engine';
-import { EmailTemplates } from '@/lib/email-templates';
 
 export async function changeCustomerPasswordAction(oldPassword, newPassword) {
   try {
@@ -284,3 +208,45 @@ export async function customerForgotPasswordAction(storeId: string, email: strin
   }
 }
 
+
+export async function sendCustomerVerificationCodeAction(emailOrPhone: string, name: string) {
+  try {
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    
+    if (emailOrPhone.includes('@')) {
+      const result = await sendEmail({
+        to: emailOrPhone,
+        subject: 'كود التحقق الخاص بك من منصة سِين',
+        html: EmailTemplates.VerificationCode(name, code)
+      });
+      if (!result.success && !result.simulated) {
+        return { success: false, error: 'فشل إرسال كود التحقق للبريد الإلكتروني.' };
+      }
+    } else {
+      const result = await sendWhatsAppMessage({
+        to: emailOrPhone,
+        message: `مرحباً ${name}،\nكود التحقق الخاص بك هو: *${code}*\nلا تشارك هذا الكود مع أحد.`
+      });
+      if (!result.success && !result.simulated) {
+        return { success: false, error: 'فشل إرسال كود التحقق لرقم الهاتف.' };
+      }
+    }
+    
+    return { success: true, code };
+  } catch (error) {
+    console.error('Error sending customer verification code:', error);
+    return { success: false, error: 'حدث خطأ في النظام، يرجى المحاولة لاحقاً.' };
+  }
+}
+
+export async function setCustomerAuthCookieAction(sessionData: any) {
+  const CUSTOMER_SESSION_COOKIE = 'seen_customer_session';
+  cookies().set(CUSTOMER_SESSION_COOKIE, JSON.stringify(sessionData), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 30 // 30 days
+  });
+  return { success: true };
+}

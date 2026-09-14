@@ -85,7 +85,7 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
             key={idx}
             src={slide.image}
             alt={`Slide ${idx + 1}`}
-            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${imgClassName.replace('opacity-60', '')} ${idx === currentIndex ? 'z-10' : 'z-0'}`}
+            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${imgClassName.replace('opacity-60', '')} ${idx === currentIndex ? 'z-10' : 'z-0'} object-[50%_25%]`}
             style={{ opacity: idx === currentIndex ? (isDimmed ? 0.6 : 1) : 0 }}
           />
         ))}
@@ -107,8 +107,8 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
 
   if (presetId === 'tech-modern') {
     return (
-      <section className="relative h-48 sm:h-64 lg:h-80 w-full bg-slate-950 overflow-hidden">
-        {renderSliderImages("w-full h-full object-contain")}
+      <section className="relative w-full h-[250px] sm:h-[320px] lg:h-[400px] bg-slate-950 overflow-hidden">
+        {renderSliderImages("w-full h-full object-cover")}
         <div className="absolute inset-0 bg-slate-950/40" />
         <div className="absolute inset-0 bg-gradient-to-l from-slate-950 via-slate-900/80 to-transparent pointer-events-none" />
         
@@ -139,8 +139,8 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
 
   if (presetId === 'yemen-roastery') {
     return (
-      <section className="relative h-48 sm:h-64 lg:h-80 w-full bg-[#2a1306] overflow-hidden">
-        {renderSliderImages("w-full h-full object-contain")}
+      <section className="relative w-full h-[250px] sm:h-[320px] lg:h-[400px] bg-[#2a1306] overflow-hidden">
+        {renderSliderImages("w-full h-full object-cover")}
         <div className="absolute inset-0 bg-[#2a1306]/20" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#1a0b02] via-[#2a1306]/50 to-transparent pointer-events-none" />
         
@@ -183,8 +183,8 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
 
   // Default / Fashion Luxury Lookbook Hero
   return (
-    <section className="relative h-48 sm:h-64 lg:h-80 w-full bg-slate-950 overflow-hidden group">
-      {renderSliderImages("w-full h-full object-contain")}
+    <section className="relative w-full h-[250px] sm:h-[320px] lg:h-[400px] bg-slate-950 overflow-hidden group">
+      {renderSliderImages("w-full h-full object-cover")}
       <div className="absolute inset-0 bg-black/20 transition-colors group-hover:bg-black/30" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
       
@@ -461,7 +461,7 @@ export default function CustomerStorefrontPage() {
       const newItem: OrderItem = {
         productId: product.id,
         productName: product.name,
-        productImage: product.images[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200',
+        productImage: product.images[0] || '',
         variantId,
         variantName,
         price: basePrice,
@@ -663,7 +663,7 @@ export default function CustomerStorefrontPage() {
 
   return (
     <div 
-      className={`min-h-screen flex flex-col overflow-x-hidden w-full ${
+      className={`min-h-screen flex flex-col w-full ${
         presetId === 'tech-modern'
           ? 'bg-slate-950 text-slate-100'
           : presetId === 'yemen-roastery'
@@ -762,6 +762,7 @@ export default function CustomerStorefrontPage() {
                       onClick={async () => {
                         await logoutCustomerAction();
                         setCurrentCustomer(null);
+                        window.location.reload();
                       }}
                       className="px-4 py-3 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 text-red-600 text-right border-t border-slate-100 dark:border-slate-700"
                     >
@@ -829,7 +830,7 @@ export default function CustomerStorefrontPage() {
             // --- SECTION: FEATURES STRIP (Replaced by Dynamic Categories Navigation) ---
             if (section.type === 'features_strip') {
               return (
-                <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 mt-4 sm:mt-6">
+                <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 mt-4 sm:mt-6 sticky top-14 sm:top-20 z-30 pt-2 pb-2">
                   <div className={`p-2 sm:p-4 rounded-2xl flex flex-wrap items-center gap-4 shadow-sm ${
                     presetId === 'tech-modern'
                       ? 'bg-slate-900 border border-slate-800 text-slate-200'

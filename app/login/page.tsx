@@ -7,7 +7,7 @@ import {
   Lock, Mail, Phone, User as UserIcon, CheckCircle2, 
   AlertCircle, Eye, EyeOff, ArrowRight, ShieldCheck, MapPin, Globe2
 } from 'lucide-react';
-import { loginMerchantAction, registerMerchantAction, setAuthCookieAction, sendVerificationCodeAction } from '@/app/actions/auth';
+import { loginMerchantAction, registerMerchantAction, setAuthCookieAction, sendVerificationCodeAction, sendLoginVerificationCodeAction } from '@/app/actions/auth';
 import BrandLogo from '@/components/BrandLogo';
 
 declare global {
@@ -83,39 +83,68 @@ function LoginFormContent() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  // Pending login data for 2FA
+  const [pendingLoginData, setPendingLoginData] = useState<any>(null);
+
 
 
   // Submit Login
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
-    setIsLoading(true);
+    
+    if (!verificationStep) {
+      setIsLoading(true);
+      const result = await loginMerchantAction(loginIdentifier, loginPassword);
+      setIsLoading(false);
 
-    const result = await loginMerchantAction(loginIdentifier, loginPassword);
-    setIsLoading(false);
-
-    if (!result.success) {
-      setErrorMessage(result.error || 'فشل تسجيل الدخول. يرجى التحقق من البيانات.');
-      if ((result as any).isEmailValid) {
-        setLoginAttempts(prev => prev + 1);
-      }
-    } else {
-      setSuccessMessage('تم تسجيل الدخول بنجاح! جاري التوجيه...');
-      if (result.userId && result.role) {
-        await setAuthCookieAction('temp-token', result.userId, result.role, result.storeId || undefined);
-      }
-      setTimeout(() => {
-        if (redirectParam) {
-           router.push(redirectParam);
-        } else if (result.slug) {
-           router.push(`/merchant/${result.slug}`);
-        } else if (result.role === 'STORE_OWNER') {
-           router.push('/create-store');
-        } else {
-           router.push('/profile');
+      if (!result.success) {
+        setErrorMessage(result.error || 'فشل تسجيل الدخول. يرجى التحقق من البيانات.');
+        if ((result as any).isEmailValid) {
+          setLoginAttempts(prev => prev + 1);
         }
-      }, 500);
+        return;
+      }
+      
+      // Send OTP to email
+      setIsLoading(true);
+      const otpRes = await sendLoginVerificationCodeAction(result.email!, result.name!);
+      setIsLoading(false);
+
+      if (!otpRes.success) {
+        setErrorMessage(otpRes.error || 'فشل إرسال كود التحقق إلى بريدك الإلكتروني.');
+        return;
+      }
+
+      setPendingLoginData(result);
+      setExpectedCode(otpRes.code!);
+      setVerificationStep(true);
+      setSuccessMessage('تم التحقق من الحساب بنجاح. تم إرسال كود الدخول إلى بريدك الإلكتروني.');
+      return;
     }
+
+    // Verification Step
+    if (verificationCode !== expectedCode) {
+      setErrorMessage('كود التحقق خطأ.');
+      return;
+    }
+
+    const result = pendingLoginData;
+    setSuccessMessage('تم تسجيل الدخول بنجاح! جاري التوجيه...');
+    if (result.userId && result.role) {
+      await setAuthCookieAction('temp-token', result.userId, result.role, result.storeId || undefined);
+    }
+    setTimeout(() => {
+      if (redirectParam) {
+          router.push(redirectParam);
+      } else if (result.slug) {
+          router.push(`/merchant/${result.slug}`);
+      } else if (result.role === 'STORE_OWNER') {
+          router.push('/create-store');
+      } else {
+          router.push('/profile');
+      }
+    }, 500);
   };
 
   // Submit Merchant Register
@@ -173,9 +202,9 @@ function LoginFormContent() {
       setTimeout(() => {
         if (redirectParam) {
            router.push(redirectParam);
-        } else if (result.slug) {
-           router.push(`/merchant/${result.slug}`);
-        } else if (result.role === 'STORE_OWNER') {
+         } else if ((result as any).slug) {
+           router.push(`/merchant/${(result as any).slug}`);
+        } else if ((result as any).role === 'STORE_OWNER') {
            router.push('/create-store');
         } else {
            router.push('/profile');
@@ -253,8 +282,49 @@ function LoginFormContent() {
             </div>
           )}
 
-          {/* 1. LOGIN FORM */}
-          {authMode === 'login' ? (
+          {/* VERIFICATION STEP FOR BOTH */}
+          {verificationStep ? (
+            <form onSubmit={authMode === 'login' ? handleLoginSubmit : handleRegisterSubmit} className="space-y-4 animate-fadeIn">
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-2xl text-center">
+                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">الرجاء إدخال كود التحقق</p>
+                <p className="text-[11px] text-slate-500">تم إرسال كود من 4 أرقام إلى بريدك الإلكتروني.</p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                  كود التحقق <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    placeholder="1234"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                    className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6] text-center tracking-[0.5em] font-mono"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setVerificationStep(false); setVerificationCode(''); }}
+                  className="w-1/3 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all flex items-center justify-center"
+                >
+                  رجوع
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading || verificationCode.length < 4}
+                  className="w-2/3 py-3.5 rounded-2xl bg-[#14b8a6] hover:bg-[#0d9488] text-white text-xs font-bold shadow-lg shadow-[#14b8a6]/25 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <span>{isLoading ? 'جاري التحقق...' : 'تأكيد الدخول'}</span>
+                </button>
+              </div>
+            </form>
+          ) : authMode === 'login' ? (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               
               <div>
@@ -327,8 +397,6 @@ function LoginFormContent() {
             /* 2. CUSTOMER REGISTRATION FORM */
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
               
-              {!verificationStep ? (
-                <>
                   <div>
                     <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
                       الاسم الكامل <span className="text-red-500">*</span>
@@ -453,57 +521,10 @@ function LoginFormContent() {
                   >
                     <span>{isLoading ? 'جاري الإرسال...' : 'إنشاء المتجر 🛍️'}</span>
                   </button>
-                </>
-              ) : (
-                <div className="space-y-4 animate-fadeIn">
-                  <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-2xl text-center">
-                    <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">الرجاء إدخال كود التحقق</p>
-                    <p className="text-[11px] text-slate-500">تم إرسال كود من 4 أرقام إلى بريدك الإلكتروني.</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
-                      كود التحقق <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
-                      <input
-                        type="text"
-                        required
-                        maxLength={6}
-                        placeholder="1234"
-                        value={verificationCode}
-                        onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                        className="w-full pr-10 pl-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#14b8a6] text-center tracking-[0.5em] font-mono"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setVerificationStep(false)}
-                      className="w-1/3 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all flex items-center justify-center"
-                    >
-                      رجوع
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isLoading || verificationCode.length < 4}
-                      className="w-2/3 py-3.5 rounded-2xl bg-[#14b8a6] hover:bg-[#0d9488] text-white text-xs font-bold shadow-lg shadow-[#14b8a6]/25 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <span>{isLoading ? 'جاري التحقق...' : 'تأكيد الحساب'}</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
             </form>
           )}
 
-
-
         </div>
-
       </main>
 
       {/* Footer */}

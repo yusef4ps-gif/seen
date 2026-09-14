@@ -7,7 +7,7 @@ import {
   Store as StoreIcon, LayoutDashboard, Package, Boxes, 
   ShoppingCart, Bot, Settings, ExternalLink, ShieldCheck, Bell, 
   Menu, X, Sparkles, RefreshCw, Users, ArrowUpRight, Palette,
-  Ticket, Tag, BarChart, History, LogOut, Star
+  Ticket, Tag, BarChart, History, LogOut, Star, Crown
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
 import { Store, SystemBroadcast } from '@/lib/types';
@@ -221,6 +221,12 @@ export default function MerchantLayout({
       icon: Settings,
     },
     {
+      title: 'الاشتراكات والباقات',
+      href: `/merchant/${slug}/subscription`,
+      icon: Crown,
+      badge: 'إدارة',
+    },
+    {
       title: 'كوبونات التخفيض',
       href: `/merchant/${slug}/coupons`,
       icon: Ticket,
@@ -343,8 +349,9 @@ export default function MerchantLayout({
         <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2 bg-slate-50/50 dark:bg-slate-900/50">
 
           <button
-            onClick={() => {
+            onClick={async () => {
               authEngine.logout();
+              try { await fetch('/api/logout', { method: 'POST' }); } catch(e) {}
               router.push('/login');
             }}
             className="w-full flex items-center justify-between p-2 rounded-xl text-[11px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
@@ -516,7 +523,7 @@ export default function MerchantLayout({
               </div>
 
               <Link
-                href={`/merchant/${store.slug}/settings`}
+                href={`/merchant/${store.slug}/subscription`}
                 className="px-4 py-1.5 rounded-xl bg-white text-slate-900 hover:bg-slate-100 text-xs font-black shadow-sm transition-all"
               >
                 {isExpired ? 'تجديد الاشتراك ⚡' : 'إدارة الباقة ⚡'}

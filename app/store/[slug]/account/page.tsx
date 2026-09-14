@@ -64,7 +64,7 @@ export default function CustomerAccountPage() {
 
   const handleLogout = async () => {
     await logoutCustomerAction();
-    router.push(`/store/${slug}`);
+    window.location.href = `/store/${slug}`;
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {

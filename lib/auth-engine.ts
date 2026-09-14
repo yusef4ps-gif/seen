@@ -118,7 +118,7 @@ class AuthEngine {
 
     let redirectUrl = '/profile';
     if (user.role === 'SUPER_ADMIN') {
-      redirectUrl = '/admin';
+      redirectUrl = '/seenayhq7x';
     } else if (user.role === 'STORE_OWNER' || user.role === 'STORE_STAFF') {
       redirectUrl = user.storeSlug ? `/merchant/${user.storeSlug}` : '/create-store';
     } else if (user.role === 'CUSTOMER') {
@@ -196,7 +196,7 @@ class AuthEngine {
 
     let redirectUrl = '/profile';
     if (user.role === 'SUPER_ADMIN') {
-      redirectUrl = '/admin';
+      redirectUrl = '/seenayhq7x';
     } else if (user.role === 'STORE_OWNER' || user.role === 'STORE_STAFF') {
       redirectUrl = user.storeSlug ? `/merchant/${user.storeSlug}` : '/create-store';
     } else if (user.role === 'CUSTOMER') {

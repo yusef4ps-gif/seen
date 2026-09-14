@@ -36,67 +36,100 @@ export default function MerchantProductsPage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   
-  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const processImportedData = async (resultsData: any[], file: File) => {
+    try {
+      const productsToImport = resultsData.map((row: any) => ({
+        name: row.name || row['الاسم'] || row['اسم المنتج'],
+        description: row.description || row['الوصف'] || '',
+        category: row.category || row['التصنيف'] || 'مستورد',
+        price: row.price || row['السعر'] || 0,
+        comparePrice: row.comparePrice || row['السعر قبل الخصم'],
+        stock: row.stock || row['المخزون'] || 0,
+        images: row.image || row['الصورة'] || row['صورة'] ? [row.image || row['الصورة'] || row['صورة']] : [],
+      })).filter(p => p.name);
+      
+      if (productsToImport.length === 0) {
+        alert('لم يتم العثور على منتجات صالحة في الملف. يرجى التأكد من وجود أعمدة بالأسماء (الاسم, الوصف, السعر, المخزون)');
+        setIsImportingExcel(false);
+        return;
+      }
+
+      const res = await bulkCreateProductsAction(store!.id, productsToImport);
+      
+      if (res.success) {
+        const user = authEngine.getCurrentUser();
+        if (user) {
+          await logActivityAction({
+            storeId: store!.id,
+            userName: user.name,
+            action: 'إضافة',
+            entity: 'منتج',
+            details: `تم استيراد ${res.count} منتج من ملف ${file.name}`,
+            device: navigator.userAgent.includes('Mobile') ? 'جوال' : 'كمبيوتر/لابتوب'
+          });
+        }
+        alert(`تم استيراد ${res.count} منتج بنجاح!`);
+        await refreshProducts();
+        setIsImportModalOpen(false);
+      } else {
+        alert('حدث خطأ أثناء حفظ المنتجات في قاعدة البيانات');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('حدث خطأ أثناء قراءة الملف');
+    } finally {
+      setIsImportingExcel(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !store) return;
     
     setIsImportingExcel(true);
     
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        try {
-          const productsToImport = results.data.map((row: any) => ({
-            name: row.name || row['الاسم'] || row['اسم المنتج'],
-            description: row.description || row['الوصف'] || '',
-            category: row.category || row['التصنيف'] || 'مستورد',
-            price: row.price || row['السعر'] || 0,
-            comparePrice: row.comparePrice || row['السعر قبل الخصم'],
-            stock: row.stock || row['المخزون'] || 0,
-            images: row.image ? [row.image] : [],
-          })).filter(p => p.name);
-          
-          if (productsToImport.length === 0) {
-            alert('لم يتم العثور على منتجات صالحة في الملف. يرجى التأكد من وجود أعمدة بالأسماء (الاسم, الوصف, السعر, المخزون)');
-            setIsImportingExcel(false);
-            return;
-          }
-
-          const res = await bulkCreateProductsAction(store.id, productsToImport);
-          
-          if (res.success) {
-            const user = authEngine.getCurrentUser();
-            if (user) {
-              await logActivityAction({
-                storeId: store.id,
-                userName: user.name,
-                action: 'إضافة',
-                entity: 'منتج',
-                details: `تم استيراد ${res.count} منتج من ملف ${file.name}`,
-                device: navigator.userAgent.includes('Mobile') ? 'جوال' : 'كمبيوتر/لابتوب'
-              });
-            }
-            alert(`تم استيراد ${res.count} منتج بنجاح!`);
-            await refreshProducts();
-            setIsImportModalOpen(false);
-          } else {
-            alert('حدث خطأ أثناء حفظ المنتجات في قاعدة البيانات');
-          }
-        } catch (error) {
+    if (file.name.toLowerCase().endsWith('.csv')) {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async (results) => {
+          await processImportedData(results.data, file);
+        },
+        error: (error) => {
           console.error(error);
-          alert('حدث خطأ أثناء قراءة الملف');
-        } finally {
+          alert('فشل في قراءة ملف الإكسل/CSV');
           setIsImportingExcel(false);
-          if (fileInputRef.current) fileInputRef.current.value = '';
         }
-      },
-      error: (error) => {
-        console.error(error);
-        alert('فشل في قراءة ملف الإكسل/CSV');
+      });
+    } else if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+      try {
+        const xlsx = await import('xlsx');
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          try {
+            const data = new Uint8Array(event.target?.result as ArrayBuffer);
+            const workbook = xlsx.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const json = xlsx.utils.sheet_to_json(worksheet);
+            await processImportedData(json, file);
+          } catch (err) {
+            console.error(err);
+            alert('حدث خطأ أثناء قراءة محتوى ملف الإكسل');
+            setIsImportingExcel(false);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } catch (err) {
+        console.error(err);
+        alert('حدث خطأ في استدعاء مكتبة الإكسل');
         setIsImportingExcel(false);
       }
-    });
+    } else {
+      alert('صيغة الملف غير مدعومة. يرجى رفع ملف Excel أو CSV');
+      setIsImportingExcel(false);
+    }
   };
 
 
@@ -146,7 +179,7 @@ export default function MerchantProductsPage() {
 
   const loadProducts = async (storeId: string) => {
     const prods = await getProductsByStoreAction(storeId);
-    setProducts(prods as any);
+    // setProducts(prods as any);
   };
 
   useEffect(() => {

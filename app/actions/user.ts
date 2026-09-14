@@ -51,7 +51,7 @@ export async function updateUserAction(id: string, data: any) {
       });
     }
     
-    revalidatePath('/admin');
+    revalidatePath('/seenayhq7x');
     revalidatePath('/profile');
     
     return { success: true, user: updatedUser };
