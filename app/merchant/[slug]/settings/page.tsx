@@ -70,6 +70,7 @@ export default function MerchantSettingsPage() {
   const [address, setAddress] = useState('');
   const [logo, setLogo] = useState('');
   const [baseCurrency, setBaseCurrency] = useState<CurrencyCode>('SAR');
+  const [storeType, setStoreType] = useState('PHYSICAL');
   const [deliveryCurrency, setDeliveryCurrency] = useState<CurrencyCode>('YER_SANAA');
   const [activeYemeniMarket, setActiveYemeniMarket] = useState<'YER_ADEN' | 'YER_SANAA'>('YER_ADEN');
   const [ratesByBase, setRatesByBase] = useState<Record<string, any>>({
@@ -162,6 +163,9 @@ export default function MerchantSettingsPage() {
               if (parsed.legalPages) {
                 setLegalPages(parsed.legalPages);
               }
+              if (parsed.storeType) {
+                setStoreType(parsed.storeType);
+              }
             } catch (e) {
               // ignore
             }
@@ -179,7 +183,7 @@ export default function MerchantSettingsPage() {
     if (!store) return;
     
     const currentThemeConfig = typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig || '{}') : (store.themeConfig || {});
-    const updatedThemeConfig = { ...currentThemeConfig, legalPages };
+    const updatedThemeConfig = { ...currentThemeConfig, legalPages, storeType };
 
     const res = await updateStoreAction(store.id, {
       name,
@@ -383,17 +387,32 @@ export default function MerchantSettingsPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  المدينة / المحافظة
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    المدينة / المحافظة الرئيسية
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    نوع المتجر (طبيعة المنتجات)
+                  </label>
+                  <select
+                    value={storeType}
+                    onChange={(e) => setStoreType(e.target.value)}
+                    className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                  >
+                    <option value="PHYSICAL">منتجات ملموسة (تتطلب شحن وتوصيل)</option>
+                    <option value="DIGITAL">منتجات رقمية وخدمات (لا تتطلب شحن)</option>
+                  </select>
+                </div>
               </div>
             </div>
 

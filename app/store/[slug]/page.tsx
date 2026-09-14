@@ -248,7 +248,15 @@ export default function CustomerStorefrontPage() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+
+  const parsedThemeConfigForType = React.useMemo(() => {
+    if (!store?.themeConfig) return {};
+    try { return typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig) : store.themeConfig; } catch { return {}; }
+  }, [store?.themeConfig]);
+  const storeType = parsedThemeConfigForType.storeType || 'PHYSICAL';
+  
   const [customerEmail, setCustomerEmail] = useState('');
+
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
@@ -501,8 +509,8 @@ export default function CustomerStorefrontPage() {
     }
   }
 
-  const selectedShipping = store.shippingMethods.find(m => m.isActive && (deliveryType === 'pickup' ? m.isPickup : !m.isPickup));
-  let shippingCostConverted = deliveryType === 'pickup' ? 0 : (selectedShipping?.cost || 3000);
+  const selectedShipping = storeType === 'DIGITAL' ? null : store.shippingMethods.find(m => m.isActive && (deliveryType === 'pickup' ? m.isPickup : !m.isPickup));
+  let shippingCostConverted = storeType === 'DIGITAL' ? 0 : (deliveryType === 'pickup' ? 0 : (selectedShipping?.cost || 3000));
   
   if (appliedCoupon?.type === 'shipping') {
     shippingCostConverted = 0;
@@ -567,8 +575,8 @@ export default function CustomerStorefrontPage() {
       customerName: finalName,
       customerPhone: finalPhone,
       customerEmail: finalEmail,
-      city: city || store.city,
-      address: deliveryType === 'pickup' ? 'استلام من الفرع' : address,
+      city: storeType === 'DIGITAL' ? 'تسليم رقمي' : (city || store.city),
+      address: storeType === 'DIGITAL' ? 'تسليم إلكتروني (لا يوجد عنوان)' : (deliveryType === 'pickup' ? 'استلام من الفرع' : address),
       deliveryType,
       items: cart,
       subtotal: cartSubtotalConverted,
@@ -1630,7 +1638,7 @@ export default function CustomerStorefrontPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  {store.paymentAccounts.filter(a => a.isActive).map((acc) => (
+                  {store.paymentAccounts.filter(a => a.isActive && !(storeType === 'DIGITAL' && a.type === 'cod')).map((acc) => (
                     <button
                       key={acc.id}
                       type="button"

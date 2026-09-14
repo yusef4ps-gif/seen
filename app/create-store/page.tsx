@@ -39,6 +39,7 @@ export default function CreateStorePage() {
   const [storeName, setStoreName] = useState('');
   const [slug, setSlug] = useState('');
   const [category, setCategory] = useState('أزياء وملابس وعبايات');
+  const [storeType, setStoreType] = useState('PHYSICAL');
   const [city, setCity] = useState('عدن');
   const [phone, setPhone] = useState('');
   const [description, setDescription] = useState('');
@@ -176,6 +177,8 @@ export default function CreateStorePage() {
 
       const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-') || `store-${Math.floor(100 + Math.random() * 900)}`;
 
+      finalThemeConfig.storeType = storeType;
+
       const res = await createStoreAction({
         name: storeName,
         slug: cleanSlug,
@@ -294,7 +297,10 @@ export default function CreateStorePage() {
                     <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
                       تصنيف النشاط التجاري
                     </label>
-                    <select
+                    <input
+                      type="text"
+                      list="categories"
+                      placeholder="اختر أو اكتب نشاطك..."
                       value={category}
                       onChange={(e) => {
                         setCategory(e.target.value);
@@ -303,12 +309,28 @@ export default function CreateStorePage() {
                         else handleSelectPreset(THEME_PRESETS[0]);
                       }}
                       className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold outline-none"
+                    />
+                    <datalist id="categories">
+                      <option value="أزياء وملابس وعبايات" />
+                      <option value="إلكترونيات وهواتف ذكية" />
+                      <option value="بن يماني ومقاهي وأغذية" />
+                      <option value="عطور ومستحضرات تجميل" />
+                      <option value="خدمات وبطاقات إلكترونية" />
+                      <option value="عام ومنوع" />
+                    </datalist>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                      نوع المنتجات والخدمات
+                    </label>
+                    <select
+                      value={storeType}
+                      onChange={(e) => setStoreType(e.target.value)}
+                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold outline-none"
                     >
-                      <option value="أزياء وملابس وعبايات">أزياء وملابس وعبايات 👗</option>
-                      <option value="إلكترونيات وهواتف ذكية">إلكترونيات وهواتف ذكية ⚡</option>
-                      <option value="بن يماني ومقاهي وأغذية">بن يماني ومقاهي وأغذية ☕</option>
-                      <option value="عطور ومستحضرات تجميل">عطور ومستحضرات تجميل ✨</option>
-                      <option value="عام ومنوع">عام ومنوع 🛍️</option>
+                      <option value="PHYSICAL">منتجات ملموسة (تتطلب شحن وتوصيل)</option>
+                      <option value="DIGITAL">رقمية وخدمات (لا تتطلب شحن وتوصيل)</option>
                     </select>
                   </div>
 
