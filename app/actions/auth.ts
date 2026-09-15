@@ -244,3 +244,97 @@ export async function sendLoginVerificationCodeAction(email: string, name: strin
     return { success: false, error: 'حدث خطأ غير متوقع، حاول لاحقاً.' };
   }
 }
+
+import { getIpLocation } from '@/lib/geo';
+import { headers } from 'next/headers';
+
+export async function verifyAdminIPAction() {
+  const headersList = headers();
+  let ipAddress = headersList.get('x-forwarded-for') || headersList.get('x-real-ip') || 'Unknown';
+  if (ipAddress.includes(',')) ipAddress = ipAddress.split(',')[0].trim();
+  
+  const blocked = await prisma.blockedIP.findUnique({ where: { ipAddress } });
+  if (blocked) {
+    return { blocked: true, reason: blocked.reason, ipAddress };
+  }
+  return { blocked: false, ipAddress };
+}
+
+export async function logAdminLoginAttemptAction(username: string, success: boolean, ipAddress: string) {
+  const location = await getIpLocation(ipAddress);
+  
+  // Log the attempt
+  await prisma.systemLog.create({
+    data: {
+      action: success ? 'ADMIN_LOGIN_SUCCESS' : 'ADMIN_LOGIN_FAILED',
+      details: JSON.stringify({ username, ipAddress, location }),
+      ipAddress
+    }
+  });
+
+  // If failed, check for rate limiting
+  if (!success) {
+    const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
+    
+    const failedCount = await prisma.systemLog.count({
+      where: {
+        ipAddress,
+        action: 'ADMIN_LOGIN_FAILED',
+        createdAt: {
+          gte: fifteenMinsAgo
+        }
+      }
+    });
+
+    // Block if 5 or more failed attempts
+    if (failedCount >= 5) {
+      // Check if already blocked to prevent duplicate inserts
+      const existingBlock = await prisma.blockedIP.findUnique({ where: { ipAddress } });
+      
+      if (!existingBlock) {
+        const reason = 'حظر تلقائي: 5 محاولات تسجيل دخول فاشلة متتالية';
+        
+        await prisma.blockedIP.create({
+          data: {
+            ipAddress,
+            reason
+          }
+        });
+
+        await prisma.systemLog.create({
+          data: {
+            action: 'AUTO_BLOCK_IP',
+            details: JSON.stringify({ message: reason, ipAddress, location }),
+            ipAddress
+          }
+        });
+      }
+    }
+  }
+}
+
+export async function verifyTurnstileTokenAction(token: string, ipAddress: string) {
+  try {
+    const secretKey = process.env.TURNSTILE_SECRET_KEY;
+    if (!secretKey) {
+      console.warn('TURNSTILE_SECRET_KEY is not configured');
+      return { success: true }; // Allow login if not configured properly in dev
+    }
+
+    const formData = new URLSearchParams();
+    formData.append('secret', secretKey);
+    formData.append('response', token);
+    formData.append('remoteip', ipAddress);
+
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    const data = await res.json();
+    return { success: data.success, data };
+  } catch (error) {
+    console.error('Turnstile verification failed', error);
+    return { success: false };
+  }
+}

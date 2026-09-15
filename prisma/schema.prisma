@@ -165,7 +165,8 @@ model OrderReturn {
   refundAmount   Float
   reason         String?
   items          String   // JSON containing returned items and quantities
-  status         String   @default("pending_inspection") // pending_inspection, restocked, damaged
+  attachments    String?  @db.Text // JSON string array of image URLs/Base64
+  status         String   @default("pending_approval") // pending_approval, approved, rejected, restocked, damaged
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   
@@ -256,4 +257,20 @@ model StoreReview {
 
   store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  action    String   // e.g. LOGIN_ATTEMPT, BLOCK_IP, UPDATE_SETTINGS
+  details   String   @db.Text // JSON string containing relevant info
+  ipAddress String?
+  userId    String?
+  createdAt DateTime @default(now())
+}
+
+model BlockedIP {
+  id        String   @id @default(cuid())
+  ipAddress String   @unique
+  reason    String?  @db.Text
+  createdAt DateTime @default(now())
 }

@@ -20,7 +20,8 @@ export default function MerchantReportsPage() {
   
   const [activeView, setActiveView] = useState<'hub' | 'sales' | 'inventory' | 'returns' | 'orders'>('hub');
 
-  const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'this_week' | 'this_month' | 'this_year' | 'all'>('this_month');
+  const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'this_week' | 'this_month' | 'this_year' | 'custom' | 'all'>('this_month');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
   
   // Extra filter for sales charts
   const [salesChartType, setSalesChartType] = useState<'days' | 'months' | 'years'>('days');
@@ -68,6 +69,12 @@ export default function MerchantReportsPage() {
     if (dateFilter === 'this_week') return orderDate >= startOfWeek;
     if (dateFilter === 'this_month') return orderDate >= startOfMonth;
     if (dateFilter === 'this_year') return orderDate >= startOfYear;
+    if (dateFilter === 'custom' && dateRange.start && dateRange.end) {
+      const end = new Date(dateRange.end);
+      end.setHours(23, 59, 59, 999);
+      return orderDate >= new Date(dateRange.start) && orderDate <= end;
+    }
+    if (dateFilter === 'custom') return true; // default if range not set
     return true; // 'all'
   });
 
@@ -445,20 +452,31 @@ export default function MerchantReportsPage() {
         </div>
 
         {/* Global Date Filter */}
-        <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-xl">
-          <Calendar className="w-4 h-4 text-slate-400 mr-2 ml-1" />
-          <select 
-            value={dateFilter}
-            onChange={(e: any) => setDateFilter(e.target.value)}
-            className="bg-transparent text-sm font-bold text-slate-700 dark:text-slate-300 outline-none pl-4 pr-2"
-          >
-            <option value="today">اليوم</option>
-            <option value="yesterday">أمس</option>
-            <option value="this_week">هذا الأسبوع</option>
-            <option value="this_month">هذا الشهر</option>
-            <option value="this_year">هذه السنة</option>
-            <option value="all">كل الوقت</option>
-          </select>
+        <div className="flex flex-col sm:flex-row items-center gap-2">
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-xl">
+            <Calendar className="w-4 h-4 text-slate-400 mr-2 ml-1" />
+            <select 
+              value={dateFilter}
+              onChange={(e: any) => setDateFilter(e.target.value)}
+              className="bg-transparent text-sm font-bold text-slate-700 dark:text-slate-300 outline-none pl-4 pr-2"
+            >
+              <option value="today">اليوم</option>
+              <option value="yesterday">أمس</option>
+              <option value="this_week">هذا الأسبوع</option>
+              <option value="this_month">هذا الشهر</option>
+              <option value="this_year">هذه السنة</option>
+              <option value="custom">مخصص</option>
+              <option value="all">كل الوقت</option>
+            </select>
+          </div>
+          
+          {dateFilter === 'custom' && (
+            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 bg-white dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
+              <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({...prev, start: e.target.value}))} className="px-2 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none font-mono" />
+              <span className="text-slate-400 text-xs font-medium">إلى</span>
+              <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({...prev, end: e.target.value}))} className="px-2 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none font-mono" />
+            </div>
+          )}
         </div>
       </div>
 

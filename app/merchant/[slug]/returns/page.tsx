@@ -39,7 +39,7 @@ export default function MerchantReturnsPage() {
     init();
   }, [slug]);
 
-  const handleUpdateStatus = async (returnId: string, newStatus: 'restocked' | 'damaged') => {
+  const handleUpdateStatus = async (returnId: string, newStatus: string) => {
     setIsProcessing(true);
     await updateOrderReturnStatusAction(returnId, store!.id, newStatus);
     await loadReturns(store!.id);
@@ -96,9 +96,17 @@ export default function MerchantReturnsPage() {
                       {formatCurrency(ret.refundAmount, ret.order?.currency || store.baseCurrency)}
                     </td>
                     <td className="py-3.5 px-4">
-                      {ret.status === 'pending_inspection' ? (
+                      {ret.status === 'pending_approval' ? (
                         <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400 text-xs font-bold border border-amber-200 dark:border-amber-800/50">
-                          قيد الفحص
+                          بانتظار الموافقة
+                        </span>
+                      ) : ret.status === 'approved' ? (
+                        <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400 text-xs font-bold border border-blue-200 dark:border-blue-800/50">
+                          بانتظار الاستلام
+                        </span>
+                      ) : ret.status === 'rejected' ? (
+                        <span className="px-2.5 py-1 rounded-full bg-slate-50 text-slate-600 dark:bg-slate-950 dark:text-slate-400 text-xs font-bold border border-slate-200 dark:border-slate-800/50">
+                          مرفوض
                         </span>
                       ) : ret.status === 'restocked' ? (
                         <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 text-xs font-bold border border-emerald-200 dark:border-emerald-800/50">
@@ -153,22 +161,59 @@ export default function MerchantReturnsPage() {
                 <div className="text-sm">{selectedReturn.reason || 'لم يتم تحديد سبب.'}</div>
               </div>
 
+              {selectedReturn.attachments && (
+                <div className="space-y-2">
+                  <div className="font-bold text-slate-900 dark:text-white">الصور المرفقة:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {JSON.parse(selectedReturn.attachments).map((att: string, idx: number) => (
+                      <a key={idx} href={att} target="_blank" rel="noopener noreferrer" className="block w-16 h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 hover:opacity-80 transition-opacity">
+                        <img src={att} alt="مرفق" className="w-full h-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <div className="font-bold text-slate-900 dark:text-white">المنتجات المرتجعة:</div>
                 {JSON.parse(selectedReturn.items).map((ri: any, idx: number) => (
                   <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
-                    <img src={ri.item.productImage} alt={ri.item.productName} className="w-10 h-10 rounded-lg object-cover bg-white" />
+                    <img src={ri.item?.productImage || ''} alt={ri.item?.productName || 'المنتج'} className="w-10 h-10 rounded-lg object-cover bg-white" />
                     <div>
-                      <div className="font-bold text-slate-800 dark:text-slate-200">{ri.item.productName}</div>
+                      <div className="font-bold text-slate-800 dark:text-slate-200">{ri.item?.productName || 'منتج مسترجع'}</div>
                       <div className="text-[10px] text-slate-500">الكمية: {ri.quantity}</div>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {selectedReturn.status === 'pending_inspection' && (
+              {selectedReturn.status === 'pending_approval' && (
                 <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
                   <div className="font-bold text-slate-900 dark:text-white">القرار:</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => handleUpdateStatus(selectedReturn.id, 'approved')}
+                      disabled={isProcessing}
+                      className="py-3 px-4 rounded-xl font-bold bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>موافقة على الاسترجاع</span>
+                    </button>
+                    <button
+                      onClick={() => handleUpdateStatus(selectedReturn.id, 'rejected')}
+                      disabled={isProcessing}
+                      className="py-3 px-4 rounded-xl font-bold bg-slate-600 hover:bg-slate-500 text-white flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <X className="w-4 h-4" />
+                      <span>رفض الطلب</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {selectedReturn.status === 'approved' && (
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                  <div className="font-bold text-slate-900 dark:text-white">تسجيل الاستلام:</div>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => handleUpdateStatus(selectedReturn.id, 'restocked')}
@@ -176,7 +221,7 @@ export default function MerchantReturnsPage() {
                       className="py-3 px-4 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 disabled:opacity-50"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>سليم - إرجاع للمخزون</span>
+                      <span>استلام سليم - إرجاع للمخزون</span>
                     </button>
                     <button
                       onClick={() => handleUpdateStatus(selectedReturn.id, 'damaged')}
@@ -184,7 +229,7 @@ export default function MerchantReturnsPage() {
                       className="py-3 px-4 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       <PackageX className="w-4 h-4" />
-                      <span>تالف - عدم الإرجاع</span>
+                      <span>استلام تالف - عدم الإرجاع</span>
                     </button>
                   </div>
                 </div>

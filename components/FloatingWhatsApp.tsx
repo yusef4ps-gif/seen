@@ -7,9 +7,9 @@ import { usePathname } from 'next/navigation';
 export default function FloatingWhatsApp() {
   const pathname = usePathname();
 
-  // Hide the WhatsApp button in merchant dashboard and storefronts to avoid confusing merchants and their customers.
+  // Hide the WhatsApp button in merchant dashboard, storefronts, and admin pages to avoid confusing merchants and their customers.
   // We only want this on the main platform pages (home, pricing, about, etc).
-  if (pathname?.startsWith('/merchant') || pathname?.startsWith('/store')) {
+  if (pathname?.startsWith('/merchant') || pathname?.startsWith('/store') || pathname?.startsWith('/admin') || pathname?.startsWith('/seenayhq7x') || pathname?.startsWith('/seenaylogin7x')) {
     return null;
   }
 

@@ -42,6 +42,22 @@ export async function getStoreNotificationsAction(storeId: string) {
       select: { createdAt: true, planStatus: true, planTier: true }
     });
 
+    // 4. Fetch New Orders Count
+    const newOrdersCount = await prisma.order.count({
+      where: {
+        storeId,
+        status: 'new'
+      }
+    });
+
+    // 5. Fetch New Returns Count
+    const newReturnsCount = await prisma.orderReturn.count({
+      where: {
+        storeId,
+        status: 'pending_approval'
+      }
+    });
+
     return {
       success: true,
       data: {
@@ -50,7 +66,9 @@ export async function getStoreNotificationsAction(storeId: string) {
           total: abandonedTotal
         },
         lowStock: lowStockProducts,
-        storeDetails: store
+        storeDetails: store,
+        newOrdersCount,
+        newReturnsCount
       }
     };
   } catch (error) {

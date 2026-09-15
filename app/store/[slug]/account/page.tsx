@@ -170,7 +170,7 @@ export default function CustomerAccountPage() {
             }`}
           >
             <ShoppingBag className="w-4 h-4" />
-            مشترياتك
+            مشترياتي
           </button>
           <button
             onClick={() => setActiveTab('settings')}

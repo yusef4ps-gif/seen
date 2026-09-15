@@ -4,30 +4,63 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ShieldCheck, Lock, User as UserIcon, ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { authEngine } from '@/lib/auth-engine';
-import { setAuthCookieAction } from '@/app/actions/auth';
+import { setAuthCookieAction, verifyAdminIPAction, logAdminLoginAttemptAction, verifyTurnstileTokenAction } from '@/app/actions/auth';
 import BrandLogo from '@/components/BrandLogo';
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState('yousef');
   const [password, setPassword] = useState('1234');
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  const handleAdminLogin = (e: React.FormEvent) => {
+  // Bypass Turnstile on localhost to prevent hostname errors during development
+  const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const siteKey = isLocalhost ? null : process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setIsLoading(true);
 
-    setTimeout(async () => {
-      const result = authEngine.login(username, password);
-      setIsLoading(false);
+    try {
+      const ipCheck = await verifyAdminIPAction();
+      if (ipCheck.blocked) {
+        setErrorMessage(`لقد تم حظر وصولك. السبب: ${ipCheck.reason || 'غير محدد'}`);
+        setIsLoading(false);
+        return;
+      }
 
-      if (!result.success || result.session?.user.role !== 'SUPER_ADMIN') {
+      // Verify Turnstile
+      if (siteKey && !turnstileToken) {
+        setErrorMessage('الرجاء الانتظار حتى يتم التحقق الأمني.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (siteKey) {
+        const tsResult = await verifyTurnstileTokenAction(turnstileToken, ipCheck.ipAddress);
+        if (!tsResult.success) {
+          setErrorMessage('فشل التحقق الأمني. يرجى المحاولة مرة أخرى.');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      const result = authEngine.login(username, password);
+      
+      const success = result.success && result.session?.user.role === 'SUPER_ADMIN';
+      
+      await logAdminLoginAttemptAction(username, success, ipCheck.ipAddress);
+
+      if (!success) {
         setErrorMessage(result.error || 'غير مصرح بالدخول. يرجى التأكد من الصلاحيات.');
+        setIsLoading(false);
       } else {
         setSuccessMessage('تم تسجيل الدخول بنجاح! جاري توجيهك للوحة التحكم...');
         if (result.session) {
@@ -37,7 +70,10 @@ export default function AdminLoginPage() {
           router.push('/seenayhq7x');
         }, 500);
       }
-    }, 600);
+    } catch (err) {
+      setErrorMessage('حدث خطأ أثناء الاتصال بالخادم.');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -140,9 +176,23 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
+            {siteKey && (
+              <div className="flex justify-center">
+                <Turnstile
+                  siteKey={siteKey}
+                  onSuccess={(token) => setTurnstileToken(token)}
+                  onError={() => setErrorMessage('خطأ في التحقق الأمني. يرجى إعادة تحميل الصفحة.')}
+                  onExpire={() => setTurnstileToken('')}
+                  options={{
+                    theme: 'auto',
+                  }}
+                />
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || (!!siteKey && !turnstileToken)}
               className="w-full py-3.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs sm:text-sm font-black shadow-lg shadow-brand-600/30 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isLoading ? (

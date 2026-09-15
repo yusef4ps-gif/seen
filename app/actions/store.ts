@@ -293,26 +293,31 @@ export async function updateStoreAction(storeId: string, data: any) {
         include: { variants: true }
       });
 
-      for (const product of products) {
+      const updateOperations = products.map((product) => {
         const newPrice = convertCurrency(product.price, currentStore.baseCurrency as any, data.baseCurrency as any, currentStore.customRates);
         const newComparePrice = product.comparePrice ? convertCurrency(product.comparePrice, currentStore.baseCurrency as any, data.baseCurrency as any, currentStore.customRates) : null;
         
-        await prisma.product.update({
+        return prisma.product.update({
           where: { id: product.id },
           data: {
             price: newPrice,
             comparePrice: newComparePrice,
             baseCurrency: data.baseCurrency,
-            variants: {
+            variants: product.variants.length > 0 ? {
               update: product.variants.map((v) => ({
                 where: { id: v.id },
                 data: {
                   priceOverride: v.priceOverride ? convertCurrency(v.priceOverride, currentStore.baseCurrency as any, data.baseCurrency as any, currentStore.customRates) : null
                 }
               }))
-            }
+            } : undefined
           }
         });
+      });
+
+      // Execute all updates in a single transaction to prevent timeouts
+      if (updateOperations.length > 0) {
+        await prisma.$transaction(updateOperations);
       }
     }
 

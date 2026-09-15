@@ -39,6 +39,8 @@ export default function MerchantLayout({
   
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const [newReturnsCount, setNewReturnsCount] = useState(0);
 
 
   useEffect(() => {
@@ -118,6 +120,12 @@ export default function MerchantLayout({
 
             setNotifications(dynamicNotifs);
             setUnreadCount(unread);
+            if (notifsRes.data.newOrdersCount !== undefined) {
+              setNewOrdersCount(notifsRes.data.newOrdersCount);
+            }
+            if (notifsRes.data.newReturnsCount !== undefined) {
+              setNewReturnsCount(notifsRes.data.newReturnsCount);
+            }
           }
         }
       }
@@ -169,18 +177,18 @@ export default function MerchantLayout({
       title: 'المخزون',
       href: `/merchant/${slug}/inventory`,
       icon: Boxes,
-      badge: 'الذكي',
     },
     {
       title: 'إدارة وتدقيق الطلبات',
       href: `/merchant/${slug}/orders`,
       icon: ShoppingCart,
+      badge: newOrdersCount > 0 ? String(newOrdersCount) : undefined,
     },
     {
       title: 'إدارة المرتجعات',
       href: `/merchant/${slug}/returns`,
       icon: RefreshCw,
-      badge: 'إجراء',
+      badge: newReturnsCount > 0 ? String(newReturnsCount) : undefined,
     },
     {
       title: 'الآراء والتقييمات',
@@ -196,7 +204,6 @@ export default function MerchantLayout({
       title: 'قاعدة بيانات العملاء (CRM)',
       href: `/merchant/${slug}/customers`,
       icon: Users,
-      badge: 'تلقائي 👥',
     },
     {
       title: 'فريق العمل والصلاحيات',
@@ -206,14 +213,12 @@ export default function MerchantLayout({
     {
       title: 'مستشار الذكاء الاصطناعي',
       href: `/merchant/${slug}/ai-advisor`,
-      icon: Bot,
-      badge: 'AI ✨',
+      icon: Sparkles,
     },
     {
       title: 'تخصيص الواجهة والمحتوى',
       href: `/merchant/${slug}/theme-builder`,
       icon: Palette,
-      badge: 'جديد 🎨',
     },
     {
       title: 'إعدادات المتجر والمحافظ',

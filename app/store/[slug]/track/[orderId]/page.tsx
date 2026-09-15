@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   CheckCircle2, Clock, MessageSquare, ArrowLeft,
-  Receipt, CreditCard, MapPin, Phone, Package, RotateCcw, X
+  Receipt, CreditCard, MapPin, Phone, Package, RotateCcw, X, Camera
 } from 'lucide-react';
 import { Store, Order } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
@@ -23,6 +23,7 @@ export default function OrderTrackingPage() {
 
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [returnReason, setReturnReason] = useState('');
+  const [returnAttachments, setReturnAttachments] = useState<string[]>([]);
   const [selectedReturnItems, setSelectedReturnItems] = useState<any[]>([]);
   const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
   
@@ -31,7 +32,23 @@ export default function OrderTrackingPage() {
     const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
     setSelectedReturnItems(items.map((it: any) => ({ ...it, selected: false })));
     setReturnReason('');
+    setReturnAttachments([]);
     setIsReturnModalOpen(true);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        if (ev.target?.result) {
+          setReturnAttachments(prev => [...prev, ev.target!.result as string]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleToggleReturnItem = (idx: number) => {
@@ -49,7 +66,8 @@ export default function OrderTrackingPage() {
     const res = await requestOrderReturnAction({
       orderId: order!.id,
       reason: returnReason,
-      items: itemsToReturn.map(it => ({ id: it.id, quantity: it.quantity })) // or allow changing quantity later
+      attachments: returnAttachments,
+      items: itemsToReturn.map(it => ({ item: it, quantity: it.quantity })) // store full item details for merchant dashboard
     });
     
     if (res.success) {
@@ -276,6 +294,22 @@ export default function OrderTrackingPage() {
                 </button>
               </div>
             )}
+
+            {/* Customer Action: Return Order */}
+            {order.status === 'delivered' && (
+              <div className="p-6 rounded-3xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 text-center space-y-3 shadow-sm mt-4">
+                <h3 className="font-bold text-slate-900 dark:text-white">هل يوجد مشكلة في المنتجات؟</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  يمكنك تقديم طلب استرجاع للمنتجات خلال الفترة المسموحة.
+                </p>
+                <button
+                  onClick={handleOpenReturnModal}
+                  className="px-8 py-3 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 hover:border-brand-500 dark:hover:border-brand-500 text-slate-900 dark:text-white font-bold rounded-xl text-sm transition-all shadow-sm"
+                >
+                  تقديم طلب استرجاع
+                </button>
+              </div>
+            )}
             
           </div>
 
@@ -418,17 +452,21 @@ export default function OrderTrackingPage() {
                 <p className="text-sm font-bold text-slate-900 dark:text-white mb-3">اختر المنتجات المراد إرجاعها:</p>
                 <div className="space-y-3">
                   {selectedReturnItems.map((it, idx) => (
-                    <label key={idx} className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-brand-300 dark:hover:border-brand-700/50 cursor-pointer transition-colors">
-                      <div className="pt-1">
+                    <div 
+                      key={idx} 
+                      onClick={() => handleToggleReturnItem(idx)}
+                      className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-brand-300 dark:hover:border-brand-700/50 cursor-pointer transition-colors"
+                    >
+                      <div className="pt-1 pointer-events-none">
                         <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${it.selected ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-300 dark:border-slate-700'}`}>
                           {it.selected && <CheckCircle2 className="w-3.5 h-3.5" />}
                         </div>
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 pointer-events-none">
                         <div className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">{it.productName || it.name}</div>
                         <div className="text-xs text-slate-500 mt-0.5">الكمية: {it.quantity}</div>
                       </div>
-                    </label>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -441,6 +479,28 @@ export default function OrderTrackingPage() {
                   placeholder="اكتب سبب رغبتك في إرجاع المنتجات..."
                   className="w-full h-24 p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:border-brand-500 dark:focus:border-brand-500 transition-all resize-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">إرفاق صور (اختياري)</label>
+                <div className="flex flex-wrap gap-3">
+                  {returnAttachments.map((att, idx) => (
+                    <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800">
+                      <img src={att} alt="Attachment" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => setReturnAttachments(prev => prev.filter((_, i) => i !== idx))}
+                        className="absolute top-1 right-1 w-5 h-5 bg-black/50 text-white rounded-full flex items-center justify-center hover:bg-black/70"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-500 hover:text-brand-600 hover:border-brand-600 cursor-pointer transition-colors bg-slate-50 dark:bg-slate-900">
+                    <Camera className="w-6 h-6 mb-1" />
+                    <span className="text-[10px] font-medium">إضافة صورة</span>
+                    <input type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" />
+                  </label>
+                </div>
               </div>
             </div>
 

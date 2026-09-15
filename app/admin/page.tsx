@@ -1,8 +1,11 @@
-'use client';
 import React from 'react';
 import { ShieldAlert } from 'lucide-react';
+import { logSystemAction } from '@/app/actions/logs';
 
-export default function BlockedAdminPage() {
+export default async function BlockedAdminPage() {
+  // Log the firewall hit
+  await logSystemAction('FIREWALL_BLOCK_HIT', { message: 'تم فتح صفحة الحظر (Firewall)' });
+
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
       <div className="max-w-md w-full bg-slate-900 border border-red-900/50 rounded-3xl p-8 text-center space-y-6 shadow-2xl shadow-red-900/20 relative overflow-hidden">

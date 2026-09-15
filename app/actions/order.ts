@@ -80,49 +80,6 @@ export async function createOrderAction(data: any) {
       });
     }
 
-    // 4. Send Email Notification to Merchant
-    if (store && store.email) {
-      try {
-        // We do this in the background (no await needed for the main request thread if we don't want to block, but here it's fine)
-        const dashboardLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/merchant/${store.slug}/orders`;
-        await sendEmail({
-          to: store.email,
-          subject: `🛒 طلب جديد #${sequentialOrderNumber.replace('#', '')} من ${data.customerName}`,
-          html: EmailTemplates.MerchantNewOrder(
-            store.name,
-            sequentialOrderNumber,
-            data.customerName,
-            data.total,
-            data.currency,
-            dashboardLink
-          )
-        });
-      } catch (emailError) {
-        console.error('Failed to send merchant order notification:', emailError);
-      }
-    }
-
-    // 5. Send Email Notification to Customer (Invoice)
-    if (data.customerEmail) {
-      try {
-        const trackingLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/track/${data.id}`;
-        await sendEmail({
-          to: data.customerEmail,
-          subject: `فاتورة طلبك #${sequentialOrderNumber.replace('#', '')} من متجر ${store?.name || 'سِين'}`,
-          html: EmailTemplates.OrderConfirmation(
-            data.customerName,
-            store?.name || 'سِين',
-            sequentialOrderNumber,
-            data.total,
-            data.currency,
-            trackingLink
-          )
-        });
-      } catch (customerEmailError) {
-        console.error('Failed to send customer order notification:', customerEmailError);
-      }
-    }
-
     return { success: true, order };
   } catch (error) {
     console.error('Error creating order:', error);
@@ -164,6 +121,52 @@ export async function updateOrderStatusAction(id: string, status: string) {
       where: { id },
       data: { status }
     });
+
+    // Send Delivery Notification and Review Request
+    if (status === 'delivered' && order.status !== 'delivered') {
+      let customerEmail = null;
+      if (order.customerId) {
+        const customer = await prisma.customer.findUnique({ where: { id: order.customerId } });
+        if (customer && customer.email) customerEmail = customer.email;
+      }
+      
+      if (customerEmail) {
+        const store = await prisma.store.findUnique({ where: { id: order.storeId } });
+        if (store) {
+          try {
+            const storeUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/store/${store.slug}`;
+            await sendEmail({
+              to: customerEmail,
+              subject: `تم استلام طلبك! شكراً لاختيارك متجر ${store.name}`,
+              html: `
+                <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8fafc; padding: 20px; border-radius: 10px;">
+                  <h2 style="color: #0f172a; text-align: center;">تم تسليم طلبك بنجاح 🎉</h2>
+                  <p style="color: #475569; font-size: 16px; line-height: 1.5; text-align: right;">
+                    أهلاً بك،<br/>
+                    سعداء بإبلاغك أنه تم تسليم طلبك رقم <strong>${updatedOrder.orderNumber}</strong> بنجاح. نتمنى أن تنال المنتجات إعجابك!
+                  </p>
+                  <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; border: 1px solid #e2e8f0;">
+                    <h3 style="color: #0f172a; margin-top: 0;">رأيك يهمنا!</h3>
+                    <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">
+                      شارِكنا تجربتك وتقييمك للمنتجات لمساعدتنا على تحسين خدماتنا.
+                    </p>
+                    <a href="${storeUrl}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 16px;">
+                      أعطنا رأيك
+                    </a>
+                  </div>
+                  <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 30px;">
+                    شكراً لتسوقك من متجر ${store.name}
+                  </p>
+                </div>
+              `
+            });
+          } catch (emailError) {
+            console.error('Failed to send delivery email:', emailError);
+          }
+        }
+      }
+    }
+
     return { success: true, order: updatedOrder };
   } catch (error) {
     console.error('Error updating order status:', error);
@@ -284,7 +287,7 @@ export async function createOrderReturnAction(data: { orderId: string; storeId: 
   }
 }
 
-export async function updateOrderReturnStatusAction(returnId: string, storeId: string, status: 'restocked' | 'damaged') {
+export async function updateOrderReturnStatusAction(returnId: string, storeId: string, status: string) {
   try {
     await requireStoreOwner(storeId);
     
@@ -425,7 +428,7 @@ export async function markAbandonedCartRecoveredAction(cartId: string) {
 }
 
 
-export async function requestOrderReturnAction(data: { orderId: string; reason: string; items: any[] }) {
+export async function requestOrderReturnAction(data: { orderId: string; reason: string; items: any[]; attachments?: string[] }) {
   try {
     const order = await prisma.order.findUnique({ where: { id: data.orderId } });
     if (!order) return { success: false, error: 'الطلب غير موجود' };
@@ -438,7 +441,8 @@ export async function requestOrderReturnAction(data: { orderId: string; reason: 
     const orderItems = JSON.parse(order.items);
     
     data.items.forEach(retItem => {
-      const origItem = orderItems.find((i: any) => i.id === retItem.id);
+      // Handle missing origItem defensively
+      const origItem = orderItems.find((i: any) => i.id === retItem.item?.id || i.id === retItem.id);
       if (origItem) {
         refundAmount += (origItem.price || 0) * (retItem.quantity || 1);
       }
@@ -451,7 +455,8 @@ export async function requestOrderReturnAction(data: { orderId: string; reason: 
         refundAmount: refundAmount,
         reason: data.reason,
         items: JSON.stringify(data.items),
-        status: 'pending_inspection',
+        attachments: data.attachments && data.attachments.length > 0 ? JSON.stringify(data.attachments) : null,
+        status: 'pending_approval',
       }
     });
 

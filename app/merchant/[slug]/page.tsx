@@ -25,31 +25,33 @@ export default function MerchantOverviewPage() {
   const { products = [] } = useStoreProducts(store?.id);
   const [isOrdersVisible, setIsOrdersVisible] = useState(true);
 
-  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'custom' | 'all'>('all');
+  const [dateFilter, setDateFilter] = useState('this_month');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
   const filteredOrders = useMemo(() => {
     if (dateFilter === 'all') return orders;
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+    const startOfWeek = new Date(startOfToday.getTime() - now.getDay() * 24 * 60 * 60 * 1000);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
     
     return orders.filter(o => {
       if (!o.createdAt) return true;
       const orderDate = new Date(o.createdAt);
-      if (dateFilter === 'today') {
-        return orderDate >= today;
-      }
-      if (dateFilter === 'week') {
-        const lastWeek = new Date(today);
-        lastWeek.setDate(lastWeek.getDate() - 7);
-        return orderDate >= lastWeek;
-      }
+      if (dateFilter === 'today') return orderDate >= startOfToday;
+      if (dateFilter === 'yesterday') return orderDate >= startOfYesterday && orderDate < startOfToday;
+      if (dateFilter === 'this_week') return orderDate >= startOfWeek;
+      if (dateFilter === 'this_month') return orderDate >= startOfMonth;
+      if (dateFilter === 'this_year') return orderDate >= startOfYear;
       if (dateFilter === 'custom' && dateRange.start && dateRange.end) {
         const end = new Date(dateRange.end);
         end.setHours(23, 59, 59, 999);
         return orderDate >= new Date(dateRange.start) && orderDate <= end;
       }
-      return true;
+      if (dateFilter === 'custom') return true; // If custom but no range set yet
+      return true; // 'all'
     });
   }, [orders, dateFilter, dateRange]);
 
@@ -88,11 +90,30 @@ export default function MerchantOverviewPage() {
           </h2>
           <p className="text-slate-500 mt-2 font-medium">فيما يلي نظرة عامة على أداء متجرك اليوم</p>
         </div>
-        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-5 py-3 rounded-2xl border border-slate-100 dark:border-slate-800">
-          <Calendar className="w-5 h-5 text-slate-400" />
-          <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
-            اليوم: {new Date().toLocaleDateString('ar-YE', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </span>
+        <div className="flex flex-col sm:flex-row items-center gap-2">
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <Calendar className="w-5 h-5 text-slate-400" />
+            <select 
+              value={dateFilter}
+              onChange={(e: any) => setDateFilter(e.target.value)}
+              className="bg-transparent text-sm font-bold text-slate-700 dark:text-slate-300 outline-none border-none cursor-pointer pr-1 pl-4"
+            >
+              <option value="today">اليوم</option>
+              <option value="yesterday">أمس</option>
+              <option value="this_week">هذا الأسبوع</option>
+              <option value="this_month">هذا الشهر</option>
+              <option value="this_year">هذه السنة</option>
+              <option value="custom">مخصص</option>
+              <option value="all">كل الوقت</option>
+            </select>
+          </div>
+          {dateFilter === 'custom' && (
+            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({...prev, start: e.target.value}))} className="px-2 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none font-mono" />
+              <span className="text-slate-400 text-xs font-medium">إلى</span>
+              <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({...prev, end: e.target.value}))} className="px-2 py-1 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none font-mono" />
+            </div>
+          )}
         </div>
       </div>
 
@@ -108,23 +129,11 @@ export default function MerchantOverviewPage() {
             </div>
           </div>
           <div className="mt-2 relative z-10">
-            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{formatCurrency(totalRevenue || store.totalSalesGMV, store.baseCurrency)}</h3>
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{formatCurrency(totalRevenue, store.baseCurrency)}</h3>
             <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-emerald-500">
               <span>155.5% ⬆</span>
               <span className="text-slate-400 font-medium">النمو الشهري</span>
             </div>
-          </div>
-          <div className="absolute bottom-0 left-0 w-full flex justify-start pl-6 pb-2 opacity-80 group-hover:opacity-100 transition-opacity">
-            <svg className="w-32 h-12" viewBox="0 0 100 40" preserveAspectRatio="none">
-              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" />
-              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5 L 100 40 L 0 40 Z" fill="url(#gradient-orange)" opacity="0.2" />
-              <defs>
-                <linearGradient id="gradient-orange" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#f97316" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-            </svg>
           </div>
         </Link>
 
@@ -137,23 +146,11 @@ export default function MerchantOverviewPage() {
             </div>
           </div>
           <div className="mt-2 relative z-10">
-            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{new Set(orders.map(o => o.customerId)).size}</h3>
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{new Set(filteredOrders.map(o => o.customerId)).size}</h3>
             <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-emerald-500">
               <span>100.0% ⬆</span>
               <span className="text-slate-400 font-medium">النمو الشهري</span>
             </div>
-          </div>
-          <div className="absolute bottom-0 left-0 w-full flex justify-start pl-6 pb-2 opacity-80 group-hover:opacity-100 transition-opacity">
-            <svg className="w-32 h-12" viewBox="0 0 100 40" preserveAspectRatio="none">
-              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" />
-              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5 L 100 40 L 0 40 Z" fill="url(#gradient-blue)" opacity="0.2" />
-              <defs>
-                <linearGradient id="gradient-blue" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-            </svg>
           </div>
         </Link>
 
@@ -166,23 +163,11 @@ export default function MerchantOverviewPage() {
             </div>
           </div>
           <div className="mt-2 relative z-10">
-            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{orders.length}</h3>
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{filteredOrders.length}</h3>
             <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-emerald-500">
               <span>100.0% ⬆</span>
               <span className="text-slate-400 font-medium">النمو الشهري</span>
             </div>
-          </div>
-          <div className="absolute bottom-0 left-0 w-full flex justify-start pl-6 pb-2 opacity-80 group-hover:opacity-100 transition-opacity">
-            <svg className="w-32 h-12" viewBox="0 0 100 40" preserveAspectRatio="none">
-              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
-              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5 L 100 40 L 0 40 Z" fill="url(#gradient-emerald)" opacity="0.2" />
-              <defs>
-                <linearGradient id="gradient-emerald" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-            </svg>
           </div>
         </Link>
 
@@ -195,23 +180,11 @@ export default function MerchantOverviewPage() {
             </div>
           </div>
           <div className="mt-2 relative z-10">
-            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{orders.filter(o => ['returned', 'partially_returned'].includes(o.status as string)).length}</h3>
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{filteredOrders.filter(o => ['returned', 'partially_returned'].includes(o.status as string)).length}</h3>
             <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-red-500">
               <span>12.5% ⬇</span>
               <span className="text-slate-400 font-medium">النمو الشهري</span>
             </div>
-          </div>
-          <div className="absolute bottom-0 left-0 w-full flex justify-start pl-6 pb-2 opacity-80 group-hover:opacity-100 transition-opacity">
-            <svg className="w-32 h-12" viewBox="0 0 100 40" preserveAspectRatio="none">
-              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5" fill="none" stroke="#14b8a6" strokeWidth="2.5" strokeLinecap="round" />
-              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5 L 100 40 L 0 40 Z" fill="url(#gradient-teal)" opacity="0.2" />
-              <defs>
-                <linearGradient id="gradient-teal" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#14b8a6" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#14b8a6" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-            </svg>
           </div>
         </Link>
       </div>
