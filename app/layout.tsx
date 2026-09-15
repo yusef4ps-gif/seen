@@ -11,12 +11,62 @@ export const metadata: Metadata = {
 import { ThemeProvider } from '@/components/ThemeProvider';
 import FloatingWhatsApp from '@/components/FloatingWhatsApp';
 import { Toaster } from 'react-hot-toast';
+import { headers, cookies } from 'next/headers';
+import prisma from '@/lib/prisma';
+import BanCookieSetter from '@/components/BanCookieSetter';
+import { ShieldAlert } from 'lucide-react';
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = cookies();
+  const isDeviceBanned = cookieStore.get('seen_device_ban')?.value === 'true';
+
+  let isBanned = isDeviceBanned;
+
+  if (!isBanned) {
+    const headersList = headers();
+    let ipAddress = headersList.get('x-forwarded-for') || headersList.get('x-real-ip') || 'Unknown';
+    if (ipAddress.includes(',')) ipAddress = ipAddress.split(',')[0].trim();
+    
+    if (ipAddress !== 'Unknown') {
+      try {
+        const blocked = await prisma.blockedIP.findUnique({ where: { ipAddress } });
+        if (blocked) {
+          isBanned = true;
+        }
+      } catch (err) {}
+    }
+  }
+
+  if (isBanned) {
+    return (
+      <html lang="ar" dir="rtl" suppressHydrationWarning>
+        <head>
+          <meta charSet="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+          <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700;900&display=swap" rel="stylesheet" />
+        </head>
+        <body className="bg-red-950 text-red-500 font-sans min-h-screen m-0 p-0 overflow-hidden">
+          <BanCookieSetter />
+          <div className="fixed inset-0 z-[99999] bg-red-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,rgba(220,38,38,0.15)_0%,transparent_80%)] pointer-events-none" />
+            <ShieldAlert className="w-24 h-24 text-red-500 mb-6 animate-pulse" />
+            <h1 className="text-4xl sm:text-5xl font-black text-red-500 mb-4 drop-shadow-lg" style={{ fontFamily: 'Tajawal, sans-serif' }}>⛔ الوصول محظور نهائياً</h1>
+            <p className="text-red-200 text-lg sm:text-xl max-w-2xl leading-relaxed font-medium" style={{ fontFamily: 'Tajawal, sans-serif' }}>
+              لقد تم حظر جهازك وعنوان الشبكة الخاص بك من الوصول إلى منصة سِين ومتاجرها، نتيجة اكتشاف سلوك مريب أو محاولات اختراق للأنظمة الأمنية.
+            </p>
+            <div className="mt-12 text-sm text-red-400/60 font-mono bg-red-950/50 px-6 py-3 rounded-full border border-red-900/50">
+              ERR_ACCESS_DENIED_SEC_POLICY
+            </div>
+          </div>
+        </body>
+      </html>
+    );
+  }
+
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
