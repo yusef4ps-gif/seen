@@ -8,7 +8,8 @@ import Link from 'next/link';
 import { 
   TrendingUp, ShoppingBag, Users, DollarSign, Package, 
   ArrowUpRight, ArrowDownRight, Clock, CheckCircle2, AlertCircle, 
-  Plus, Bot, Eye, EyeOff, Sparkles, ExternalLink, Printer, ChevronLeft, Calendar, CalendarDays
+  Plus, Bot, Eye, EyeOff, Sparkles, ExternalLink, Printer, ChevronLeft, Calendar, CalendarDays,
+  ShoppingCart, RefreshCcw
 } from 'lucide-react';
 import { Store, Order, Product } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
@@ -79,176 +80,160 @@ export default function MerchantOverviewPage() {
   return (
     <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto w-full">
       
-      {/* Welcome Banner */}
-      <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-r from-slate-900 to-slate-800 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+      {/* New Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-[2rem] shadow-sm">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-base sm:text-2xl font-black">أهلاً بك مجدداً، {store.name} 👋</h1>
-          </div>
-          <p className="text-xs text-slate-300 mt-1">
-            إليك ملخص أداء متجرك اليوم مع حركة المبيعات وتنبيهات المخزون.
-          </p>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+            مساء الخير يا {store.name} <span className="animate-wave inline-block origin-bottom-right">👋</span>
+          </h2>
+          <p className="text-slate-500 mt-2 font-medium">فيما يلي نظرة عامة على أداء متجرك اليوم</p>
         </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Link
-            href={`/merchant/${slug}/products`}
-            className="flex-1 sm:flex-initial text-center px-3.5 py-2 rounded-xl text-xs font-bold text-slate-900 bg-teal-400 hover:bg-teal-300 transition-colors shadow-sm flex items-center justify-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>إضافة منتج جديد</span>
-          </Link>
-          <Link
-            href={`/merchant/${slug}/ai-advisor`}
-            className="flex-1 sm:flex-initial text-center px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center gap-1.5"
-          >
-            <Bot className="w-3.5 h-3.5 text-teal-400" />
-            <span>استشارة الـ AI</span>
-          </Link>
+        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-5 py-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <Calendar className="w-5 h-5 text-slate-400" />
+          <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+            اليوم: {new Date().toLocaleDateString('ar-YE', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
         </div>
       </div>
 
-
-      {/* Filters and Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slateDark-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-            <button 
-              onClick={() => setDateFilter('today')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${dateFilter === 'today' ? 'bg-white dark:bg-slateDark-900 shadow-sm text-brand-600' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-            >اليوم</button>
-            <button 
-              onClick={() => setDateFilter('week')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${dateFilter === 'week' ? 'bg-white dark:bg-slateDark-900 shadow-sm text-brand-600' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-            >هذا الأسبوع</button>
-            <button 
-              onClick={() => setDateFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${dateFilter === 'all' ? 'bg-white dark:bg-slateDark-900 shadow-sm text-brand-600' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-            >الكل</button>
-            <button 
-              onClick={() => setDateFilter('custom')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 ${dateFilter === 'custom' ? 'bg-white dark:bg-slateDark-900 shadow-sm text-brand-600' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-            ><Calendar className="w-3 h-3"/> مخصص</button>
-          </div>
-          
-          {dateFilter === 'custom' && (
-            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4">
-              <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({...prev, start: e.target.value}))} className="px-2 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none font-mono" />
-              <span className="text-slate-400 text-xs">إلى</span>
-              <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({...prev, end: e.target.value}))} className="px-2 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none font-mono" />
-            </div>
-          )}
-        </div>
+      {/* 4 Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         
-        <Link
-          href={`/merchant/${slug}/orders`}
-          className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1.5"
-        >
-          <ShoppingBag className="w-3.5 h-3.5" />
-          <span>استعراض كل الطلبات</span>
+        {/* Card 1: Net Revenue */}
+        <Link href={`/merchant/${slug}/reports`} className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-[2rem] shadow-sm text-right flex flex-col justify-between group h-48 relative overflow-hidden transition-transform active:scale-[0.98]">
+          <div className="flex justify-between items-start w-full relative z-10">
+            <span className="font-bold text-slate-700 dark:text-slate-300 text-lg">صافي الإيرادات</span>
+            <div className="w-12 h-12 rounded-2xl bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center text-orange-500">
+              <TrendingUp className="w-6 h-6" />
+            </div>
+          </div>
+          <div className="mt-2 relative z-10">
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{formatCurrency(totalRevenue || store.totalSalesGMV, store.baseCurrency)}</h3>
+            <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-emerald-500">
+              <span>155.5% ⬆</span>
+              <span className="text-slate-400 font-medium">النمو الشهري</span>
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full flex justify-start pl-6 pb-2 opacity-80 group-hover:opacity-100 transition-opacity">
+            <svg className="w-32 h-12" viewBox="0 0 100 40" preserveAspectRatio="none">
+              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5 L 100 40 L 0 40 Z" fill="url(#gradient-orange)" opacity="0.2" />
+              <defs>
+                <linearGradient id="gradient-orange" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#f97316" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </Link>
+
+        {/* Card 2: Total Customers */}
+        <Link href={`/merchant/${slug}/customers`} className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-[2rem] shadow-sm text-right flex flex-col justify-between group h-48 relative overflow-hidden transition-transform active:scale-[0.98]">
+          <div className="flex justify-between items-start w-full relative z-10">
+            <span className="font-bold text-slate-700 dark:text-slate-300 text-lg">إجمالي العملاء</span>
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-500">
+              <Users className="w-6 h-6" />
+            </div>
+          </div>
+          <div className="mt-2 relative z-10">
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{new Set(orders.map(o => o.customerId)).size}</h3>
+            <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-emerald-500">
+              <span>100.0% ⬆</span>
+              <span className="text-slate-400 font-medium">النمو الشهري</span>
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full flex justify-start pl-6 pb-2 opacity-80 group-hover:opacity-100 transition-opacity">
+            <svg className="w-32 h-12" viewBox="0 0 100 40" preserveAspectRatio="none">
+              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5 L 100 40 L 0 40 Z" fill="url(#gradient-blue)" opacity="0.2" />
+              <defs>
+                <linearGradient id="gradient-blue" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </Link>
+
+        {/* Card 3: Total Orders */}
+        <Link href={`/merchant/${slug}/orders`} className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-[2rem] shadow-sm text-right flex flex-col justify-between group h-48 relative overflow-hidden transition-transform active:scale-[0.98]">
+          <div className="flex justify-between items-start w-full relative z-10">
+            <span className="font-bold text-slate-700 dark:text-slate-300 text-lg">إجمالي الطلبات</span>
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-500">
+              <ShoppingCart className="w-6 h-6" />
+            </div>
+          </div>
+          <div className="mt-2 relative z-10">
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{orders.length}</h3>
+            <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-emerald-500">
+              <span>100.0% ⬆</span>
+              <span className="text-slate-400 font-medium">النمو الشهري</span>
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full flex justify-start pl-6 pb-2 opacity-80 group-hover:opacity-100 transition-opacity">
+            <svg className="w-32 h-12" viewBox="0 0 100 40" preserveAspectRatio="none">
+              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5 L 100 40 L 0 40 Z" fill="url(#gradient-emerald)" opacity="0.2" />
+              <defs>
+                <linearGradient id="gradient-emerald" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </Link>
+
+        {/* Card 4: Returns */}
+        <Link href={`/merchant/${slug}/returns`} className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-[2rem] shadow-sm text-right flex flex-col justify-between group h-48 relative overflow-hidden transition-transform active:scale-[0.98]">
+          <div className="flex justify-between items-start w-full relative z-10">
+            <span className="font-bold text-slate-700 dark:text-slate-300 text-lg">المرتجعات</span>
+            <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center text-teal-500">
+              <RefreshCcw className="w-6 h-6" />
+            </div>
+          </div>
+          <div className="mt-2 relative z-10">
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{orders.filter(o => ['returned', 'partially_returned'].includes(o.status as string)).length}</h3>
+            <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-red-500">
+              <span>12.5% ⬇</span>
+              <span className="text-slate-400 font-medium">النمو الشهري</span>
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full flex justify-start pl-6 pb-2 opacity-80 group-hover:opacity-100 transition-opacity">
+            <svg className="w-32 h-12" viewBox="0 0 100 40" preserveAspectRatio="none">
+              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5" fill="none" stroke="#14b8a6" strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M0 35 Q 15 20, 30 25 T 60 15 T 80 25 T 100 5 L 100 40 L 0 40 Z" fill="url(#gradient-teal)" opacity="0.2" />
+              <defs>
+                <linearGradient id="gradient-teal" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#14b8a6" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#14b8a6" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
         </Link>
       </div>
 
-      {/* Chart Section */}
-      <div className="bg-white dark:bg-slateDark-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
-        <div className="mb-4">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">أداء المبيعات</h3>
-          <p className="text-xs text-slate-500">حركة المبيعات خلال الفترة المحددة</p>
-        </div>
-        <div className="h-64 w-full">
-          {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0d9488" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#0d9488" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="date" tick={{fontSize: 10, fill: '#64748b'}} axisLine={false} tickLine={false} />
-                <YAxis tick={{fontSize: 10, fill: '#64748b'}} axisLine={false} tickLine={false} tickFormatter={(val) => `${val}`} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  formatter={(value: number) => [`${value} ${store.baseCurrency}`, 'المبيعات']}
-                  labelStyle={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '4px' }}
-                />
-                <Area type="monotone" dataKey="total" stroke="#0d9488" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
-              <TrendingUp className="w-8 h-8 mb-2 opacity-50" />
-              <span className="text-xs mt-2">لا توجد بيانات مبيعات في هذه الفترة</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5 sm:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Active Visitors */}
+        <ActiveVisitorsCounter storeId={store.slug} />
         
-        {/* KPI 1 */}
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs text-slate-500 font-medium">إجمالي المبيعات</span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-brand-50 dark:bg-brand-950 text-brand-600 dark:text-brand-400 flex items-center justify-center">
-              <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
+        {/* Low Stock Alert */}
+        <Link href={`/merchant/${slug}/inventory`} className="p-5 rounded-2xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-4 hover:border-amber-300 transition-colors">
+          <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <Package className="w-6 h-6" />
           </div>
-          <div className="mt-2">
-            <div className="text-sm sm:text-xl font-black text-slate-900 dark:text-white truncate">
-              {formatCurrency(totalRevenue || store.totalSalesGMV, store.baseCurrency)}
-            </div>
-            <div className="text-[9px] sm:text-[10px] text-emerald-600 font-bold mt-0.5 flex items-center gap-0.5">
-              <TrendingUp className="w-2.5 h-2.5" />
-              <span>+18% هذا الأسبوع</span>
-            </div>
-          </div>
-        </div>
-
-        {/* KPI 2 */}
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs text-slate-500 font-medium">الطلبات النشطة</span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-sm sm:text-xl font-black text-slate-900 dark:text-white">
-              {pendingOrders} طلبات
-            </div>
-            <div className="text-[9px] sm:text-[10px] text-blue-600 font-bold mt-0.5">
-              {completedOrders} مكتملة
-            </div>
-          </div>
-        </div>
-
-
-        {/* KPI 3 (Active Visitors Counter Component) */}
-        <div className="h-full">
-          <ActiveVisitorsCounter storeId={store.slug} />
-        </div>
-
-        {/* KPI 4 */}
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-xs text-slate-500 font-medium">تنبيهات المخزون</span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-              <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <div className="text-sm sm:text-xl font-black text-slate-900 dark:text-white">
+          <div>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white">
               {lowStockCount} أصناف منخفضة
-            </div>
-            <div className="text-[9px] sm:text-[10px] text-amber-600 font-bold mt-0.5">
-              تحتاج إعادة توريد
-            </div>
+            </h3>
+            <p className="text-xs text-amber-600 font-bold mt-1">
+              تحتاج إعادة توريد (تنبيه المخزون)
+            </p>
           </div>
-        </div>
-
+        </Link>
       </div>
 
       {/* Orders List Table (Responsive with smooth horizontal scroll) */}
@@ -328,7 +313,16 @@ export default function MerchantOverviewPage() {
                         ? 'bg-amber-100 text-amber-700'
                         : 'bg-blue-100 text-blue-700'
                     }`}>
-                      {ord.status}
+                      {{
+                        new: 'جديد',
+                        pending_payment: 'بانتظار الدفع',
+                        processing: 'قيد التجهيز',
+                        ready: 'جاهز للاستلام',
+                        out_for_delivery: 'في الطريق',
+                        delivered: 'مكتمل',
+                        cancelled: 'ملغي',
+                        returned: 'مسترجع',
+                      }[ord.status as string] || ord.status}
                     </span>
                   </td>
                   <td className="p-3 sm:p-4 text-left">

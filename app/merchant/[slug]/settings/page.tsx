@@ -38,6 +38,7 @@ export default function MerchantSettingsPage() {
       const newKey = await generateApiKeyAction(store.id, 'مفتاح جديد ' + new Date().toLocaleDateString('ar-EG'));
       setApiKeys([...apiKeys, newKey]);
     } catch (e) {
+      setIsSaving(false);
       alert('فشل توليد المفتاح');
     }
     setIsGeneratingKey(false);
@@ -59,6 +60,7 @@ export default function MerchantSettingsPage() {
 
 
   const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Form states
   const [name, setName] = useState('');
@@ -179,6 +181,8 @@ export default function MerchantSettingsPage() {
   if (!store) return null;
 
   const handleSaveSettings = async (e: React.FormEvent) => {
+    if (isSaving) return;
+    setIsSaving(true);
     e.preventDefault();
     if (!store) return;
     
@@ -205,9 +209,11 @@ export default function MerchantSettingsPage() {
 
     if (res.success && res.store) {
       setStore(res.store as any);
+      setIsSaving(false);
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
     } else {
+      setIsSaving(false);
       alert('فشل حفظ التعديلات: ' + (res.error || 'خطأ غير معروف'));
     }
   };
@@ -313,11 +319,11 @@ export default function MerchantSettingsPage() {
         </div>
 
         <button
-          onClick={handleSaveSettings}
-          className="px-6 py-2.5 rounded-xl font-bold text-xs bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-md shadow-brand-600/25 flex items-center justify-center gap-1.5"
+          onClick={handleSaveSettings} disabled={isSaving}
+          className="px-6 py-2.5 rounded-xl font-bold text-xs bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-md shadow-brand-600/25 flex items-center justify-center gap-1.5 ${isSaving ? 'opacity-60 cursor-not-allowed' : ''}"
         >
           <Save className="w-4 h-4" />
-          <span>{isSaved ? 'تم حفظ الإعدادات بنجاح ✓' : 'حفظ التعديلات'}</span>
+          <span>{isSaving ? 'جاري الحفظ...' : isSaved ? 'تم حفظ الإعدادات بنجاح ✓' : 'حفظ التعديلات'}</span>
         </button>
       </div>
 

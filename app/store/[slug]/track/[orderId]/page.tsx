@@ -5,11 +5,11 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   CheckCircle2, Clock, MessageSquare, ArrowLeft,
-  Receipt, CreditCard, MapPin, Phone, Package
+  Receipt, CreditCard, MapPin, Phone, Package, RotateCcw, X
 } from 'lucide-react';
 import { Store, Order } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
-import { getOrderByIdAction, customerConfirmDeliveryAction } from '@/app/actions/order';
+import { getOrderByIdAction, customerConfirmDeliveryAction, requestOrderReturnAction } from '@/app/actions/order';
 import { getStoreBySlugAction } from '@/app/actions/store';
 
 export default function OrderTrackingPage() {
@@ -20,6 +20,53 @@ export default function OrderTrackingPage() {
   const [store, setStore] = useState<Store | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [returnReason, setReturnReason] = useState('');
+  const [selectedReturnItems, setSelectedReturnItems] = useState<any[]>([]);
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+  
+  const handleOpenReturnModal = () => {
+    if (!order || !order.items) return;
+    const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+    setSelectedReturnItems(items.map((it: any) => ({ ...it, selected: false })));
+    setReturnReason('');
+    setIsReturnModalOpen(true);
+  };
+
+  const handleToggleReturnItem = (idx: number) => {
+    setSelectedReturnItems(prev => prev.map((it, i) => i === idx ? { ...it, selected: !it.selected } : it));
+  };
+
+  const handleSubmitReturn = async () => {
+    const itemsToReturn = selectedReturnItems.filter(it => it.selected);
+    if (itemsToReturn.length === 0) {
+      alert('الرجاء اختيار منتج واحد على الأقل للاسترجاع');
+      return;
+    }
+    
+    setIsSubmittingReturn(true);
+    const res = await requestOrderReturnAction({
+      orderId: order!.id,
+      reason: returnReason,
+      items: itemsToReturn.map(it => ({ id: it.id, quantity: it.quantity })) // or allow changing quantity later
+    });
+    
+    if (res.success) {
+      alert('تم إرسال طلب الاسترجاع بنجاح');
+      setIsReturnModalOpen(false);
+      // Reload order to reflect new status
+      const s = await getStoreBySlugAction(slug);
+      if (s) {
+        const o = await getOrderByIdAction(orderId, s.id);
+        if (o && o.success) setOrder(o.order);
+      }
+    } else {
+      alert(res.error || 'حدث خطأ أثناء إرسال الطلب');
+    }
+    setIsSubmittingReturn(false);
+  };
+
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
@@ -103,7 +150,8 @@ export default function OrderTrackingPage() {
     return 'upcoming';
   };
 
-  const isBankTransfer = !order.paymentMethod.includes('عند الاستلام') && !order.paymentMethod.includes('COD');
+  const paymentMethodStr = order.paymentMethod === 'kuraimi' ? 'الكريمي' : order.paymentMethod === 'jawali' ? 'جوالي' : order.paymentMethod === 'cod' ? 'عند الاستلام' : (!order.paymentMethod || order.paymentMethod === 'undefined') ? 'غير محدد' : order.paymentMethod;
+  const isBankTransfer = !paymentMethodStr.includes('عند الاستلام') && !paymentMethodStr.includes('COD');
 
   // Parse items safely
   let itemsList: any[] = [];
@@ -282,7 +330,7 @@ export default function OrderTrackingPage() {
                   </div>
                   <div>
                     <div className="text-[11px] text-slate-500">طريقة الدفع</div>
-                    <div className="text-sm font-bold text-brand-600 dark:text-brand-400">{order.paymentMethod}</div>
+                    <div className="text-sm font-bold text-brand-600 dark:text-brand-400">{paymentMethodStr}</div>
                   </div>
                 </div>
               </div>
@@ -347,6 +395,74 @@ export default function OrderTrackingPage() {
         </div>
       </main>
 
-    </div>
+    
+      {/* نافذة طلب الاسترجاع */}
+      {isReturnModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+              <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <RotateCcw className="w-5 h-5 text-brand-600" />
+                طلب استرجاع
+              </h3>
+              <button 
+                onClick={() => setIsReturnModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-slate-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-6">
+              <div>
+                <p className="text-sm font-bold text-slate-900 dark:text-white mb-3">اختر المنتجات المراد إرجاعها:</p>
+                <div className="space-y-3">
+                  {selectedReturnItems.map((it, idx) => (
+                    <label key={idx} className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-brand-300 dark:hover:border-brand-700/50 cursor-pointer transition-colors">
+                      <div className="pt-1">
+                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${it.selected ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-300 dark:border-slate-700'}`}>
+                          {it.selected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">{it.productName || it.name}</div>
+                        <div className="text-xs text-slate-500 mt-0.5">الكمية: {it.quantity}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">سبب الاسترجاع (اختياري)</label>
+                <textarea
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  placeholder="اكتب سبب رغبتك في إرجاع المنتجات..."
+                  className="w-full h-24 p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:border-brand-500 dark:focus:border-brand-500 transition-all resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex gap-3">
+              <button
+                onClick={() => setIsReturnModalOpen(false)}
+                className="flex-1 py-3 rounded-xl font-bold text-sm bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={handleSubmitReturn}
+                disabled={isSubmittingReturn || !selectedReturnItems.some(it => it.selected)}
+                className="flex-1 py-3 rounded-xl font-bold text-sm bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-600/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSubmittingReturn ? 'جاري الإرسال...' : 'تأكيد الطلب'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+</div>
   );
 }

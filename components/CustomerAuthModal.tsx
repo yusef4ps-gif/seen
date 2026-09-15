@@ -25,6 +25,8 @@ export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess 
   // Form State
   const [name, setName] = useState('');
   const [emailOrPhone, setEmailOrPhone] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPhone, setRegisterPhone] = useState('');
   const [password, setPassword] = useState('');
   
   // OTP State
@@ -43,6 +45,8 @@ export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess 
       setError('');
       setName('');
       setEmailOrPhone('');
+      setRegisterEmail('');
+      setRegisterPhone('');
       setPassword('');
       setShowOTP(false);
       setExpectedOtp('');
@@ -60,14 +64,12 @@ export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess 
 
     let res;
     if (mode === 'register') {
-      const isEmail = emailOrPhone.includes('@');
-      res = await registerCustomerAction(
-        storeId, 
-        name, 
-        isEmail ? emailOrPhone : '', 
-        isEmail ? '' : emailOrPhone, 
-        password
-      );
+      if (!registerEmail && !registerPhone) {
+        setError('الرجاء إدخال البريد الإلكتروني أو رقم الهاتف على الأقل');
+        setLoading(false);
+        return;
+      }
+      res = await registerCustomerAction(storeId, name, registerEmail, registerPhone, password);
     } else {
       res = await loginCustomerAction(storeId, emailOrPhone, password);
     }
@@ -76,7 +78,7 @@ export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess 
       setSessionData(res.customer);
       // Send OTP
       const customerName = mode === 'register' ? name : (res.customer.name || 'عميل');
-      const otpRes = await sendCustomerVerificationCodeAction(emailOrPhone, customerName);
+      const otpRes = await sendCustomerVerificationCodeAction(mode === 'register' ? (registerEmail || registerPhone) : emailOrPhone, customerName);
       
       if (otpRes.success) {
         setExpectedOtp(otpRes.code!);
@@ -183,6 +185,7 @@ export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess 
                 </div>
               )}
 
+              {mode === 'login' ? (
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   البريد الإلكتروني أو رقم الهاتف
@@ -199,6 +202,36 @@ export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess 
                   />
                 </div>
               </div>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">البريد الإلكتروني</label>
+                    <div className="relative">
+                      <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="email"
+                        value={registerEmail}
+                        onChange={(e) => setRegisterEmail(e.target.value)}
+                        placeholder="name@example.com"
+                        className="w-full pr-10 pl-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all dark:text-white text-left dir-ltr"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">رقم الهاتف (للتواصل عبر واتساب)</label>
+                    <div className="relative">
+                      <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="tel"
+                        value={registerPhone}
+                        onChange={(e) => setRegisterPhone(e.target.value)}
+                        placeholder="77xxxxxxx"
+                        className="w-full pr-10 pl-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all dark:text-white text-left dir-ltr"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">كلمة المرور</label>

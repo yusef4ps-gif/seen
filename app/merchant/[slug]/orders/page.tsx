@@ -208,7 +208,8 @@ export default function MerchantOrdersPage() {
                        order.paymentMethod === 'jawali' ? 'محفظة جوالي' :
                        order.paymentMethod === 'onecash' ? 'محفظة ون كاش' :
                        order.paymentMethod === 'floosak' ? 'محفظة فلوسك' :
-                       order.paymentMethod === 'cod' ? 'الدفع عند الاستلام' : order.paymentMethod}
+                       order.paymentMethod === 'cod' ? 'الدفع عند الاستلام' : 
+                       (!order.paymentMethod || order.paymentMethod === 'undefined') ? 'غير محدد' : order.paymentMethod}
                     </div>
 
                     {order.paymentProofUrl && (
@@ -441,7 +442,7 @@ export default function MerchantOrdersPage() {
 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 space-y-1">
                 <div><strong>العميل:</strong> {selectedOrder.customerName} ({selectedOrder.customerPhone})</div>
-                <div><strong>طريقة التحويل:</strong> {selectedOrder.paymentMethod}</div>
+                <div><strong>طريقة الدفع:</strong> {selectedOrder.paymentMethod === 'kuraimi' ? 'الكريمي' : selectedOrder.paymentMethod === 'jawali' ? 'جوالي' : selectedOrder.paymentMethod === 'cod' ? 'عند الاستلام' : (!selectedOrder.paymentMethod || selectedOrder.paymentMethod === 'undefined') ? 'غير محدد' : selectedOrder.paymentMethod}</div>
                 <div><strong>المبلغ المطلوب:</strong> {formatCurrency(selectedOrder.total, selectedOrder.currency)}</div>
               </div>
 
@@ -616,7 +617,7 @@ export default function MerchantOrdersPage() {
                   <div><strong>العميل:</strong> {selectedOrder.customerName}</div>
                   <div><strong>الهاتف:</strong> {selectedOrder.customerPhone}</div>
                   <div><strong>العنوان:</strong> {selectedOrder.city} - {selectedOrder.address}</div>
-                  <div><strong>الدفع:</strong> {selectedOrder.paymentMethod}</div>
+                  <div><strong>الدفع:</strong> {selectedOrder.paymentMethod === 'kuraimi' ? 'الكريمي' : selectedOrder.paymentMethod === 'jawali' ? 'جوالي' : selectedOrder.paymentMethod === 'cod' ? 'عند الاستلام' : (!selectedOrder.paymentMethod || selectedOrder.paymentMethod === 'undefined') ? 'غير محدد' : selectedOrder.paymentMethod}</div>
                 </div>
 
                 {/* Items Table */}

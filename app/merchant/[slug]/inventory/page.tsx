@@ -21,6 +21,7 @@ export default function MerchantInventoryPage() {
   const [overview, setOverview] = useState<InventoryOverview | null>(null);
   const [editingStock, setEditingStock] = useState<Record<string, { stock: number; price: number }>>({});
   const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const loadData = async () => {
     if (slug) {
@@ -61,6 +62,8 @@ export default function MerchantInventoryPage() {
   };
 
   const handleSaveBulkChanges = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
     if (!store) return;
     
     // Save all changes concurrently
@@ -82,7 +85,8 @@ export default function MerchantInventoryPage() {
     await Promise.all(promises);
     await loadData();
 
-    setIsSaved(true);
+    setIsSaving(false);
+      setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
   };
 
@@ -104,11 +108,12 @@ export default function MerchantInventoryPage() {
         </div>
 
         <button
-          onClick={handleSaveBulkChanges}
-          className="px-5 py-2.5 rounded-xl font-bold text-xs bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-md shadow-brand-600/25 flex items-center justify-center gap-1.5"
+          onClick={handleSaveBulkChanges} 
+          disabled={isSaving}
+          className={`px-5 py-2.5 rounded-xl font-bold text-xs bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-md shadow-brand-600/25 flex items-center justify-center gap-1.5 ${isSaving ? 'opacity-60 cursor-not-allowed' : ''}`}
         >
           <Save className="w-4 h-4" />
-          <span>{isSaved ? 'تم حفظ التعديلات بنجاح ✓' : 'حفظ التعديلات الجماعية'}</span>
+          <span>{isSaving ? 'جاري الحفظ...' : isSaved ? 'تم الحفظ ✓' : 'حفظ التعديلات الجماعية'}</span>
         </button>
       </div>
 

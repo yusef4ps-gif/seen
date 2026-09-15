@@ -79,7 +79,8 @@ export function formatCurrency(
   currencyCode: CurrencyCode,
   customRates?: any
 ): string {
-  const symbol = DEFAULT_CURRENCIES[currencyCode]?.symbol || currencyCode;
+  let symbol = DEFAULT_CURRENCIES[currencyCode]?.symbol || currencyCode || 'ر.ي';
+  if (symbol === 'undefined') symbol = 'ر.ي';
   
   // Format numbers with commas (e.g. 15,000 ر.ي)
   const formattedNum = new Intl.NumberFormat('en-US', {

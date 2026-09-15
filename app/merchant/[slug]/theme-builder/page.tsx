@@ -94,6 +94,8 @@ export default function ThemeBuilderPage() {
 
   // Save and publish theme
   const handleSaveTheme = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
     if (!store || isSaving) return;
     setIsSaving(true);
     try {
@@ -194,9 +196,9 @@ export default function ThemeBuilderPage() {
           </Link>
 
           <button
-            onClick={handleSaveTheme}
+            onClick={handleSaveTheme} disabled={isSaving}
             disabled={isSaving}
-            className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-brand-600 to-teal-500 hover:from-brand-700 hover:to-teal-600 shadow-md shadow-brand-600/25 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-wait"
+            className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-brand-600 to-teal-500 hover:from-brand-700 hover:to-teal-600 shadow-md shadow-brand-600/25 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-wait ${isSaving ? 'opacity-60 cursor-not-allowed' : ''}"
           >
             {isSaving ? (
               <>
