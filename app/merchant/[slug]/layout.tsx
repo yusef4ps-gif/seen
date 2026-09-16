@@ -65,9 +65,9 @@ export default function MerchantLayout({
               dynamicNotifs.push({
                 id: currentId++,
                 type: 'warning',
-                title: 'ط³ظ„ط§طھ ظ…طھط±ظˆظƒط©',
-                message: `ظٹظˆط¬ط¯ ${notifsRes.data.abandoned.count} ط³ظ„ط§طھ ظ…طھط±ظˆظƒط© ط¨ظ‚ظٹظ…ط© ${formatCurrency(notifsRes.data.abandoned.total, s.baseCurrency)}طŒ ظ‚ظ… ط¨ظ…طھط§ط¨ط¹طھظ‡ط§.`,
-                time: 'ط¬ط¯ظٹط¯'
+                title: 'سلات متروكة',
+                message: `يوجد ${notifsRes.data.abandoned.count} سلات متروكة بقيمة ${formatCurrency(notifsRes.data.abandoned.total, s.baseCurrency)}، قم بمتابعتها.`,
+                time: 'جديد'
               });
               unread++;
             }
@@ -78,9 +78,9 @@ export default function MerchantLayout({
                 dynamicNotifs.push({
                   id: currentId++,
                   type: 'danger',
-                  title: 'طھظ†ط¨ظٹظ‡ ط§ظ„ظ…ط®ط²ظˆظ†',
-                  message: `طھظ†ط¨ظٹظ‡: ظ…ظ†طھط¬ "${prod.name}" ظ‚ط§ط±ط¨ ط¹ظ„ظ‰ ط§ظ„ظ†ظپط§ط° (ط¨ط§ظ‚ظٹ ${prod.stock} ظ‚ط·ط¹ ظپظ‚ط·).`,
-                  time: 'ط¬ط¯ظٹط¯'
+                  title: 'تنبيه المخزون',
+                  message: `تنبيه: منتج "${prod.name}" قارب على النفاذ (باقي ${prod.stock} قطع فقط).`,
+                  time: 'جديد'
                 });
                 unread++;
               });
@@ -100,18 +100,18 @@ export default function MerchantLayout({
                   dynamicNotifs.push({
                     id: currentId++,
                     type: 'info',
-                    title: 'طھظ†ط¨ظٹظ‡ ط§ظ„ط§ط´طھط±ط§ظƒ',
-                    message: `ط¨ط§ظ‚ط© ط§ظ„ظ…طھط¬ط± ط§ظ„ط£ط³ط§ط³ظٹط© (ط§ظ„ظپطھط±ط© ط§ظ„طھط¬ط±ظٹط¨ظٹط©) ط³طھظ†طھظ‡ظٹ ط¨ط¹ط¯ ${remaining} ط£ظٹط§ظ…طŒ ظٹط±ط¬ظ‰ ط§ظ„طھط¬ط¯ظٹط¯ ظ‚ط±ظٹط¨ط§ظ‹ ظ„طھط¬ظ†ط¨ ط§ظ„ط¥ظٹظ‚ط§ظپ.`,
-                    time: 'ط§ظ„ظٹظˆظ…'
+                    title: 'تنبيه الاشتراك',
+                    message: `باقة المتجر الأساسية (الفترة التجريبية) ستنتهي بعد ${remaining} أيام، يرجى التجديد قريباً لتجنب الإيقاف.`,
+                    time: 'اليوم'
                   });
                   unread++;
                 } else if (remaining <= 0) {
                   dynamicNotifs.push({
                     id: currentId++,
                     type: 'danger',
-                    title: 'ط§ظ†طھظ‡ط§ط، ط§ظ„ط§ط´طھط±ط§ظƒ',
-                    message: `ط§ظ†طھظ‡طھ ط§ظ„ظپطھط±ط© ط§ظ„طھط¬ط±ظٹط¨ظٹط© ط§ظ„ظ…ط¬ط§ظ†ظٹط© ط§ظ„ط®ط§طµط© ط¨ظƒ. ظٹط±ط¬ظ‰ ط§ظ„ط§ط´طھط±ط§ظƒ ظپظٹ ط¥ط­ط¯ظ‰ ط§ظ„ط¨ط§ظ‚ط§طھ ظ„ظ„ط§ط³طھظ…ط±ط§ط± ظپظٹ ط§ط³طھظ‚ط¨ط§ظ„ ط§ظ„ط·ظ„ط¨ط§طھ.`,
-                    time: 'ط§ظ„ط¢ظ†'
+                    title: 'انتهاء الاشتراك',
+                    message: `انتهت الفترة التجريبية المجانية الخاصة بك. يرجى الاشتراك في إحدى الباقات للاستمرار في استقبال الطلبات.`,
+                    time: 'الآن'
                   });
                   unread++;
                 }
@@ -135,7 +135,7 @@ export default function MerchantLayout({
     setBroadcasts(storeEngine.getBroadcasts());
   }, [slug]);
 
-  // â›” Guard: If logged in as CUSTOMER, prevent them from accessing merchant management
+  // ⛔ Guard: If logged in as CUSTOMER, prevent them from accessing merchant management
   useEffect(() => {
     if (currentUser?.role === 'CUSTOMER') {
       router.replace(`/store/${slug}`);
@@ -151,136 +151,106 @@ export default function MerchantLayout({
       <div className="min-h-screen flex items-center justify-center p-6 text-center">
         <div className="space-y-4">
           <StoreIcon className="w-12 h-12 text-slate-400 mx-auto animate-pulse" />
-          <h2 className="text-xl font-bold">ط¬ط§ط±ظٹ طھط­ظ…ظٹظ„ ظ„ظˆط­ط© طھط­ظƒظ… ط§ظ„طھط§ط¬ط±...</h2>
-          <p className="text-sm text-slate-500">ط¥ط°ط§ ظ„ظ… ظٹطھظ… ط§ظ„طھط­ظ…ظٹظ„ طھظ„ظ‚ط§ط¦ظٹط§ظ‹طŒ ظٹظ…ظƒظ†ظƒ ط§ظ„ط¹ظˆط¯ط© ظ„ظ„طµظپط­ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.</p>
+          <h2 className="text-xl font-bold">جاري تحميل لوحة تحكم التاجر...</h2>
+          <p className="text-sm text-slate-500">إذا لم يتم التحميل تلقائياً، يمكنك العودة للصفحة الرئيسية.</p>
           <Link href="/" className="inline-block px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold">
-            ط§ظ„ط±ط¦ظٹط³ظٹط©
+            الرئيسية
           </Link>
         </div>
       </div>
     );
   }
 
-  if (store.planStatus === 'pending_approval') {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slateDark-950 flex flex-col items-center justify-center p-6 text-center space-y-6">
-        <div className="w-24 h-24 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center">
-          <StoreIcon className="w-12 h-12" />
-        </div>
-        <h2 className="text-2xl font-black text-slate-800 dark:text-white">ظ…طھط¬ط±ظƒ ظ‚ظٹط¯ ط§ظ„ظ…ط±ط§ط¬ط¹ط© âڈ³</h2>
-        <p className="text-slate-600 dark:text-slate-400 max-w-md">
-          ظ„ظ… ظٹطھظ… ط§ظ„ظ…ظˆط§ظپظ‚ط© ط¹ظ„ظ‰ ط·ظ„ط¨ ط¥ظ†ط´ط§ط، ظ…طھط¬ط±ظƒ ط¨ط¹ط¯. ظٹط±ط¬ظ‰ ط§ظ„ط§ظ†طھط¸ط§ط± ظ„ط­ظٹظ† ظ…ط±ط§ط¬ط¹ط© ط§ظ„ط·ظ„ط¨ ظ…ظ† ظ‚ط¨ظ„ ط§ظ„ط¥ط¯ط§ط±ط© ظˆط³ظ†طھظˆط§طµظ„ ظ…ط¹ظƒ ط¹ط¨ط± ط§ظ„ظˆط§طھط³ط§ط¨.
-        </p>
-        <Link href="/" className="px-6 py-2.5 bg-slate-800 text-white rounded-xl font-bold">ط§ظ„ط¹ظˆط¯ط© ظ„ظ„ط±ط¦ظٹط³ظٹط©</Link>
-      </div>
-    );
-  }
-
-  if (store.planStatus === 'rejected') {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slateDark-950 flex flex-col items-center justify-center p-6 text-center space-y-6">
-        <div className="w-24 h-24 bg-red-100 text-red-500 rounded-full flex items-center justify-center">
-          <StoreIcon className="w-12 h-12" />
-        </div>
-        <h2 className="text-2xl font-black text-slate-800 dark:text-white">طھظ… ط±ظپط¶ ط§ظ„ط·ظ„ط¨ ًںڑ«</h2>
-        <p className="text-slate-600 dark:text-slate-400 max-w-md">
-          ط¹ط°ط±ط§ظ‹طŒ ظ„ظ… طھظˆط§ظپظ‚ ط§ظ„ط¥ط¯ط§ط±ط© ط¹ظ„ظ‰ ط·ظ„ط¨ ط¥ظ†ط´ط§ط، ظ‡ط°ط§ ط§ظ„ظ…طھط¬ط±. ط³ظٹطھظ… ط­ط°ظپظ‡ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ظ‚ط±ظٹط¨ط§ظ‹.
-        </p>
-        <Link href="/" className="px-6 py-2.5 bg-slate-800 text-white rounded-xl font-bold">ط§ظ„ط¹ظˆط¯ط© ظ„ظ„ط±ط¦ظٹط³ظٹط©</Link>
-      </div>
-    );
-  }
-
   const navItems = [
     {
-      title: 'ظ†ط¸ط±ط© ط¹ط§ظ…ط© ظˆط§ظ„طھط­ظ„ظٹظ„ط§طھ',
+      title: 'نظرة عامة والتحليلات',
       href: `/merchant/${slug}`,
       icon: LayoutDashboard,
       exact: true,
     },
     {
-      title: 'ط§ظ„ظ…ظ†طھط¬ط§طھ ظˆط§ظ„طھطµظ†ظٹظپط§طھ',
+      title: 'المنتجات والتصنيفات',
       href: `/merchant/${slug}/products`,
       icon: Package,
     },
     {
-      title: 'ط§ظ„ظ…ط®ط²ظˆظ†',
+      title: 'المخزون',
       href: `/merchant/${slug}/inventory`,
       icon: Boxes,
     },
     {
-      title: 'ط¥ط¯ط§ط±ط© ظˆطھط¯ظ‚ظٹظ‚ ط§ظ„ط·ظ„ط¨ط§طھ',
+      title: 'إدارة وتدقيق الطلبات',
       href: `/merchant/${slug}/orders`,
       icon: ShoppingCart,
       badge: newOrdersCount > 0 ? String(newOrdersCount) : undefined,
     },
     {
-      title: 'ط¥ط¯ط§ط±ط© ط§ظ„ظ…ط±طھط¬ط¹ط§طھ',
+      title: 'إدارة المرتجعات',
       href: `/merchant/${slug}/returns`,
       icon: RefreshCw,
       badge: newReturnsCount > 0 ? String(newReturnsCount) : undefined,
     },
     {
-      title: 'ط§ظ„ط¢ط±ط§ط، ظˆط§ظ„طھظ‚ظٹظٹظ…ط§طھ',
+      title: 'الآراء والتقييمات',
       href: `/merchant/${slug}/reviews`,
       icon: Star,
     },
     {
-      title: 'ط§ط³طھط¹ط§ط¯ط© ط§ظ„ط³ظ„ط§طھ ط§ظ„ظ…طھط±ظˆظƒط©',
+      title: 'استعادة السلات المتروكة',
       href: `/merchant/${slug}/abandoned-carts`,
       icon: RefreshCw,
     },
     {
-      title: 'ظ‚ط§ط¹ط¯ط© ط¨ظٹط§ظ†ط§طھ ط§ظ„ط¹ظ…ظ„ط§ط، (CRM)',
+      title: 'قاعدة بيانات العملاء (CRM)',
       href: `/merchant/${slug}/customers`,
       icon: Users,
     },
     {
-      title: 'ظپط±ظٹظ‚ ط§ظ„ط¹ظ…ظ„ ظˆط§ظ„طµظ„ط§ط­ظٹط§طھ',
+      title: 'فريق العمل والصلاحيات',
       href: `/merchant/${slug}/staff`,
       icon: ShieldCheck,
     },
     {
-      title: 'ظ…ط³طھط´ط§ط± ط§ظ„ط°ظƒط§ط، ط§ظ„ط§طµط·ظ†ط§ط¹ظٹ',
+      title: 'مستشار الذكاء الاصطناعي',
       href: `/merchant/${slug}/ai-advisor`,
       icon: Sparkles,
     },
     {
-      title: 'طھط®طµظٹطµ ط§ظ„ظˆط§ط¬ظ‡ط© ظˆط§ظ„ظ…ط­طھظˆظ‰',
+      title: 'تخصيص الواجهة والمحتوى',
       href: `/merchant/${slug}/theme-builder`,
       icon: Palette,
     },
     {
-      title: 'ط¥ط¹ط¯ط§ط¯ط§طھ ط§ظ„ظ…طھط¬ط± ظˆط§ظ„ظ…ط­ط§ظپط¸',
+      title: 'إعدادات المتجر والمحافظ',
       href: `/merchant/${slug}/settings`,
       icon: Settings,
     },
     {
-      title: 'ط§ظ„ط§ط´طھط±ط§ظƒط§طھ ظˆط§ظ„ط¨ط§ظ‚ط§طھ',
+      title: 'الاشتراكات والباقات',
       href: `/merchant/${slug}/subscription`,
       icon: Crown,
-      badge: 'ط¥ط¯ط§ط±ط©',
+      badge: 'إدارة',
     },
     {
-      title: 'ظƒظˆط¨ظˆظ†ط§طھ ط§ظ„طھط®ظپظٹط¶',
+      title: 'كوبونات التخفيض',
       href: `/merchant/${slug}/coupons`,
       icon: Ticket,
     },
     {
-      title: 'ط§ظ„ط¹ط±ظˆط¶ ط§ظ„ط®ط§طµط©',
+      title: 'العروض الخاصة',
       href: `/merchant/${slug}/offers`,
       icon: Tag,
     },
     {
-      title: 'ط§ظ„طھظ‚ط§ط±ظٹط±',
+      title: 'التقارير',
       href: `/merchant/${slug}/reports`,
       icon: BarChart,
     },
     {
-      title: 'ط³ط¬ظ„ ط§ظ„ط­ط±ظƒط§طھ (Audit)',
+      title: 'سجل الحركات (Audit)',
       href: `/merchant/${slug}/activity-log`,
       icon: History,
-      badge: 'ط¬ط¯ظٹط¯',
+      badge: 'جديد',
     },
   ];
 
@@ -316,9 +286,9 @@ export default function MerchantLayout({
                   {store.name}
                 </h4>
                 <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium mt-0.5">
-                  <span className="text-emerald-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span> ظ†ط´ط·</span>
-                  <span>â€¢</span>
-                  <span>ط¨ط§ظ‚ط© {store.planTier.toUpperCase()}</span>
+                  <span className="text-emerald-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span> نشط</span>
+                  <span>•</span>
+                  <span>باقة {store.planTier.toUpperCase()}</span>
                 </div>
               </div>
             </div>
@@ -328,7 +298,7 @@ export default function MerchantLayout({
                 href={`/store/${store.slug}`}
                 target="_blank"
                 className="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
-                title="ظ…ط¹ط§ظٹظ†ط© ط§ظ„ظ…طھط¬ط±"
+                title="معاينة المتجر"
               >
                 <ExternalLink className="w-4 h-4" />
               </Link>
@@ -368,7 +338,7 @@ export default function MerchantLayout({
                     <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-black ${
                       isActive 
                         ? 'bg-white/20 text-white' 
-                        : 'bg-brand-500/20 text-brand-400 border border-brand-500/30'
+                        : 'bg-accent/20 text-accent border border-accent/30'
                     }`}>
                       {item.badge}
                     </span>
@@ -393,7 +363,7 @@ export default function MerchantLayout({
           >
             <div className="flex items-center gap-1.5">
               <LogOut className="w-4 h-4" />
-              <span>طھط³ط¬ظٹظ„ ط§ظ„ط®ط±ظˆط¬</span>
+              <span>تسجيل الخروج</span>
             </div>
           </button>
         </div>
@@ -438,8 +408,8 @@ export default function MerchantLayout({
                   <div className="fixed inset-0 z-40" onClick={() => setIsNotificationsOpen(false)}></div>
                   <div className="absolute top-full left-0 mt-2 w-72 sm:w-80 bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden animate-fadeIn text-right">
                     <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                      <h4 className="font-bold text-slate-900 dark:text-white text-sm">ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ</h4>
-                      <span className="text-[10px] text-brand-600 font-bold px-2 py-0.5 rounded-full bg-brand-50 dark:bg-brand-900/30">ط¬ط¯ظٹط¯ {unreadCount}</span>
+                      <h4 className="font-bold text-slate-900 dark:text-white text-sm">التنبيهات</h4>
+                      <span className="text-[10px] text-brand-600 font-bold px-2 py-0.5 rounded-full bg-brand-50 dark:bg-brand-900/30">جديد {unreadCount}</span>
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {notifications.map(n => (
@@ -454,7 +424,7 @@ export default function MerchantLayout({
                       ))}
                     </div>
                     <div className="p-2 text-center bg-slate-50 dark:bg-slate-800/30">
-                      <button onClick={() => setUnreadCount(0)} className="text-[11px] font-bold text-brand-600 hover:text-brand-700">طھط­ط¯ظٹط¯ ط§ظ„ظƒظ„ ظƒظ…ظ‚ط±ظˆط،</button>
+                      <button onClick={() => setUnreadCount(0)} className="text-[11px] font-bold text-brand-600 hover:text-brand-700">تحديد الكل كمقروء</button>
                     </div>
                   </div>
                 </>
@@ -471,8 +441,8 @@ export default function MerchantLayout({
               className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 dark:bg-brand-950 dark:hover:bg-brand-900 border border-brand-200 dark:border-brand-800 transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">ظ…ط¹ط§ظٹظ†ط© ط§ظ„ظ…طھط¬ط±</span>
-              <span className="sm:hidden">ط§ظ„ظ…طھط¬ط±</span>
+              <span className="hidden sm:inline">معاينة المتجر</span>
+              <span className="sm:hidden">المتجر</span>
             </Link>
 
           </div>
@@ -501,36 +471,36 @@ export default function MerchantLayout({
           const isWarning = daysLeft <= 7 && daysLeft > 0;
           
           const planNames: Record<string, string> = {
-            'free': 'ط§ظ„ظپطھط±ط© ط§ظ„ظ…ط¬ط§ظ†ظٹط©',
-            'starter': 'ط¨ط§ظ‚ط© ط§ظ„ط§ظ†ط·ظ„ط§ظ‚ط©',
-            'pro': 'ط§ظ„ط¨ط§ظ‚ط© ط§ظ„ط§ط­طھط±ط§ظپظٹط©',
-            'vip': 'ط¨ط§ظ‚ط© ظƒط¨ط§ط± ط§ظ„ط´ط®طµظٹط§طھ (VIP)'
+            'free': 'الفترة المجانية',
+            'starter': 'باقة الانطلاقة',
+            'pro': 'الباقة الاحترافية',
+            'vip': 'باقة كبار الشخصيات (VIP)'
           };
           
           // Use planTier to display the Arabic name, or fallback
-          let planName = planNames[store.planTier] || 'ط¨ط§ظ‚ط© ط؛ظٹط± ظ…ط¹ط±ظˆظپط©';
+          let planName = planNames[store.planTier] || 'باقة غير معروفة';
           if (store.planStatus === 'trial' && store.planTier === 'starter') {
-             planName = 'ط§ظ„ظپطھط±ط© ط§ظ„ظ…ط¬ط§ظ†ظٹط© (ط§ظ†ط·ظ„ط§ظ‚ط©)';
+             planName = 'الفترة المجانية (انطلاقة)';
           }
           
           let bannerBg = 'bg-gradient-to-r from-[#0f2b48] via-[#144b7a] to-[#14b8a6]'; 
-          let icon = 'ًںژپ';
-          let statusText = 'ط§ط´طھط±ط§ظƒ ظ†ط´ط·';
+          let icon = '🎁';
+          let statusText = 'اشتراك نشط';
           let statusColor = 'bg-[#2dd4bf] text-[#0f2b48]';
           
           if (isExpired) {
             bannerBg = 'bg-gradient-to-r from-red-900 via-red-800 to-red-600';
-            icon = 'âڑ ï¸ڈ';
-            statusText = 'ط§ظ„ط§ط´طھط±ط§ظƒ ظ…ظ†طھظ‡ظٹ';
+            icon = '⚠️';
+            statusText = 'الاشتراك منتهي';
             statusColor = 'bg-red-100 text-red-900 animate-pulse';
           } else if (isWarning) {
             bannerBg = 'bg-gradient-to-r from-amber-600 via-amber-500 to-amber-400';
-            icon = 'âڈ³';
-            statusText = 'ظ‚ط§ط±ط¨ ط¹ظ„ظ‰ ط§ظ„ط§ظ†طھظ‡ط§ط،';
+            icon = '⏳';
+            statusText = 'قارب على الانتهاء';
             statusColor = 'bg-amber-100 text-amber-900';
           } else if (store.planStatus === 'trial') {
-             icon = 'âœ¨';
-             statusText = 'طھط¬ط±ط¨ط© ظ…ط¬ط§ظ†ظٹط©';
+             icon = '✨';
+             statusText = 'تجربة مجانية';
           }
 
           return (
@@ -543,16 +513,16 @@ export default function MerchantLayout({
                   <div className="text-xs font-black flex items-center gap-2">
                     <span>
                       {isExpired 
-                        ? `ظ„ظ‚ط¯ ط§ظ†طھظ‡ظ‰ ط§ط´طھط±ط§ظƒظƒ ظپظٹ ${planName}`
-                        : `ط£ظ†طھ ظ…ط´طھط±ظƒ ظپظٹ ${planName} (${daysLeft} ظٹظˆظ…ط§ظ‹ ظ…طھط¨ظ‚ظٹط©)`}
+                        ? `لقد انتهى اشتراكك في ${planName}`
+                        : `أنت مشترك في ${planName} (${daysLeft} يوماً متبقية)`}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${statusColor}`}>
                       {statusText}
                     </span>
                   </div>
                   <div className="text-[11px] text-white/90 mt-0.5 font-medium flex items-center gap-3">
-                    <span>طھط§ط±ظٹط® ط§ظ„ط§ط´طھط±ط§ظƒ: <b className="text-white">{startDate.toLocaleDateString('ar-YE')}</b></span>
-                    <span>طھط§ط±ظٹط® ط§ظ„طھط¬ط¯ظٹط¯: <b className="text-white">{endDate.toLocaleDateString('ar-YE')}</b></span>
+                    <span>تاريخ الاشتراك: <b className="text-white">{startDate.toLocaleDateString('ar-YE')}</b></span>
+                    <span>تاريخ التجديد: <b className="text-white">{endDate.toLocaleDateString('ar-YE')}</b></span>
                   </div>
                 </div>
               </div>
@@ -561,7 +531,7 @@ export default function MerchantLayout({
                 href={`/merchant/${store.slug}/subscription`}
                 className="px-4 py-1.5 rounded-xl bg-white text-slate-900 hover:bg-slate-100 text-xs font-black shadow-sm transition-all"
               >
-                {isExpired ? 'طھط¬ط¯ظٹط¯ ط§ظ„ط§ط´طھط±ط§ظƒ âڑ،' : 'ط¥ط¯ط§ط±ط© ط§ظ„ط¨ط§ظ‚ط© âڑ،'}
+                {isExpired ? 'تجديد الاشتراك ⚡' : 'إدارة الباقة ⚡'}
               </Link>
             </div>
           );
@@ -595,7 +565,7 @@ export default function MerchantLayout({
         <footer className="border-t border-slate-200 dark:border-slate-800 py-6 px-3 sm:px-8 flex flex-col items-center justify-center bg-slate-50 dark:bg-slateDark-950">
           <div className="flex flex-col items-center gap-3 p-4">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-              طھظ… طھط·ظˆظٹط± ظ‡ط°ط§ ط§ظ„ظ…طھط¬ط± ط¨ظˆط§ط³ط·ط©
+              تم تطوير هذا المتجر بواسطة
             </span>
             <BrandLogo size="sm" showText={true} href="/" className="hover:opacity-80 transition-opacity" />
           </div>
@@ -606,5 +576,3 @@ export default function MerchantLayout({
     </div>
   );
 }
-
-
