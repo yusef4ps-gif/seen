@@ -67,6 +67,7 @@ export default function SuperAdminPage() {
   const [broadcasts, setBroadcasts] = useState<SystemBroadcast[]>([]);
   
   // Layout State
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'owner' | 'reports' | 'packages' | 'stores' | 'requests' | 'broadcasts' | 'texts'>('owner');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -158,6 +159,14 @@ export default function SuperAdminPage() {
       ...prev,
       comparison_table_data: JSON.stringify(newData)
     }));
+  };
+
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshData();
+    await new Promise(r => setTimeout(r, 400));
+    setIsRefreshing(false);
   };
 
   const refreshData = async () => {
@@ -389,6 +398,20 @@ export default function SuperAdminPage() {
     return matchesSearch && matchesStatus;
   });
 
+
+  const RefreshTabButton = () => (
+    <button 
+      onClick={handleRefresh}
+      disabled={isRefreshing}
+      className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slateDark-800 dark:hover:bg-slateDark-700 rounded-xl text-sm font-bold transition-colors shadow-sm disabled:opacity-50"
+      title="تحديث البيانات"
+    >
+      <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+      <span className="hidden sm:inline">تحديث</span>
+    </button>
+  );
+
+
   const TabButton = ({ id, label, icon: Icon }: { id: string, label: string, icon: any }) => (
     <button
       onClick={() => { setActiveTab(id as any); setIsMobileMenuOpen(false); }}
@@ -459,16 +482,7 @@ export default function SuperAdminPage() {
       <main className="flex-1 p-4 sm:p-8 lg:p-12 overflow-y-auto w-full max-w-[100vw] relative">
         <div className="max-w-6xl mx-auto space-y-8 animate-fadeIn">
           
-          {/* Global Refresh Button */}
-          <div className="flex justify-end -mb-4">
-            <button 
-              onClick={refreshData}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slateDark-800 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 dark:hover:bg-slateDark-800 transition-colors text-slate-700 dark:text-slate-300"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>تحديث البيانات</span>
-            </button>
-          </div>
+          
            
            {/* Tab: Website Texts (CMS) */}
            {activeTab === 'texts' && (
@@ -479,14 +493,17 @@ export default function SuperAdminPage() {
                       نصوص الموقع (CMS)
                     </h1>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      قم بتعديل نصوص واجهات المنصة لتظهر فوراً للمستخدمين
+                      إدارة جميع النصوص المعروضة في الصفحات العامة
                     </p>
                   </div>
-                  {textsSaveSuccess && (
-                    <span className="text-xs font-bold text-emerald-400 bg-emerald-950/60 px-4 py-2 rounded-xl border border-emerald-800 animate-pulse">
-                      {textsSaveSuccess}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-3">
+                    <RefreshTabButton />
+                    {textsSaveSuccess && (
+                      <span className="text-xs font-bold text-emerald-400 bg-emerald-950/60 px-4 py-2 rounded-xl border border-emerald-800 animate-pulse">
+                        {textsSaveSuccess}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="bg-white dark:bg-slateDark-900 p-6 rounded-3xl border border-slate-200 dark:border-slateDark-800 shadow-sm space-y-6">
@@ -941,9 +958,12 @@ export default function SuperAdminPage() {
            {activeTab === 'owner' && (
              <div className="space-y-6">
                 <div className="border-b border-slate-200 dark:border-slateDark-800 pb-4">
-                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                    بيانات المالك
-                  </h1>
+                  <div className="flex items-center justify-between w-full">
+                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                      بيانات المالك
+                    </h1>
+                    <RefreshTabButton />
+                  </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     الصفحة الشخصية للمدير المتصل بالمنصة
                   </p>
@@ -1053,9 +1073,12 @@ export default function SuperAdminPage() {
            {activeTab === 'reports' && (
              <div className="space-y-6">
                <div className="border-b border-slate-200 dark:border-slateDark-800 pb-4">
-                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                    التقارير والإحصائيات
-                  </h1>
+                  <div className="flex items-center justify-between w-full">
+                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                      التقارير والإحصائيات
+                    </h1>
+                    <RefreshTabButton />
+                  </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     نظرة شاملة على أداء منصة سِين
                   </p>
@@ -1155,14 +1178,17 @@ export default function SuperAdminPage() {
                       الباقات والاشتراكات
                     </h1>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      إدارة أسعار ومميزات الباقات ديناميكياً
+                      إدارة باقات الاشتراك والمميزات الخاصة بكل باقة
                     </p>
                   </div>
-                  {planSaveSuccess && (
-                    <span className="text-xs font-bold text-emerald-400 bg-emerald-950/60 px-4 py-2 rounded-xl border border-emerald-800 animate-pulse">
-                      {planSaveSuccess}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-3">
+                    <RefreshTabButton />
+                    {planSaveSuccess && (
+                      <span className="text-xs font-bold text-emerald-400 bg-emerald-950/60 px-4 py-2 rounded-xl border border-emerald-800 animate-pulse">
+                        {planSaveSuccess}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1298,6 +1324,7 @@ export default function SuperAdminPage() {
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-3">
+                    <RefreshTabButton />
                     <div className="relative">
                       <Search className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
                       <input
@@ -1456,13 +1483,16 @@ export default function SuperAdminPage() {
            {/* Tab 5: Broadcasts */}
            {activeTab === 'broadcasts' && (
              <div className="space-y-6">
-                <div className="border-b border-slate-200 dark:border-slateDark-800 pb-4">
-                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                    الإعلانات والتنبيهات العامة
-                  </h1>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    إرسال تنبيهات تظهر في لوحات تحكم كافة المتاجر
-                  </p>
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slateDark-800 pb-4">
+                  <div>
+                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                      الإعلانات والتنبيهات العامة
+                    </h1>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      إرسال تنبيهات تظهر في لوحات تحكم كافة المتاجر
+                    </p>
+                  </div>
+                  <RefreshTabButton />
                 </div>
 
                 <form onSubmit={handlePublishBroadcast} className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slateDark-800 shadow-sm space-y-5">
