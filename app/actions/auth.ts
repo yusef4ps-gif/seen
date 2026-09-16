@@ -342,14 +342,20 @@ export async function verifyTurnstileTokenAction(token: string, ipAddress: strin
 
 
 // --- SUPER ADMIN OTP LOGIC ---
-const adminOtpStore = new Map<string, { code: string; expiresAt: number }>();
-
 export async function sendSuperAdminOtpAction(email: string) {
   try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || user.role !== 'SUPER_ADMIN') {
+      return { success: false, error: 'غير مصرح.' };
+    }
+
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 mins
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
     
-    adminOtpStore.set(email, { code, expiresAt });
+    await prisma.user.update({
+      where: { email },
+      data: { otpCode: code, otpExpiry: expiresAt }
+    });
     
     await sendEmail(
       email,
@@ -364,19 +370,25 @@ export async function sendSuperAdminOtpAction(email: string) {
 }
 
 export async function verifySuperAdminOtpAction(email: string, code: string) {
-  const stored = adminOtpStore.get(email);
-  if (!stored) return { success: false, error: 'انتهت صلاحية الرمز أو لم يتم طلبه.' };
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || user.role !== 'SUPER_ADMIN') {
+    return { success: false, error: 'غير مصرح.' };
+  }
   
-  if (Date.now() > stored.expiresAt) {
-    adminOtpStore.delete(email);
+  if (!user.otpCode || !user.otpExpiry) {
+    return { success: false, error: 'لم يتم طلب رمز تحقق.' };
+  }
+  
+  if (new Date() > user.otpExpiry) {
+    await prisma.user.update({ where: { email }, data: { otpCode: null, otpExpiry: null } });
     return { success: false, error: 'انتهت صلاحية الرمز.' };
   }
   
-  if (stored.code !== code) {
+  if (user.otpCode !== code) {
     return { success: false, error: 'رمز التحقق غير صحيح.' };
   }
   
-  adminOtpStore.delete(email);
+  await prisma.user.update({ where: { email }, data: { otpCode: null, otpExpiry: null } });
   return { success: true };
 }
 // -----------------------------

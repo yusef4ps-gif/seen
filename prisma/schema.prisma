@@ -87,6 +87,8 @@ model User {
   lastLoginAt   DateTime @default(now())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  otpCode       String?
+  otpExpiry     DateTime?
 
   stores        Store[]
 }
