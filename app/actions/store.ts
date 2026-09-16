@@ -350,8 +350,7 @@ export async function getStoreCustomersAction(storeId: string) {
 
 export async function approveStoreRequestAction(storeId: string) {
   try {
-    const auth = await requireSuperAdmin();
-    if (!auth.success) return { success: false, error: '؟؟؟ ؟؟؟؟ ؟؟' };
+    await requireSuperAdmin();
 
     const store = await prisma.store.update({
       where: { id: storeId },
@@ -375,8 +374,7 @@ export async function approveStoreRequestAction(storeId: string) {
 
 export async function rejectStoreRequestAction(storeId: string) {
   try {
-    const auth = await requireSuperAdmin();
-    if (!auth.success) return { success: false, error: '؟؟؟ ؟؟؟؟ ؟؟' };
+    await requireSuperAdmin();
 
     const store = await prisma.store.update({
       where: { id: storeId },
