@@ -52,6 +52,19 @@ export async function sendEmail(payload: EmailPayload) {
 
 export const EmailTemplates = {
   
+  AdminOtp: (code: string) => {
+    return `
+      <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #0d9488; text-align: center;">رمز التحقق لتسجيل الدخول</h2>
+        <p>مرحباً،</p>
+        <p>لقد طلبت تسجيل الدخول إلى لوحة الإدارة العليا في منصة سِين.</p>
+        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+          <h1 style="margin: 0; color: #0f172a; letter-spacing: 5px; font-size: 32px;">${code}</h1>
+        </div>
+        <p style="color: #64748b; font-size: 14px;">هذا الرمز صالح لمدة 10 دقائق فقط. إذا لم تطلب هذا الرمز، يرجى تجاهل هذه الرسالة.</p>
+      </div>
+    `;
+  },
   /**
    * Order Confirmation for Customer
    */

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ShieldCheck, Lock, ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Mail, KeyRound } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { authEngine } from '@/lib/auth-engine';
-import { setAuthCookieAction, verifyAdminIPAction, logAdminLoginAttemptAction, verifyTurnstileTokenAction } from '@/app/actions/auth';
+import { setAuthCookieAction, verifyAdminIPAction, logAdminLoginAttemptAction, verifyTurnstileTokenAction, sendSuperAdminOtpAction, verifySuperAdminOtpAction } from '@/app/actions/auth';
 import BrandLogo from '@/components/BrandLogo';
 
 export default function AdminLoginPage() {
@@ -63,6 +63,14 @@ export default function AdminLoginPage() {
         setErrorMessage(result.error || 'غير مصرح بالدخول. يرجى التأكد من الصلاحيات.');
         setIsLoading(false);
       } else {
+        // Send actual OTP to email via Resend
+        const otpResult = await sendSuperAdminOtpAction(email);
+        if (!otpResult.success) {
+           setErrorMessage(otpResult.error || 'حدث خطأ أثناء إرسال الرمز.');
+           setIsLoading(false);
+           return;
+        }
+
         // Proceed to OTP step
         setSuccessMessage('بيانات صحيحة. تم إرسال كود التحقق (OTP) إلى بريدك الإلكتروني.');
         setStep('otp');
@@ -82,9 +90,9 @@ export default function AdminLoginPage() {
     setErrorMessage('');
     setIsLoading(true);
 
-    // Mock OTP verification (123456)
-    if (otp !== '123456') {
-      setErrorMessage('كود التحقق غير صحيح.');
+    const otpVerification = await verifySuperAdminOtpAction(email, otp);
+    if (!otpVerification.success) {
+      setErrorMessage(otpVerification.error || 'رمز التحقق غير صحيح.');
       setIsLoading(false);
       return;
     }
@@ -232,11 +240,8 @@ export default function AdminLoginPage() {
             <form onSubmit={handleOtpSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-300 mb-1.5">
-                  كود التحقق (OTP):
+                  أدخل رمز التحقق (OTP):
                 </label>
-                <p className="text-[10px] text-brand-600 dark:text-brand-400 mb-3 font-bold">
-                  تلميح: ادخل 123456 للتجربة
-                </p>
                 <div className="relative">
                   <KeyRound className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
                   <input
