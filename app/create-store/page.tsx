@@ -43,6 +43,7 @@ export default function CreateStorePage() {
   const [storeType, setStoreType] = useState('PHYSICAL');
   const [city, setCity] = useState('عدن');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [description, setDescription] = useState('');
 
   // Theme & Visual Identity State
@@ -184,6 +185,7 @@ export default function CreateStorePage() {
         name: storeName,
         slug: cleanSlug,
         phone,
+        email,
         category,
         city,
         description,
@@ -216,7 +218,7 @@ export default function CreateStorePage() {
         </div>
         <h2 className="text-3xl font-black text-slate-800 dark:text-white">تم رفع طلب متجرك بنجاح! 🎉</h2>
         <p className="text-lg text-slate-600 dark:text-slate-300 max-w-lg leading-relaxed">
-          طلبك الآن قيد المراجعة من قبل إدارة منصة سِين. سنتواصل معك قريباً عبر الواتساب على الرقم ({phone}) لتزويدك برابط الدخول السري في حال تمت الموافقة.
+          طلبك الآن قيد المراجعة من قبل إدارة منصة سِين. سنتواصل معك قريباً عبر الواتساب على الرقم ({phone}) لتزويدك ببقية المعلومات والخطوات التالية.
         </p>
         <Link href="/" className="px-8 py-3.5 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors">العودة للرئيسية</Link>
       </div>
@@ -377,6 +379,19 @@ export default function CreateStorePage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="770 000 000"
+                    className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                    البريد الإلكتروني الرسمي <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="example@gmail.com"
                     className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none"
                   />
                 </div>

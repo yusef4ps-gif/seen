@@ -11,6 +11,7 @@ import {
   Shield, Plus, Zap, Type, CreditCard, PlusCircle, User as UserIcon, RefreshCw
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
+import StoreRequestsTab from '@/components/admin/StoreRequestsTab';
 import { getStoresAction, getPlatformStatsAction, deleteStoreAction, updateStoreAction } from '@/app/actions/store';
 import { authEngine } from '@/lib/auth-engine';
 import { Store, SubscriptionPlan, PlatformStats, SystemBroadcast, SubscriptionPlanTier, User as AuthUser, User } from '@/lib/types';
@@ -66,7 +67,7 @@ export default function SuperAdminPage() {
   const [broadcasts, setBroadcasts] = useState<SystemBroadcast[]>([]);
   
   // Layout State
-  const [activeTab, setActiveTab] = useState<'owner' | 'reports' | 'packages' | 'stores' | 'broadcasts' | 'texts'>('owner');
+  const [activeTab, setActiveTab] = useState<'owner' | 'reports' | 'packages' | 'stores' | 'requests' | 'broadcasts' | 'texts'>('owner');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Search & Filters
@@ -376,8 +377,11 @@ export default function SuperAdminPage() {
     reader.readAsDataURL(file);
   };
 
-  // Filtered Stores
+  // Filtered Stores (excluding requests and rejected)
   const filteredStores = stores.filter((s) => {
+    // Only show active, suspended, or trial stores in the Stores Monitoring tab
+    if (s.planStatus === 'pending_approval' || s.planStatus === 'rejected') return false;
+
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           s.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           s.city.toLowerCase().includes(searchTerm.toLowerCase());
@@ -426,6 +430,7 @@ export default function SuperAdminPage() {
              <TabButton id="owner" label="بيانات المالك" icon={Crown} />
              <TabButton id="reports" label="التقارير والإحصائيات" icon={TrendingUp} />
              <TabButton id="packages" label="الباقات والاشتراكات" icon={ShoppingBag} />
+             <TabButton id="requests" label="طلبات المتاجر" icon={CheckCircle2} />
              <TabButton id="stores" label="مراقبة المتاجر" icon={StoreIcon} />
              <TabButton id="broadcasts" label="التنبيهات العامة" icon={Radio} />
              <TabButton id="texts" label="نصوص الموقع" icon={Type} />
@@ -757,7 +762,7 @@ export default function SuperAdminPage() {
                     
                     <div className="space-y-6 mt-4">
                       {compareData.map((cat, catIdx) => (
-                        <div key={cat.id} className="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slateDark-900 shadow-sm">
+                        <div key={cat.id} className="p-4 border border-slate-200 dark:border-slate800 rounded-2xl bg-white dark:bg-slateDark-900 shadow-sm">
                           <div className="flex items-center gap-2 mb-4">
                             <input
                               type="text"
@@ -1430,6 +1435,11 @@ export default function SuperAdminPage() {
                   </div>
                 )}
              </div>
+           )}
+
+           {/* Tab: Store Requests */}
+           {activeTab === 'requests' && (
+             <StoreRequestsTab />
            )}
 
            {/* Tab 5: Broadcasts */}
