@@ -456,8 +456,19 @@ export default function SuperAdminPage() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-4 sm:p-8 lg:p-12 overflow-y-auto w-full max-w-[100vw]">
+      <main className="flex-1 p-4 sm:p-8 lg:p-12 overflow-y-auto w-full max-w-[100vw] relative">
         <div className="max-w-6xl mx-auto space-y-8 animate-fadeIn">
+          
+          {/* Global Refresh Button */}
+          <div className="flex justify-end -mb-4">
+            <button 
+              onClick={refreshData}
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slateDark-800 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 dark:hover:bg-slateDark-800 transition-colors text-slate-700 dark:text-slate-300"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>تحديث البيانات</span>
+            </button>
+          </div>
            
            {/* Tab: Website Texts (CMS) */}
            {activeTab === 'texts' && (
