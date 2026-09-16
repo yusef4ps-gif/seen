@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Store as StoreIcon, Lock, AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Mail, KeyRound } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
-import { authEngine } from '@/lib/auth-engine';
-import { setAuthCookieAction, verifyTurnstileTokenAction } from '@/app/actions/auth';
+import { setAuthCookieAction, verifyTurnstileTokenAction, loginMerchantAction } from '@/app/actions/auth';
 import BrandLogo from '@/components/BrandLogo';
 
 export default function MerchantLoginPage() {
@@ -47,10 +46,9 @@ export default function MerchantLoginPage() {
       }
 
       // First check if credentials are correct without fully logging in yet
-      const result = authEngine.login(email, password);
+      const result = await loginMerchantAction(email, password);
       
-      const isMerchantRole = result.session?.user.role === 'STORE_OWNER' || result.session?.user.role === 'STORE_STAFF';
-      const success = result.success && isMerchantRole;
+      const success = result.success;
 
       if (!success) {
         setErrorMessage(result.error || 'غير مصرح بالدخول. هذه البوابة مخصصة للتجار فقط.');
@@ -84,15 +82,13 @@ export default function MerchantLoginPage() {
 
     try {
       // Final login step
-      const result = authEngine.login(email, password);
+      const result = await loginMerchantAction(email, password);
       
-      const isMerchantRole = result.session?.user.role === 'STORE_OWNER' || result.session?.user.role === 'STORE_STAFF';
-
-      if (result.success && isMerchantRole) {
+      if (result.success && result.userId) {
         setSuccessMessage('تم التحقق بنجاح! جاري توجيهك لمتجرك...');
-        await setAuthCookieAction(result.session.token, result.session.user.id, result.session.user.role, result.session.user.storeId);
+        await setAuthCookieAction(`token-${result.userId}`, result.userId, result.role || 'STORE_OWNER', result.storeId);
         
-        const storeSlug = result.session.user.storeSlug;
+        const storeSlug = result.slug;
         const redirectUrl = storeSlug ? `/merchant/${storeSlug}` : '/create-store';
 
         setTimeout(() => {

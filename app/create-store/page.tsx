@@ -44,6 +44,7 @@ export default function CreateStorePage() {
   const [city, setCity] = useState('عدن');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [description, setDescription] = useState('');
 
   // Theme & Visual Identity State
@@ -186,6 +187,7 @@ export default function CreateStorePage() {
         slug: cleanSlug,
         phone,
         email,
+        password,
         category,
         city,
         description,
@@ -392,6 +394,20 @@ export default function CreateStorePage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="example@gmail.com"
+                    className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-300 mb-2">
+                    كلمة المرور للمتجر <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
                     className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none"
                   />
                 </div>

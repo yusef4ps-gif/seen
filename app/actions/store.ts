@@ -65,14 +65,44 @@ const DEFAULT_SHIPPING_METHODS = JSON.stringify([
 
 export async function createStoreAction(data: any) {
   try {
-    const user = await requireAuth();
+    let ownerId: string | null = null;
+    try {
+      const user = await requireAuth();
+      ownerId = user.userId;
+    } catch (e) {
+      // User is not logged in, we must create a new merchant account
+      if (!data.email || !data.password) {
+        return { success: false, error: 'البريد الإلكتروني وكلمة المرور مطلوبان لإنشاء متجرك.' };
+      }
+      const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
+      if (existingUser) {
+        return { success: false, error: 'البريد الإلكتروني مسجل مسبقاً.' };
+      }
+      
+      const newUser = await prisma.user.create({
+        data: {
+          email: data.email,
+          phone: data.phone || '',
+          password: data.password,
+          name: 'إدارة ' + data.name,
+          role: 'STORE_OWNER',
+          status: 'active'
+        }
+      });
+      ownerId = newUser.id;
+    }
+
+    if (!ownerId) {
+      return { success: false, error: 'تعذر إنشاء الحساب.' };
+    }
+
     const cleanSlug = data.slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, '-');
     const existing = await prisma.store.findUnique({ where: { slug: cleanSlug } });
     const finalSlug = existing ? `${cleanSlug}-${Math.floor(100 + Math.random() * 900)}` : cleanSlug;
 
     const newStore = await prisma.store.create({
       data: {
-        ownerId: user.userId,
+        ownerId: ownerId,
         slug: finalSlug,
         name: data.name,
         description: data.description || `المتجر الإلكتروني الرسمي لـ ${data.name}. تسوق أفضل المنتجات بأفضل الأسعار.`,

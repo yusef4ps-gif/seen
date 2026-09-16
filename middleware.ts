@@ -4,13 +4,6 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const userId = request.cookies.get('seen_session_user_id')?.value;
   
-  // Protect /create-store route
-  if (request.nextUrl.pathname.startsWith('/create-store')) {
-    if (!userId) {
-      return NextResponse.redirect(new URL('/seenlogin5xa', request.url));
-    }
-  }
-  
   // Protect /merchant routes
   if (request.nextUrl.pathname.startsWith('/merchant')) {
     if (!userId) {
