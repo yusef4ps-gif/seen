@@ -25,7 +25,7 @@ export default async function RootLayout({
   const isDeviceBanned = cookieStore.get('seen_device_ban')?.value === 'true';
   const headersList = headers();
 
-  let isBanned = isDeviceBanned;
+  let isBanned = false;
   let isGeoBlocked = false;
   let banReason = 'لقد تم حظر جهازك وعنوان الشبكة الخاص بك من الوصول إلى منصة سِين ومتاجرها، نتيجة اكتشاف سلوك مريب أو محاولات اختراق للأنظمة الأمنية.';
   let errCode = 'ERR_ACCESS_DENIED_SEC_POLICY';
@@ -51,6 +51,10 @@ export default async function RootLayout({
         const blocked = await prisma.blockedIP.findUnique({ where: { ipAddress } });
         if (blocked) {
           isBanned = true;
+        } else if (isDeviceBanned) {
+          // If cookie says banned but DB says no, it means they were unblocked.
+          // We ignore the cookie to allow them back in.
+          isBanned = false;
         }
       } catch (err) {}
     }
@@ -65,7 +69,7 @@ export default async function RootLayout({
           <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700;900&display=swap" rel="stylesheet" />
         </head>
         <body className="bg-red-950 text-red-500 font-sans min-h-screen m-0 p-0 overflow-hidden">
-          {!isGeoBlocked && <BanCookieSetter />}
+          {!isGeoBlocked && isBanned && <BanCookieSetter />}
           <div className="fixed inset-0 z-[99999] bg-red-950 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,rgba(220,38,38,0.15)_0%,transparent_80%)] pointer-events-none" />
             <ShieldAlert className="w-24 h-24 text-red-500 mb-6 animate-pulse" />
