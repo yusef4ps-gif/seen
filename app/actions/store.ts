@@ -66,19 +66,18 @@ const DEFAULT_SHIPPING_METHODS = JSON.stringify([
 export async function createStoreAction(data: any) {
   try {
     let ownerId: string | null = null;
-    try {
-      const user = await requireAuth();
-      ownerId = user.userId;
-    } catch (e) {
-      // User is not logged in, we must create a new merchant account
-      if (!data.email || !data.password) {
-        return { success: false, error: 'البريد الإلكتروني وكلمة المرور مطلوبان لإنشاء متجرك.' };
+    
+    if (!data.email) {
+      return { success: false, error: 'البريد الإلكتروني مطلوب.' };
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
+    if (existingUser) {
+      ownerId = existingUser.id;
+    } else {
+      if (!data.password) {
+        return { success: false, error: 'كلمة المرور مطلوبة لإنشاء الحساب الجديد.' };
       }
-      const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
-      if (existingUser) {
-        return { success: false, error: 'البريد الإلكتروني مسجل مسبقاً.' };
-      }
-      
       const newUser = await prisma.user.create({
         data: {
           email: data.email,

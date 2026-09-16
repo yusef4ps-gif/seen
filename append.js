@@ -1,47 +1,45 @@
 const fs = require('fs');
-let content = fs.readFileSync('app/actions/auth.ts', 'utf8');
-
 const newActions = `
-// --- SUPER ADMIN OTP LOGIC ---
-const adminOtpStore = new Map<string, { code: string; expiresAt: number }>();
 
-export async function sendSuperAdminOtpAction(email: string) {
+export async function updateMerchantCredentialsAction(userId: string, email: string, password?: string) {
   try {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 mins
+    const auth = await requireAuth();
+    if (auth.userId !== userId && auth.role !== 'SUPER_ADMIN') {
+      return { success: false, error: 'غير مصرح لك بتعديل هذا الحساب' };
+    }
     
-    adminOtpStore.set(email, { code, expiresAt });
-    
-    await sendEmail(
-      email,
-      'رمز التحقق للدخول إلى منصة سِين',
-      EmailTemplates.AdminOtp(code)
-    );
+    // Check if new email is taken
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing && existing.id !== userId) {
+      return { success: false, error: 'البريد الإلكتروني مستخدم لحساب آخر' };
+    }
+
+    const data: any = { email };
+    if (password && password.trim() !== '') {
+      data.password = password;
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data
+    });
     
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message || 'فشل في إرسال الرمز' };
+    console.error('Update credentials error:', err);
+    return { success: false, error: 'حدث خطأ أثناء تحديث بيانات الدخول' };
   }
 }
 
-export async function verifySuperAdminOtpAction(email: string, code: string) {
-  const stored = adminOtpStore.get(email);
-  if (!stored) return { success: false, error: 'انتهت صلاحية الرمز أو لم يتم طلبه.' };
-  
-  if (Date.now() > stored.expiresAt) {
-    adminOtpStore.delete(email);
-    return { success: false, error: 'انتهت صلاحية الرمز.' };
+export async function getMerchantUserAction() {
+  try {
+    const auth = await requireAuth();
+    const user = await prisma.user.findUnique({ where: { id: auth.userId } });
+    if (!user) return null;
+    return { id: user.id, email: user.email, name: user.name };
+  } catch {
+    return null;
   }
-  
-  if (stored.code !== code) {
-    return { success: false, error: 'رمز التحقق غير صحيح.' };
-  }
-  
-  adminOtpStore.delete(email);
-  return { success: true };
 }
-// -----------------------------
 `;
-
-fs.writeFileSync('app/actions/auth.ts', content + '\n\n' + newActions);
-console.log('Appended actions');
+fs.appendFileSync('app/actions/auth.ts', newActions, 'utf8');
