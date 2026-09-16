@@ -67,6 +67,21 @@ export default function AdminLogsPage() {
     }
   };
 
+  const quickBlockIP = async (ip: string) => {
+    if (!confirm(`هل أنت متأكد من حظر هذا العنوان (${ip})؟`)) return;
+    setIsBlocking(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    const res = await blockIPAction(ip, 'حظر يدوي سريع من سجل العمليات');
+    if (res.success) {
+      setSuccessMsg(`تم حظر ${ip} بنجاح`);
+      fetchLogs();
+    } else {
+      setErrorMsg(res.error || 'حدث خطأ أثناء الحظر');
+    }
+    setIsBlocking(false);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slateDark-950 font-sans" dir="rtl">
       {/* Header */}
@@ -211,7 +226,21 @@ export default function AdminLogsPage() {
                             {getActionName(log.action)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 font-mono text-slate-600 dark:text-slate-400" dir="ltr">{log.ipAddress}</td>
+                        <td className="px-6 py-4 font-mono text-slate-600 dark:text-slate-400" dir="ltr">
+                          <div className="flex items-center justify-end gap-3">
+                            <span>{log.ipAddress}</span>
+                            {!log.action.includes('BLOCK') && (
+                              <button 
+                                onClick={() => quickBlockIP(log.ipAddress)}
+                                disabled={isBlocking}
+                                className="text-red-500 hover:text-white hover:bg-red-500 p-1.5 rounded-lg border border-red-200 dark:border-red-900/30 transition-colors"
+                                title="حظر هذا العنوان فوراً"
+                              >
+                                <ShieldAlert className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-6 py-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
                           <div className="flex items-center gap-1.5">
                             <Clock className="w-3.5 h-3.5" />

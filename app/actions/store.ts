@@ -90,7 +90,7 @@ export async function createStoreAction(data: any) {
         paymentAccounts: DEFAULT_PAYMENT_ACCOUNTS,
         shippingMethods: DEFAULT_SHIPPING_METHODS,
         planTier: 'free',
-        planStatus: 'trial',
+        planStatus: 'pending_approval',
         planStartDate: new Date(),
         planEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         activeVisitorsNow: 1,
@@ -345,5 +345,53 @@ export async function getStoreCustomersAction(storeId: string) {
   } catch (error: any) {
     console.error('Error fetching store customers:', error);
     return { success: false, error: 'حدث خطأ أثناء جلب العملاء' };
+  }
+}
+
+export async function approveStoreRequestAction(storeId: string) {
+  try {
+    const auth = await requireSuperAdmin();
+    if (!auth.success) return { success: false, error: '؟؟؟ ؟؟؟؟ ؟؟' };
+
+    const store = await prisma.store.update({
+      where: { id: storeId },
+      data: {
+        planStatus: 'trial',
+        planStartDate: new Date(),
+        planEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days trial
+      },
+      include: { owner: true }
+    });
+
+    revalidatePath('/seenayhq7x');
+    revalidatePath('/seenayhq7x/requests');
+
+    return { success: true, store };
+  } catch (error: any) {
+    console.error('Error approving store:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function rejectStoreRequestAction(storeId: string) {
+  try {
+    const auth = await requireSuperAdmin();
+    if (!auth.success) return { success: false, error: '؟؟؟ ؟؟؟؟ ؟؟' };
+
+    const store = await prisma.store.update({
+      where: { id: storeId },
+      data: {
+        planStatus: 'rejected',
+        planEndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days until deletion
+      },
+    });
+
+    revalidatePath('/seenayhq7x');
+    revalidatePath('/seenayhq7x/requests');
+
+    return { success: true, store };
+  } catch (error: any) {
+    console.error('Error rejecting store:', error);
+    return { success: false, error: error.message };
   }
 }

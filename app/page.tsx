@@ -1037,8 +1037,9 @@ export default function HomePage() {
 
           <div className="mt-12 text-center">
             <Link
-              href="https://wa.me/967777777777"
+              href="https://wa.me/967774448016"
               target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-sm shadow-xl hover:shadow-2xl transition-all"
             >
               <span>إتصل بنا</span>

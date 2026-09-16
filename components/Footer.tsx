@@ -21,9 +21,7 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className="text-sm font-bold text-white mb-3">المنظومة والحلول</h4>
             <ul className="space-y-2 text-xs">
-              <li><Link href="/admin" className="hover:text-white transition-colors">بوابة مدير المنصة (Super Admin)</Link></li>
               <li><Link href="/create-store" className="hover:text-white transition-colors">إنشاء متجر سحابي جديد</Link></li>
-              <li><Link href="/login" className="hover:text-white transition-colors">تسجيل دخول التجار والعملاء</Link></li>
               <li><Link href="/#pricing" className="hover:text-white transition-colors">خطط وباقات الاشتراك (14 يوماً مجاناً)</Link></li>
             </ul>
           </div>

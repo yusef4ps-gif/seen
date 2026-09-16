@@ -21,17 +21,18 @@ export default function CreateStorePage() {
 
   // Wizard Steps: 1 -> Details, 2 -> Theme & Visuals, 3 -> Payments & Currency, 4 -> Generation
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [isPendingApproval, setIsPendingApproval] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   React.useEffect(() => {
     checkAuthStatusAction().then(res => {
       if (!res.isAuthenticated) {
-        router.replace('/login');
+        router.replace('/seenlogin5xa');
       } else {
         setIsCheckingAuth(false);
       }
     }).catch(() => {
-      router.replace('/login');
+      router.replace('/seenlogin5xa');
     });
   }, [router]);
 
@@ -200,12 +201,27 @@ export default function CreateStorePage() {
       await new Promise((resolve) => setTimeout(resolve, 400));
 
       if (res.success && res.store) {
-        router.push(`/merchant/${res.store.slug}`);
+        setIsPendingApproval(true);
       } else {
         alert('حدث خطأ أثناء إنشاء المتجر: ' + res.error);
         setIsGenerating(false);
       }
   };
+
+  if (isPendingApproval) {
+    return (
+      <div className="min-h-screen bg-slate-100 dark:bg-slateDark-950 flex flex-col items-center justify-center p-6 text-center space-y-6">
+        <div className="w-24 h-24 bg-brand-100 dark:bg-brand-900/50 text-brand-500 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(20,184,166,0.3)]">
+          <CheckCircle2 className="w-12 h-12" />
+        </div>
+        <h2 className="text-3xl font-black text-slate-800 dark:text-white">تم رفع طلب متجرك بنجاح! 🎉</h2>
+        <p className="text-lg text-slate-600 dark:text-slate-300 max-w-lg leading-relaxed">
+          طلبك الآن قيد المراجعة من قبل إدارة منصة سِين. سنتواصل معك قريباً عبر الواتساب على الرقم ({phone}) لتزويدك برابط الدخول السري في حال تمت الموافقة.
+        </p>
+        <Link href="/" className="px-8 py-3.5 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors">العودة للرئيسية</Link>
+      </div>
+    );
+  }
 
   if (isCheckingAuth) {
     return (

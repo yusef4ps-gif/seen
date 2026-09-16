@@ -8,7 +8,6 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/admin/', '/api/', '/merchant/', '/login', '/login-admin'],
       },
       {
         // Block known AI bots and scrapers

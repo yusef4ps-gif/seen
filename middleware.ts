@@ -7,14 +7,14 @@ export function middleware(request: NextRequest) {
   // Protect /create-store route
   if (request.nextUrl.pathname.startsWith('/create-store')) {
     if (!userId) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/seenlogin5xa', request.url));
     }
   }
   
   // Protect /merchant routes
   if (request.nextUrl.pathname.startsWith('/merchant')) {
     if (!userId) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/seenlogin5xa', request.url));
     }
   }
 
@@ -24,3 +24,4 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: ['/create-store', '/create-store/:path*', '/merchant', '/merchant/:path*'],
 };
+

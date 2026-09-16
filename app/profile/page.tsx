@@ -65,7 +65,7 @@ export default function UnifiedProfilePage() {
   const handleLogout = async () => {
     authEngine.logout();
     try { await fetch('/api/logout', { method: 'POST' }); } catch(e) {}
-    router.push('/login');
+    router.push('/seenlogin5xa');
   };
 
   const isSuper = currentUser.role === 'SUPER_ADMIN';

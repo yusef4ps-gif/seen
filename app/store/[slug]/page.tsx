@@ -2039,3 +2039,4 @@ export default function CustomerStorefrontPage() {
     </div>
   );
 }
+

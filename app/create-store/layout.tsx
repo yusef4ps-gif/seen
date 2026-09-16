@@ -9,7 +9,7 @@ export default function CreateStoreLayout({
   const userId = cookies().get('seen_session_user_id')?.value;
   
   if (!userId) {
-    redirect('/login');
+    redirect('/seenlogin5xa');
   }
   
   return <>{children}</>;

@@ -152,7 +152,7 @@ export default function AdminUsersPage() {
 
           <div className="space-y-2 pt-2">
             <Link
-              href="/login?redirect=/admin/users"
+              href="/seenaylogin7x?redirect=/admin/users"
               className="w-full py-3 rounded-2xl bg-gradient-to-r from-red-600 to-brand-600 hover:from-red-700 hover:to-brand-700 text-white text-xs font-bold block shadow-lg transition-all"
             >
               تسجيل الدخول كمدير عام 🔑

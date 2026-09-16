@@ -103,8 +103,8 @@ export default function Navbar() {
               </Link>
             )}
 
-            {/* Profile Link or Login Link */}
-            {currentUser ? (
+            {/* Profile Link (Only if logged in) */}
+            {currentUser && (
               <Link
                 href="/profile"
                 className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-brand-600 hover:bg-brand-50/70 dark:hover:bg-slate-800 rounded-full transition-all"
@@ -112,14 +112,6 @@ export default function Navbar() {
               >
                 <User className="w-4 h-4 text-brand-600" />
                 <span className="hidden sm:inline">{currentUser.name.split(' ')[0]}</span>
-              </Link>
-            ) : (
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-brand-600 hover:bg-brand-50/70 dark:hover:bg-slate-800 rounded-full transition-all"
-              >
-                <LogIn className="w-4 h-4 text-brand-600" />
-                <span>تسجيل الدخول</span>
               </Link>
             )}
 
@@ -208,15 +200,8 @@ export default function Navbar() {
               </Link>
             )}
 
-            {!currentUser ? (
-              <Link
-                href="/login"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block p-3 rounded-2xl text-xs font-bold hover:bg-brand-50"
-              >
-                🔑 بوابة تسجيل الدخول
-              </Link>
-            ) : (
+            {/* Profile Menu Item (Only if logged in) */}
+            {currentUser && (
               <Link
                 href="/profile"
                 onClick={() => setIsMobileMenuOpen(false)}
