@@ -37,8 +37,8 @@ export default function AdminLoginPage() {
 
     try {
       const ipCheck = await verifyAdminIPAction();
-      if (!ipCheck.success) {
-        setErrorMessage(ipCheck.error || 'تم حظر عنوان IP الخاص بك.');
+      if (ipCheck.blocked) {
+        setErrorMessage(ipCheck.reason || 'تم حظر عنوان IP الخاص بك.');
         setIsLoading(false);
         return;
       }
