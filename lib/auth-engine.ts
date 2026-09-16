@@ -10,7 +10,7 @@ export const INITIAL_USERS: (User & { username?: string })[] = [
   {
     id: 'usr-admin-yousef',
     name: 'يوسف يعقوب',
-    email: 'yusef@seen.store',
+    email: 'yusef4ps@gmail.com',
     username: 'yousef',
     phone: '777000111',
     password: '1234',
