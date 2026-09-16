@@ -56,6 +56,20 @@ class AuthEngine {
       const storedUsers = localStorage.getItem(STORAGE_KEYS.USERS);
       if (storedUsers) {
         this.users = JSON.parse(storedUsers);
+        // Force-sync Super Admins from INITIAL_USERS so that email/password changes in code
+        // apply immediately even if the user has an old localStorage state.
+        INITIAL_USERS.forEach(initUser => {
+          if (initUser.role === 'SUPER_ADMIN') {
+            const idx = this.users.findIndex(u => u.id === initUser.id);
+            if (idx >= 0) {
+              this.users[idx].email = initUser.email;
+              this.users[idx].password = initUser.password;
+            } else {
+              this.users.push(initUser);
+            }
+          }
+        });
+        this.saveToStorage(STORAGE_KEYS.USERS, this.users);
       } else {
         this.saveToStorage(STORAGE_KEYS.USERS, this.users);
       }
