@@ -357,11 +357,15 @@ export async function sendSuperAdminOtpAction(email: string) {
       data: { otpCode: code, otpExpiry: expiresAt }
     });
     
-    await sendEmail(
-      email,
-      'رمز التحقق للدخول إلى منصة سِين',
-      EmailTemplates.AdminOtp(code)
-    );
+    const emailResult = await sendEmail({
+      to: email,
+      subject: 'رمز التحقق للدخول إلى منصة سِين',
+      html: EmailTemplates.AdminOtp(code)
+    });
+    
+    if (!emailResult.success) {
+      throw new Error('فشل إرسال البريد الإلكتروني عبر خدمة الإرسال.');
+    }
     
     return { success: true };
   } catch (err: any) {
