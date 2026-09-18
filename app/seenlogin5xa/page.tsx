@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Store as StoreIcon, Lock, AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Mail, KeyRound } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
-import { setAuthCookieAction, verifyTurnstileTokenAction, loginMerchantAction } from '@/app/actions/auth';
+import { setAuthCookieAction, verifyTurnstileTokenAction, loginMerchantAction, sendMerchantOtpAction, verifyMerchantOtpAction } from '@/app/actions/auth';
 import BrandLogo from '@/components/BrandLogo';
 
 export default function MerchantLoginPage() {
@@ -54,6 +54,13 @@ export default function MerchantLoginPage() {
         setErrorMessage(result.error || 'غير مصرح بالدخول. هذه البوابة مخصصة للتجار فقط.');
         setIsLoading(false);
       } else {
+        const otpResult = await sendMerchantOtpAction(email);
+        if (!otpResult.success) {
+          setErrorMessage(otpResult.error || 'حدث خطأ أثناء إرسال كود التحقق.');
+          setIsLoading(false);
+          return;
+        }
+
         // Proceed to OTP step
         setSuccessMessage('بيانات صحيحة. تم إرسال كود التحقق (OTP) إلى بريدك الإلكتروني.');
         setStep('otp');
@@ -73,9 +80,9 @@ export default function MerchantLoginPage() {
     setErrorMessage('');
     setIsLoading(true);
 
-    // Mock OTP verification (123456)
-    if (otp !== '123456') {
-      setErrorMessage('كود التحقق غير صحيح.');
+    const otpVerification = await verifyMerchantOtpAction(email, otp);
+    if (!otpVerification.success) {
+      setErrorMessage(otpVerification.error || 'رمز التحقق غير صحيح.');
       setIsLoading(false);
       return;
     }
@@ -88,11 +95,19 @@ export default function MerchantLoginPage() {
         setSuccessMessage('تم التحقق بنجاح! جاري توجيهك لمتجرك...');
         await setAuthCookieAction(`token-${result.userId}`, result.userId, result.role || 'STORE_OWNER', result.storeId);
         
+        try {
+          localStorage.setItem('seen_production_session_v4', JSON.stringify({
+            user: { id: result.userId, email, role: result.role || 'STORE_OWNER', storeId: result.storeId, name: 'Merchant' },
+            token: `token-${result.userId}`,
+            expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+          }));
+        } catch(e) {}
+        
         const storeSlug = result.slug;
         const redirectUrl = storeSlug ? `/merchant/${storeSlug}` : '/create-store';
 
         setTimeout(() => {
-          router.push(redirectUrl);
+          window.location.href = redirectUrl;
         }, 500);
       } else {
         setErrorMessage('حدث خطأ أثناء إصدار الجلسة.');
@@ -228,9 +243,6 @@ export default function MerchantLoginPage() {
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-300 mb-1.5">
                   كود التحقق (OTP):
                 </label>
-                <p className="text-[10px] text-amber-600 dark:text-amber-500 mb-3 font-bold">
-                  تلميح: ادخل 123456 للتجربة
-                </p>
                 <div className="relative">
                   <KeyRound className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
                   <input

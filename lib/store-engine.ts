@@ -303,7 +303,28 @@ class StoreEngine {
     return this.plans;
   }
 
-  public updatePlan(planId: SubscriptionPlanTier, updates: Partial<SubscriptionPlan>): SubscriptionPlan | undefined {
+  public addPlan(plan: SubscriptionPlan): SubscriptionPlan {
+    this.loadFromStorage();
+    this.plans.push(plan);
+    this.saveToStorage(STORAGE_KEYS.PLANS, this.plans);
+    return plan;
+  }
+
+  public deletePlan(planId: string): boolean {
+    this.loadFromStorage();
+    // Check if any store is using this plan
+    const inUse = this.stores.some(s => s.planTier === planId);
+    if (inUse) {
+      throw new Error('لا يمكن حذف الباقة لأن هناك متاجر مشتركة فيها حالياً.');
+    }
+    const idx = this.plans.findIndex(p => p.id === planId);
+    if (idx === -1) return false;
+    this.plans.splice(idx, 1);
+    this.saveToStorage(STORAGE_KEYS.PLANS, this.plans);
+    return true;
+  }
+
+  public updatePlan(planId: string, updates: Partial<SubscriptionPlan>): SubscriptionPlan | undefined {
     this.loadFromStorage();
     const idx = this.plans.findIndex((p) => p.id === planId);
     if (idx === -1) return undefined;

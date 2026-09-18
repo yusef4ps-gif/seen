@@ -129,9 +129,10 @@ export interface AbandonedCart {
   recovered: boolean;
 }
 
-export type SubscriptionPlanTier = 'free' | 'starter' | 'pro' | 'vip';
+export type SubscriptionPlanTier = string;
 
 export interface SubscriptionPlan {
+  features: string[];
   id: SubscriptionPlanTier;
   name: string;
   nameAr: string;
@@ -319,4 +320,24 @@ export interface AuthSession {
   token: string;
   expiresAt: string;
 }
+
+export const AVAILABLE_FEATURES = [
+  { id: 'dashboard', name: 'نظرة عامة والتحليلات' },
+  { id: 'products', name: 'المنتجات والتصنيفات' },
+  { id: 'inventory', name: 'المخزون' },
+  { id: 'orders', name: 'إدارة وتدقيق الطلبات' },
+  { id: 'returns', name: 'إدارة المرتجعات' },
+  { id: 'reviews', name: 'الآراء والتقييمات' },
+  { id: 'abandoned_carts', name: 'استعادة السلات المتروكة' },
+  { id: 'crm', name: 'قاعدة بيانات العملاء (CRM)' },
+  { id: 'staff', name: 'فريق العمل والصلاحيات' },
+  { id: 'ai_advisor', name: 'مستشار الذكاء الاصطناعي' },
+  { id: 'theme_builder', name: 'تخصيص الواجهة والمحتوى' },
+  { id: 'settings', name: 'إعدادات المتجر والمحافظ' },
+  { id: 'subscription', name: 'الاشتراكات والباقات' },
+  { id: 'coupons', name: 'كوبونات التخفيض' },
+  { id: 'offers', name: 'العروض الخاصة' },
+  { id: 'reports', name: 'التقارير' },
+  { id: 'audit', name: 'سجل الحركات (Audit)' },
+];
 

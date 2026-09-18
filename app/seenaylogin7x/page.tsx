@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShieldCheck, Lock, ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Mail, KeyRound } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
-import { authEngine } from '@/lib/auth-engine';
-import { setAuthCookieAction, verifyAdminIPAction, logAdminLoginAttemptAction, verifyTurnstileTokenAction, sendSuperAdminOtpAction, verifySuperAdminOtpAction } from '@/app/actions/auth';
+import { setAuthCookieAction, verifyAdminIPAction, logAdminLoginAttemptAction, verifyTurnstileTokenAction, sendSuperAdminOtpAction, verifySuperAdminOtpAction, loginAdminAction } from '@/app/actions/auth';
 import BrandLogo from '@/components/BrandLogo';
 
 export default function AdminLoginPage() {
@@ -53,9 +52,9 @@ export default function AdminLoginPage() {
       }
 
       // First check if credentials are correct without fully logging in yet
-      const result = authEngine.login(email, password);
+      const result = await loginAdminAction(email, password);
       
-      const success = result.success && result.session?.user.role === 'SUPER_ADMIN';
+      const success = result.success;
       
       await logAdminLoginAttemptAction(email, success, ipCheck.ipAddress);
 
@@ -99,14 +98,23 @@ export default function AdminLoginPage() {
 
     try {
       // Final login step
-      const result = authEngine.login(email, password);
+      const result = await loginAdminAction(email, password);
       
-      if (result.success && result.session?.user.role === 'SUPER_ADMIN') {
+      if (result.success && result.userId) {
         setSuccessMessage('تم التحقق بنجاح! جاري توجيهك للوحة التحكم...');
-        await setAuthCookieAction(result.session.token, result.session.user.id, result.session.user.role, result.session.user.storeId);
+        const fakeToken = `tok_${result.userId}_${Date.now()}`;
+        await setAuthCookieAction(fakeToken, result.userId, result.role || 'SUPER_ADMIN', undefined);
+        
+        try {
+          localStorage.setItem('seen_production_session_v4', JSON.stringify({
+            user: { id: result.userId, email, role: 'SUPER_ADMIN', name: 'Admin' },
+            token: fakeToken,
+            expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+          }));
+        } catch(e) {}
         
         setTimeout(() => {
-          router.push('/seenayhq7x');
+          window.location.href = '/seenayhq7x';
         }, 500);
       } else {
         setErrorMessage('حدث خطأ أثناء إصدار الجلسة.');

@@ -161,98 +161,102 @@ export default function MerchantLayout({
     );
   }
 
-  const navItems = [
+  const allNavItems = [
     {
-      title: 'نظرة عامة والتحليلات',
+      id: 'dashboard', title: 'نظرة عامة والتحليلات',
       href: `/merchant/${slug}`,
       icon: LayoutDashboard,
       exact: true,
     },
     {
-      title: 'المنتجات والتصنيفات',
+      id: 'products', title: 'المنتجات والتصنيفات',
       href: `/merchant/${slug}/products`,
       icon: Package,
     },
     {
-      title: 'المخزون',
+      id: 'inventory', title: 'المخزون',
       href: `/merchant/${slug}/inventory`,
       icon: Boxes,
     },
     {
-      title: 'إدارة وتدقيق الطلبات',
+      id: 'orders', title: 'إدارة وتدقيق الطلبات',
       href: `/merchant/${slug}/orders`,
       icon: ShoppingCart,
       badge: newOrdersCount > 0 ? String(newOrdersCount) : undefined,
     },
     {
-      title: 'إدارة المرتجعات',
+      id: 'returns', title: 'إدارة المرتجعات',
       href: `/merchant/${slug}/returns`,
       icon: RefreshCw,
       badge: newReturnsCount > 0 ? String(newReturnsCount) : undefined,
     },
     {
-      title: 'الآراء والتقييمات',
+      id: 'reviews', title: 'الآراء والتقييمات',
       href: `/merchant/${slug}/reviews`,
       icon: Star,
     },
     {
-      title: 'استعادة السلات المتروكة',
+      id: 'abandoned_carts', title: 'استعادة السلات المتروكة',
       href: `/merchant/${slug}/abandoned-carts`,
       icon: RefreshCw,
     },
     {
-      title: 'قاعدة بيانات العملاء (CRM)',
+      id: 'crm', title: 'قاعدة بيانات العملاء (CRM)',
       href: `/merchant/${slug}/customers`,
       icon: Users,
     },
     {
-      title: 'فريق العمل والصلاحيات',
+      id: 'staff', title: 'فريق العمل والصلاحيات',
       href: `/merchant/${slug}/staff`,
       icon: ShieldCheck,
     },
     {
-      title: 'مستشار الذكاء الاصطناعي',
+      id: 'ai_advisor', title: 'مستشار الذكاء الاصطناعي',
       href: `/merchant/${slug}/ai-advisor`,
       icon: Sparkles,
     },
     {
-      title: 'تخصيص الواجهة والمحتوى',
+      id: 'theme_builder', title: 'تخصيص الواجهة والمحتوى',
       href: `/merchant/${slug}/theme-builder`,
       icon: Palette,
     },
     {
-      title: 'إعدادات المتجر والمحافظ',
+      id: 'settings', title: 'إعدادات المتجر والمحافظ',
       href: `/merchant/${slug}/settings`,
       icon: Settings,
     },
     {
-      title: 'الاشتراكات والباقات',
+      id: 'subscription', title: 'الاشتراكات والباقات',
       href: `/merchant/${slug}/subscription`,
       icon: Crown,
       badge: 'إدارة',
     },
     {
-      title: 'كوبونات التخفيض',
+      id: 'coupons', title: 'كوبونات التخفيض',
       href: `/merchant/${slug}/coupons`,
       icon: Ticket,
     },
     {
-      title: 'العروض الخاصة',
+      id: 'offers', title: 'العروض الخاصة',
       href: `/merchant/${slug}/offers`,
       icon: Tag,
     },
     {
-      title: 'التقارير',
+      id: 'reports', title: 'التقارير',
       href: `/merchant/${slug}/reports`,
       icon: BarChart,
     },
     {
-      title: 'سجل الحركات (Audit)',
+      id: 'audit', title: 'سجل الحركات (Audit)',
       href: `/merchant/${slug}/activity-log`,
       icon: History,
       badge: 'جديد',
     },
   ];
+
+  const storePlan = storeEngine.getPlans().find(p => p.id === store.planTier);
+  const activeFeatures = storePlan?.features || [];
+  const navItems = allNavItems.filter(item => activeFeatures.includes(item.id));
 
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-slateDark-950 text-slate-900 dark:text-slate-100 font-sans overflow-x-hidden w-full">

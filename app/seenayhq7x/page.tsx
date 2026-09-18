@@ -12,9 +12,10 @@ import {
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
 import StoreRequestsTab from '@/components/admin/StoreRequestsTab';
+import SuperAdminsTab from '@/components/admin/SuperAdminsTab';
 import { getStoresAction, getPlatformStatsAction, deleteStoreAction, updateStoreAction } from '@/app/actions/store';
 import { authEngine } from '@/lib/auth-engine';
-import { Store, SubscriptionPlan, PlatformStats, SystemBroadcast, SubscriptionPlanTier, User as AuthUser, User } from '@/lib/types';
+import { Store, SubscriptionPlan, PlatformStats, SystemBroadcast, SubscriptionPlanTier, User as AuthUser, User, AVAILABLE_FEATURES } from '@/lib/types';
 import { defaultComparisonData, ComparisonCategory } from '@/lib/data/comparison';
 import { formatCurrency } from '@/lib/currency-engine';
 import BrandLogo from '@/components/BrandLogo';
@@ -86,6 +87,9 @@ export default function SuperAdminPage() {
   const [editCommission, setEditCommission] = useState<number>(0);
   const [editMaxProducts, setEditMaxProducts] = useState<number>(0);
   const [editTrialDays, setEditTrialDays] = useState<number>(14);
+  const [editName, setEditName] = useState<string>('');
+  const [editNameAr, setEditNameAr] = useState<string>('');
+  const [editFeatures, setEditFeatures] = useState<string[]>([]);
   const [planSaveSuccess, setPlanSaveSuccess] = useState<string | null>(null);
 
   // Dynamic CMS Texts State
@@ -267,21 +271,61 @@ export default function SuperAdminPage() {
     setEditCommission(plan.commissionRate);
     setEditMaxProducts(plan.maxProducts);
     setEditTrialDays(plan.trialDays || 14);
+    setEditName(plan.name);
+    setEditNameAr(plan.nameAr);
+    setEditFeatures(plan.features || []);
   };
 
   // Save edited plan
-  const handleSavePlan = (planId: SubscriptionPlanTier) => {
+  const handleSavePlan = (planId: string) => {
     storeEngine.updatePlan(planId, {
+      name: editName,
+      nameAr: editNameAr,
       priceMonthlyUSD: Number(editPriceUSD),
       priceYearlyUSD: Number(editPriceUSD) * 10,
       commissionRate: Number(editCommission),
       maxProducts: Number(editMaxProducts),
       trialDays: Number(editTrialDays),
+      features: editFeatures,
     });
     setEditingPlanId(null);
     setPlanSaveSuccess(`تم تحديث باقة ${planId.toUpperCase()} بنجاح!`);
     setTimeout(() => setPlanSaveSuccess(null), 3000);
     refreshData();
+  };
+
+  const handleAddPlan = () => {
+    const newId = 'plan_' + Date.now();
+    const newPlan: SubscriptionPlan = {
+      id: newId,
+      name: 'باقة جديدة',
+      nameAr: 'باقة مخصصة جديدة',
+      priceMonthlyUSD: 0,
+      priceYearlyUSD: 0,
+      commissionRate: 0,
+      maxProducts: 100,
+      maxOrdersPerMonth: 100,
+      customDomainSupport: false,
+      aiFeatures: false,
+      posSupport: false,
+      whatsappAutomation: false,
+      prioritySupport: false,
+      features: ['dashboard', 'products', 'orders', 'settings', 'subscription'],
+    };
+    storeEngine.addPlan(newPlan);
+    handleStartEditPlan(newPlan);
+    refreshData();
+  };
+
+  const handleDeletePlan = (planId: string) => {
+    if (confirm('هل أنت متأكد من حذف هذه الباقة كلياً؟ تأكد أنه لا توجد متاجر مرتبطة بها.')) {
+      try {
+        storeEngine.deletePlan(planId);
+        refreshData();
+      } catch (err: any) {
+        alert(err.message);
+      }
+    }
   };
 
   // Submit Broadcast
@@ -457,6 +501,7 @@ export default function SuperAdminPage() {
              <TabButton id="stores" label="مراقبة المتاجر" icon={StoreIcon} />
              <TabButton id="broadcasts" label="التنبيهات العامة" icon={Radio} />
              <TabButton id="texts" label="نصوص الموقع" icon={Type} />
+             <TabButton id="admins" label="إدارة المدراء" icon={Users} />
            </nav>
 
            <div className="pt-8 space-y-3 border-t border-slate-200 dark:border-slateDark-800">
@@ -484,6 +529,26 @@ export default function SuperAdminPage() {
           
           
            
+           {/* Tab: Super Admins */}
+           {activeTab === 'admins' && (
+             <div className="space-y-6 animate-fadeIn">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slateDark-800 pb-4">
+                  <div>
+                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                      إدارة المدراء (الإدارة العليا)
+                    </h1>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      إدارة حسابات المدراء الذين يملكون صلاحيات الوصول لهذه اللوحة
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <RefreshTabButton />
+                  </div>
+                </div>
+                <SuperAdminsTab />
+             </div>
+           )}
+
            {/* Tab: Website Texts (CMS) */}
            {activeTab === 'texts' && (
              <div className="space-y-6">
@@ -1188,6 +1253,13 @@ export default function SuperAdminPage() {
                         {planSaveSuccess}
                       </span>
                     )}
+                    <button
+                      onClick={handleAddPlan}
+                      className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      إضافة باقة جديدة
+                    </button>
                   </div>
                 </div>
 
@@ -1216,6 +1288,24 @@ export default function SuperAdminPage() {
 
                         {isEditing ? (
                           <div className="space-y-3 pt-2 text-xs">
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">اسم الباقة (مختصر):</label>
+                              <input
+                                type="text"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">اسم الباقة (كامل/عربي):</label>
+                              <input
+                                type="text"
+                                value={editNameAr}
+                                onChange={(e) => setEditNameAr(e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slateDark-950 border border-slate-200 dark:border-slateDark-700 outline-none"
+                              />
+                            </div>
                             <div>
                               <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">السعر الشهري ($):</label>
                               <input
@@ -1257,6 +1347,29 @@ export default function SuperAdminPage() {
                               </div>
                             )}
 
+                            <div className="pt-2">
+                              <label className="block text-[11px] font-bold text-brand-600 dark:text-brand-400 mb-2 border-b border-slate-200 dark:border-slateDark-800 pb-1">ميزات الباقة (تفعيل/تعطيل):</label>
+                              <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                                {AVAILABLE_FEATURES.map((feature) => (
+                                  <label key={feature.id} className="flex items-center gap-2 cursor-pointer group">
+                                    <input
+                                      type="checkbox"
+                                      checked={editFeatures.includes(feature.id)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setEditFeatures([...editFeatures, feature.id]);
+                                        } else {
+                                          setEditFeatures(editFeatures.filter(f => f !== feature.id));
+                                        }
+                                      }}
+                                      className="w-3.5 h-3.5 text-brand-600 rounded border-slate-300 dark:border-slateDark-600 focus:ring-brand-500"
+                                    />
+                                    <span className="text-[10px] text-slate-700 dark:text-slate-300 group-hover:text-brand-600 transition-colors">{feature.name}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+
                             <div className="flex items-center gap-2 pt-3">
                               <button
                                 onClick={() => handleSavePlan(plan.id)}
@@ -1265,10 +1378,18 @@ export default function SuperAdminPage() {
                                 حفظ
                               </button>
                               <button
-                                onClick={() => setEditingPlanId(null)}
-                                className="flex-1 py-2 rounded-xl bg-slate-100 dark:bg-slateDark-800 text-slate-600 dark:text-slate-300 text-xs font-bold"
+                                onClick={() => handleDeletePlan(plan.id)}
+                                className="p-2 rounded-xl bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-colors"
+                                title="حذف الباقة"
                               >
-                                إلغاء
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setEditingPlanId(null)}
+                                className="p-2 rounded-xl bg-slate-100 dark:bg-slateDark-800 text-slate-600 dark:text-slate-300 text-xs font-bold"
+                                title="إلغاء"
+                              >
+                                <X className="w-4 h-4" />
                               </button>
                             </div>
                           </div>

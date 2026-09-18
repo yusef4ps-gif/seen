@@ -17,6 +17,7 @@ export const INITIAL_PLANS: SubscriptionPlan[] = [
     prioritySupport: true,
     badge: '14 يوماً تجربة مجانية 🎁',
     trialDays: 14,
+    features: ['dashboard', 'products', 'inventory', 'orders', 'returns', 'reviews', 'abandoned_carts', 'crm', 'staff', 'ai_advisor', 'theme_builder', 'settings', 'subscription', 'coupons', 'offers', 'reports', 'audit'],
   },
   {
     id: 'starter',
@@ -33,6 +34,7 @@ export const INITIAL_PLANS: SubscriptionPlan[] = [
     whatsappAutomation: true,
     prioritySupport: false,
     badge: 'الأكثر شعبية للبدايات',
+    features: ['dashboard', 'products', 'orders', 'settings', 'subscription'],
   },
   {
     id: 'pro',
@@ -49,6 +51,7 @@ export const INITIAL_PLANS: SubscriptionPlan[] = [
     whatsappAutomation: true,
     prioritySupport: true,
     badge: 'الخيار الأفضل للنمو والتوسع 🔥',
+    features: ['dashboard', 'products', 'inventory', 'orders', 'returns', 'reviews', 'crm', 'staff', 'theme_builder', 'settings', 'subscription', 'coupons', 'reports'],
   },
   {
     id: 'vip',
