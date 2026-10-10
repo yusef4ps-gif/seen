@@ -1,16 +1,33 @@
 'use server';
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
+import prisma from '@/lib/prisma';
+
+// Helper to get active AI provider and key
+async function getAiConfig() {
+  const providerRow = await prisma.siteContent.findUnique({ where: { key: 'ai_provider' } });
+  const provider = providerRow?.value || 'gemini'; // default to gemini
+
+  let apiKey = '';
+  if (provider === 'openai') {
+    const keyRow = await prisma.siteContent.findUnique({ where: { key: 'ai_openai_api_key' } });
+    apiKey = keyRow?.value || process.env.OPENAI_API_KEY || '';
+  } else {
+    const keyRow = await prisma.siteContent.findUnique({ where: { key: 'ai_gemini_api_key' } });
+    apiKey = keyRow?.value || process.env.GEMINI_API_KEY || '';
+  }
+
+  return { provider, apiKey };
+}
 
 export async function generateCampaignAction(prompt: string, storeName: string, storeSlug: string, storeCity: string) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const { provider, apiKey } = await getAiConfig();
+    
     if (!apiKey) {
-      throw new Error('GEMINI_API_KEY_MISSING');
+      throw new Error('API_KEY_MISSING');
     }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     const systemPrompt = `
       أنت مستشار ذكاء اصطناعي متخصص في كتابة حملات تسويقية وإعلانات جذابة لمتاجر إلكترونية.
@@ -24,29 +41,33 @@ export async function generateCampaignAction(prompt: string, storeName: string, 
       في نهاية الرسالة أضف رابط المتجر أو عبارة تحث على الشراء (Call to action).
     `;
 
-    const result = await model.generateContent(systemPrompt);
-    const response = await result.response;
-    const text = response.text();
-
-    return { success: true, text: text.trim() };
+    if (provider === 'openai') {
+      const openai = new OpenAI({ apiKey });
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [{ role: 'system', content: systemPrompt }],
+      });
+      return { success: true, text: response.choices[0]?.message?.content?.trim() };
+    } else {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+      const result = await model.generateContent(systemPrompt);
+      const response = await result.response;
+      return { success: true, text: response.text().trim() };
+    }
   } catch (error: any) {
     console.error('Error generating AI campaign:', error);
-    if (error.message === 'GEMINI_API_KEY_MISSING') {
-      return { success: false, error: 'MISSING_KEY' };
-    }
-    return { success: false, error: 'FAILED' };
+    return { success: false, error: error.message === 'API_KEY_MISSING' ? 'MISSING_KEY' : 'FAILED' };
   }
 }
 
 export async function generateAdDesignAction(prompt: string, storeName: string, imageBase64?: string, mimeType?: string) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const { provider, apiKey } = await getAiConfig();
+    
     if (!apiKey) {
-      throw new Error('GEMINI_API_KEY_MISSING');
+      throw new Error('API_KEY_MISSING');
     }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     const systemPrompt = `
       You are an expert AI Marketing Designer and Art Director for e-commerce.
@@ -71,101 +92,61 @@ export async function generateAdDesignAction(prompt: string, storeName: string, 
       No markdown, no backticks, ONLY pure JSON object.
     `;
 
-    const content: any[] = [systemPrompt];
+    if (provider === 'openai') {
+      const openai = new OpenAI({ apiKey });
+      const messages: any[] = [{ role: 'system', content: systemPrompt }];
+      
+      if (imageBase64 && mimeType) {
+        messages.push({
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Analyze this product image according to the instructions.' },
+            { type: 'image_url', image_url: { url: imageBase64 } }
+          ]
+        });
+      } else {
+        messages.push({ role: 'user', content: 'Generate the data based on my request.' });
+      }
 
-    if (imageBase64 && mimeType) {
-      content.push({
-        inlineData: {
-          data: imageBase64.split(',')[1] || imageBase64,
-          mimeType
-        }
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages,
+        response_format: { type: 'json_object' }
       });
+      
+      const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+      return { success: true, data: parsed };
+      
+    } else {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+      
+      const content: any[] = [systemPrompt];
+
+      if (imageBase64 && mimeType) {
+        content.push({
+          inlineData: {
+            data: imageBase64.split(',')[1] || imageBase64,
+            mimeType
+          }
+        });
+      }
+
+      const result = await model.generateContent(content);
+      const response = await result.response;
+      let text = response.text().trim();
+      
+      if (text.startsWith('\`\`\`json')) {
+        text = text.replace('\`\`\`json', '').replace('\`\`\`', '').trim();
+      } else if (text.startsWith('\`\`\`')) {
+        text = text.replace('\`\`\`', '').replace('\`\`\`', '').trim();
+      }
+
+      const parsed = JSON.parse(text);
+      return { success: true, data: parsed };
     }
-
-    const result = await model.generateContent(content);
-    const response = await result.response;
-    let text = response.text().trim();
-    
-    // Clean JSON if model returned markdown backticks
-    if (text.startsWith('\`\`\`json')) {
-      text = text.replace('\`\`\`json', '').replace('\`\`\`', '').trim();
-    } else if (text.startsWith('\`\`\`')) {
-      text = text.replace('\`\`\`', '').replace('\`\`\`', '').trim();
-    }
-
-    const parsed = JSON.parse(text);
-
-    return { success: true, data: parsed };
   } catch (error: any) {
     console.error('Error generating Ad Design:', error);
-    if (error.message === 'GEMINI_API_KEY_MISSING') {
-      return { success: false, error: 'MISSING_KEY' };
-    }
-    return { success: false, error: error.message || 'FAILED' };
-  }
-}
-
-export async function generateLegalPageAction(storeName: string, storeCategory: string, pageType: 'privacy' | 'terms' | 'returns' | 'faq') {
-  try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY_MISSING');
-    }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
-
-    let typePrompt = '';
-    switch (pageType) {
-      case 'privacy':
-        typePrompt = 'سياسة الخصوصية وحماية بيانات المستخدمين.';
-        break;
-      case 'terms':
-        typePrompt = 'الشروط والأحكام الخاصة باستخدام المتجر والشراء.';
-        break;
-      case 'returns':
-        typePrompt = 'سياسة الاسترجاع والاستبدال والتوصيل.';
-        break;
-      case 'faq':
-        typePrompt = 'الأسئلة الشائعة (FAQ) مع أجوبتها.';
-        break;
-    }
-
-    const systemPrompt = `
-      أنت مستشار قانوني خبير في التجارة الإلكترونية في الجمهورية اليمنية.
-      المطلوب منك صياغة صفحة قانونية احترافية لمتجر إلكتروني يمني.
-
-      معلومات المتجر:
-      - اسم المتجر: ${storeName}
-      - مجال المتجر: ${storeCategory}
-      - نوع الصفحة المطلوبة: ${typePrompt}
-
-      الإرشادات الهامة:
-      1. يجب أن تكون الصياغة متوافقة مع القوانين والأعراف التجارية المتبعة في اليمن (مثل التعامل بالريال اليمني في بعض السياقات، وصعوبات الشحن بين المحافظات إذا لزم الأمر).
-      2. لا تذكر أو تشر إلى قوانين المملكة العربية السعودية أو وزارة التجارة السعودية إطلاقاً.
-      3. استخدم لغة عربية رسمية وواضحة (فصحى احترافية).
-      4. اجعل النص منسقاً ومنظماً في فقرات واضحة بدون استخدام أي أكواد أو علامات برمجية (نص عادي Plain Text فقط).
-      5. لا تضف أي مقدمات أو خاتمات لك كذكاء اصطناعي، فقط أرجع المحتوى النهائي الجاهز للنسخ والعرض مباشرة.
-      6. تأكد من شمولية النقاط لحماية حقوق التاجر والعميل بشكل عادل.
-    `;
-
-    const result = await model.generateContent(systemPrompt);
-    const response = await result.response;
-    let text = response.text().trim();
-    
-    // Clean markdown backticks if AI added them
-    if (text.startsWith('\`\`\`html')) {
-      text = text.replace('\`\`\`html', '').replace('\`\`\`', '').trim();
-    } else if (text.startsWith('\`\`\`')) {
-      text = text.replace('\`\`\`', '').replace('\`\`\`', '').trim();
-    }
-
-    return { success: true, text };
-  } catch (error: any) {
-    console.error('Error generating AI Legal Page:', error);
-    if (error.message === 'GEMINI_API_KEY_MISSING') {
-      return { success: false, error: 'MISSING_KEY' };
-    }
-    return { success: false, error: 'FAILED' };
+    return { success: false, error: error.message === 'API_KEY_MISSING' ? 'MISSING_KEY' : 'FAILED' };
   }
 }
