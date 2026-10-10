@@ -50,7 +50,7 @@ export async function generateCampaignAction(prompt: string, storeName: string, 
       return { success: true, text: response.choices[0]?.message?.content?.trim() };
     } else {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
       const result = await model.generateContent(systemPrompt);
       const response = await result.response;
       return { success: true, text: response.text().trim() };
@@ -119,7 +119,7 @@ export async function generateAdDesignAction(prompt: string, storeName: string, 
       
     } else {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-pro-vision' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
       
       const content: any[] = [systemPrompt];
 

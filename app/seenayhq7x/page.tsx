@@ -796,43 +796,7 @@ export default function SuperAdminPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                      <div className="space-y-3 p-4 border border-brand-200 dark:border-brand-900/50 rounded-2xl">
-                        <div className="text-[11px] font-black text-brand-600">الباقة التجارية (Starter)</div>
-                        <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-slate-500">السعر (رقم)</label>
-                          <input type="text" value={siteTexts['plan_starter_price'] || '36,000'} onChange={(e) => setSiteTexts({ ...siteTexts, plan_starter_price: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-slate-500">العملة والنص الإضافي</label>
-                          <input type="text" value={siteTexts['plan_starter_currency'] || 'ر.ي / 258 ر.س'} onChange={(e) => setSiteTexts({ ...siteTexts, plan_starter_currency: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
-                        </div>
-                      </div>
-
-                      <div className="space-y-3 p-4 border border-brand-200 dark:border-brand-900/50 rounded-2xl">
-                        <div className="text-[11px] font-black text-brand-600">الباقة التسويقية (Marketing)</div>
-                        <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-slate-500">السعر (رقم)</label>
-                          <input type="text" value={siteTexts['plan_marketing_price'] || '72,000'} onChange={(e) => setSiteTexts({ ...siteTexts, plan_marketing_price: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-slate-500">العملة والنص الإضافي</label>
-                          <input type="text" value={siteTexts['plan_marketing_currency'] || 'ر.ي / 518 ر.س'} onChange={(e) => setSiteTexts({ ...siteTexts, plan_marketing_currency: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
-                        </div>
-                      </div>
-
-                      <div className="space-y-3 p-4 border border-brand-200 dark:border-brand-900/50 rounded-2xl">
-                        <div className="text-[11px] font-black text-brand-600">الباقة الاحترافية (Pro)</div>
-                        <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-slate-500">السعر (رقم)</label>
-                          <input type="text" value={siteTexts['plan_pro_price'] || '144,000'} onChange={(e) => setSiteTexts({ ...siteTexts, plan_pro_price: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-slate-500">العملة والنص الإضافي</label>
-                          <input type="text" value={siteTexts['plan_pro_currency'] || 'ر.ي / 1,035 ر.س'} onChange={(e) => setSiteTexts({ ...siteTexts, plan_pro_currency: e.target.value })} className="w-full px-3 py-2 text-sm rounded-lg border outline-none" />
-                        </div>
-                      </div>
-                    </div>
+                    
                   </div>
 
                   <div className="space-y-4 border-b border-slate-100 dark:border-slateDark-800 pb-6">

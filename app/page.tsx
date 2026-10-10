@@ -14,13 +14,14 @@ import {
   Clock, Facebook, Youtube, Instagram, Twitter, Linkedin, User
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
-import { Store, SubscriptionPlan, PlatformStats } from '@/lib/types';
+import { Store, SubscriptionPlan, PlatformStats, AVAILABLE_FEATURES } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
 import { getSiteContentAction } from '@/app/actions/content';
 import { defaultComparisonData, ComparisonCategory } from '@/lib/data/comparison';
 
 export default function HomePage() {
   const [stores, setStores] = useState<Store[]>([]);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [stats, setStats] = useState<PlatformStats | null>(null);
 
   // Active Tab inside the 3D Mockup Frame
@@ -38,6 +39,7 @@ export default function HomePage() {
 
   useEffect(() => {
     setStores(storeEngine.getStores());
+    setPlans(storeEngine.getPlans());
     setStats(storeEngine.getPlatformStats());
     
     // Fetch dynamic texts
@@ -379,183 +381,77 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* 3 Main Pricing Cards */}
+          {/* Dynamic Pricing Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 items-stretch">
-            
-            {/* 1. الباقة التجارية */}
-            <div className={`p-6 sm:p-8 rounded-3xl bg-white dark:bg-slateDark-900 border transition-all duration-300 flex flex-col justify-between ${
-              recommendedPlan === 'starter'
-                ? 'border-brand-500 ring-2 ring-brand-500/40 shadow-xl'
-                : 'border-slate-200 dark:border-slate-800 shadow-sm hover:border-brand-500/40'
-            }`}>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">الباقة التجارية</h3>
-                  <p className="text-xs text-slate-500 mt-1">تسهل لك طريق البداية لرحلة التجارة الإلكترونية</p>
-                </div>
-
-                <div className="py-3 border-y border-slate-100 dark:border-slate-800">
-                  <div className="text-3xl font-black text-slate-900 dark:text-white font-mono">
-                    {t('plan_starter_price', '36,000')} <span className="text-xs font-normal text-slate-500">{t('plan_starter_currency', 'ر.ي / 258 ر.س')}</span>
-                  </div>
-                  <div className="text-xs text-slate-400 font-bold mt-1">لمدة ثلاثة أشهر</div>
-                </div>
-
-                <Link
-                  href="/create-store"
-                  className="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-brand-600 hover:text-white text-slate-800 dark:text-slate-200 text-xs font-bold text-center block transition-all shadow-xs"
-                >
-                  ابدأ الآن 🚀
-                </Link>
-
-                <ul className="space-y-2.5 text-xs font-medium text-slate-700 dark:text-slate-300 pt-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>عدد لا محدود من المنتجات</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>عدد لا محدود من الطلبات والعملاء</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>تخصيص المتجر عبر محرر القوالب الذكي</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>الدفع اليدوي وإدارة التحويلات</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>تقارير الأداء والمبيعات الأساسية</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* 2. الباقة التسويقية */}
-            <div className={`p-6 sm:p-8 rounded-3xl bg-white dark:bg-slateDark-900 border transition-all duration-300 flex flex-col justify-between ${
-              recommendedPlan === 'marketing'
-                ? 'border-brand-500 ring-2 ring-brand-500/40 shadow-xl'
-                : 'border-slate-200 dark:border-slate-800 shadow-sm hover:border-brand-500/40'
-            }`}>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">الباقة التسويقية</h3>
-                  <p className="text-xs text-slate-500 mt-1">تساعدك على تنظيم تجارتك وتوسيع قاعدة مبيعاتك</p>
-                </div>
-
-                <div className="py-3 border-y border-slate-100 dark:border-slate-800">
-                  <div className="text-3xl font-black text-slate-900 dark:text-white font-mono">
-                    {t('plan_marketing_price', '72,000')} <span className="text-xs font-normal text-slate-500">{t('plan_marketing_currency', 'ر.ي / 518 ر.س')}</span>
-                  </div>
-                  <div className="text-xs text-slate-400 font-bold mt-1">لمدة ستة أشهر</div>
-                </div>
-
-                <Link
-                  href="/create-store"
-                  className="w-full py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold text-center block transition-all shadow-md shadow-brand-600/25"
-                >
-                  انطلق بالتسويق 🚀
-                </Link>
-
-                <ul className="space-y-2.5 text-xs font-medium text-slate-700 dark:text-slate-300 pt-2">
-                  <li className="flex items-center gap-2 font-bold text-brand-600 dark:text-brand-400">
-                    <span>✓ كل مزايا الباقة التجارية بالإضافة إلى:</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>ربط الدومين المخصص (Custom Domain)</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>تطبيق ويب خاص للمتجر (PWA)</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>بوابات الدفع عبر المحافظ الإلكترونية المحلية</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>الربط المباشر مع شركات الشحن والتوصيل</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>إدارة القسائم وكوبونات الخصم الترويجية</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* 3. الباقة الاحترافية (الأكثر طلباً) */}
-            <div className={`relative p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-[#0f2b48] via-[#0b1f35] to-[#061220] text-white border-2 border-[#2dd4bf] shadow-2xl shadow-[#14b8a6]/20 flex flex-col justify-between ${
-              recommendedPlan === 'pro' ? 'ring-4 ring-[#2dd4bf]/40' : ''
-            }`}>
+            {plans.filter(p => p.id !== 'free').map((plan) => {
+              const isPro = plan.id === 'pro' || plan.id === 'vip' || plan.badge;
               
-              {/* Glowing Coral Badge */}
-              <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-accent text-white text-[11px] font-black shadow-lg shadow-accent/40 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>الأكثر طلباً ونمواً 🔥</span>
-              </div>
+              const usdYer = parseInt(content['rate_usd_yer'] || '1910') || 1910;
+              const sarYer = parseInt(content['rate_sar_yer'] || '535') || 535;
+              const yerPrice = plan.priceMonthlyUSD * usdYer;
+              const sarPrice = Math.round(yerPrice / sarYer);
+              const yerPriceYearly = plan.priceYearlyUSD * usdYer;
+              const sarPriceYearly = Math.round(yerPriceYearly / sarYer);
+              
+              return (
+                <div key={plan.id} className={`relative p-6 sm:p-8 rounded-3xl transition-all duration-300 flex flex-col justify-between ${
+                  isPro 
+                  ? 'bg-gradient-to-br from-[#0f2b48] via-[#0b1f35] to-[#061220] text-white border-2 border-[#2dd4bf] shadow-2xl shadow-[#14b8a6]/20' 
+                  : 'bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-brand-500/40 text-slate-900 dark:text-white'
+                }`}>
+                  
+                  {plan.badge && (
+                    <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-accent text-white text-[11px] font-black shadow-lg shadow-accent/40 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>{plan.badge}</span>
+                    </div>
+                  )}
 
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <span>الباقة الاحترافية</span>
-                    <Crown className="w-4 h-4 text-amber-400" />
-                  </h3>
-                  <p className="text-xs text-slate-300 mt-1">تنقلك إلى النمو والتوسع والأتمتة الكاملة</p>
-                </div>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className={`text-xl font-bold flex items-center gap-2 ${isPro ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+                        <span>{plan.name}</span>
+                        {isPro && <Crown className="w-4 h-4 text-amber-400" />}
+                      </h3>
+                      <p className={`text-xs mt-1 ${isPro ? 'text-slate-300' : 'text-slate-500'}`}>
+                        {plan.nameAr || 'باقة مصممة لنمو أعمالك'}
+                      </p>
+                    </div>
 
-                <div className="py-3 border-y border-slate-700">
-                  <div className="text-3xl font-black text-white font-mono">
-                    {t('plan_pro_price', '144,000')} <span className="text-xs font-normal text-slate-300">{t('plan_pro_currency', 'ر.ي / 1,035 ر.س')}</span>
+                    <div className={`py-3 border-y ${isPro ? 'border-slate-700' : 'border-slate-100 dark:border-slate-800'}`}>
+                      <div className={`text-3xl font-black font-mono ${isPro ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+                        {plan.priceMonthlyUSD > 0 ? yerPrice.toLocaleString() : 'مجاناً'} <span className={`text-xs font-normal ${isPro ? 'text-slate-300' : 'text-slate-500'}`}>{plan.priceMonthlyUSD > 0 ? `ر.ي / ${sarPrice.toLocaleString()} ر.س` : ''}</span>
+                      </div>
+                      <div className={`text-xs font-bold mt-1 ${isPro ? 'text-accent' : 'text-slate-400'}`}>
+                        {plan.priceYearlyUSD > 0 ? `أو ${yerPriceYearly.toLocaleString()} ر.ي سنوياً` : 'بدون رسوم خفية'}
+                      </div>
+                    </div>
+
+                    <Link
+                      href="/create-store"
+                      className={`w-full py-3 rounded-2xl text-xs font-bold text-center block transition-all shadow-md ${
+                        isPro 
+                        ? 'bg-white hover:bg-slate-100 text-brand-900 font-black shadow-lg active:scale-95' 
+                        : 'bg-brand-600 hover:bg-brand-700 text-white shadow-brand-600/25'
+                      }`}
+                    >
+                      {isPro ? 'أنمو واشترك الآن 🌟' : 'ابدأ الآن 🚀'}
+                    </Link>
+
+                    <ul className={`space-y-2.5 text-xs font-medium pt-2 ${isPro ? 'text-slate-200' : 'text-slate-700 dark:text-slate-300'}`}>
+                      {plan.features.map((feature, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <Check className={`w-4 h-4 mt-0.5 shrink-0 ${isPro ? 'text-accent' : 'text-emerald-500'}`} />
+                          <span>{AVAILABLE_FEATURES.find(f => f.id === feature)?.name || feature}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <div className="text-xs text-accent font-bold mt-1">لمدة سنة كاملة (أوفر خطة)</div>
                 </div>
-
-                <Link
-                  href="/create-store"
-                  className="w-full py-3 rounded-2xl bg-white hover:bg-slate-100 text-brand-900 text-xs font-black text-center block transition-all shadow-lg active:scale-95"
-                >
-                  أنمو واشترك الآن 🌟
-                </Link>
-
-                <ul className="space-y-2.5 text-xs font-medium text-slate-200 pt-2">
-                  <li className="flex items-center gap-2 font-bold text-accent">
-                    <span>★ كل مزايا التجارية + التسويقية +:</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-accent shrink-0" />
-                    <span>نظام الطلب واستعادة السلات عبر WhatsApp</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-accent shrink-0" />
-                    <span>محرك المصارفة وتعدد العملات (عدن / صنعاء / SAR)</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-accent shrink-0" />
-                    <span>مستشار الذكاء الاصطناعي والتوصيات الذكية</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-accent shrink-0" />
-                    <span>إضافة حسابات الموظفين وتفويض الصلاحيات (RBAC)</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-accent shrink-0" />
-                    <span>إضافة حسابات مناديب التوصيل وإسناد الشحنات</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-accent shrink-0" />
-                    <span>التكامل المباشر مع WhatsApp API وخدمات ميتا</span>
-                  </li>
-                </ul>
-              </div>
-
-            </div>
-
+              );
+            })}
           </div>
-
+          
         </section>
 
         {/* ========================================================================= */}

@@ -13,7 +13,9 @@ export function middleware(request: NextRequest) {
     hostname.includes('localhost') || 
     hostname.includes('127.0.0.1') || 
     hostname.includes('.netlify.app') || 
-    hostname === 'aden-salla.com'; 
+    hostname === 'aden-salla.com' ||
+    hostname === 'seens.net' ||
+    hostname === 'www.seens.net'; 
 
   // Rewrite custom domains to the store route internally
   // Exclude api, static assets, and images
