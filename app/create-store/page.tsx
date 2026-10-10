@@ -25,16 +25,8 @@ export default function CreateStorePage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   React.useEffect(() => {
-    checkAuthStatusAction().then(res => {
-      if (!res.isAuthenticated) {
-        router.replace('/seenlogin5xa');
-      } else {
-        setIsCheckingAuth(false);
-      }
-    }).catch(() => {
-      router.replace('/seenlogin5xa');
-    });
-  }, [router]);
+    setIsCheckingAuth(false);
+  }, []);
 
   // Store Basic Information
   const [storeName, setStoreName] = useState('');

@@ -66,6 +66,7 @@ export default function MerchantSettingsPage() {
   // Form states
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [customDomain, setCustomDomain] = useState('');
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
@@ -134,6 +135,7 @@ export default function MerchantSettingsPage() {
           setStore(s as any);
           setName(s.name || '');
           setEmail(s.email || '');
+          setCustomDomain((s as any).customDomain || '');
           setDescription(s.description || '');
           setPhone(s.phone);
           setWhatsapp(s.whatsapp || '');
@@ -206,6 +208,7 @@ export default function MerchantSettingsPage() {
     const res = await updateStoreAction(store.id, {
       name,
       email,
+      customDomain: customDomain || null,
       description,
       phone,
       whatsapp,
@@ -425,6 +428,27 @@ export default function MerchantSettingsPage() {
                 />
               </div>
 
+              
+              <div className="sm:col-span-2 p-5 bg-brand-50/50 dark:bg-brand-900/10 border border-brand-200 dark:border-brand-800/50 rounded-2xl mb-4">
+                <label className="block text-sm font-bold text-slate-800 dark:text-slate-200 mb-2">
+                  النطاق المخصص (Custom Domain)
+                </label>
+                <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                  اربط دومين خاص بمتجرك (مثل www.yourstore.com). يرجى التأكد من إضافة سجل <strong>CNAME</strong> باسم <strong>www</strong> في إعدادات النطاق الخاص بك (DNS) ليوجه إلى <code className="bg-white px-1 py-0.5 rounded border border-slate-200 text-brand-600">aden-salla.netlify.app</code>، وسجل <strong>A Record</strong> باسم <strong>@</strong> يوجه إلى <code className="bg-white px-1 py-0.5 rounded border border-slate-200 text-brand-600">75.2.60.5</code>.
+                </p>
+                <div className="flex w-full sm:w-2/3">
+                  <span className="inline-flex items-center px-3 rounded-r-xl border border-l-0 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs dir-ltr">
+                    https://
+                  </span>
+                  <input
+                    type="text"
+                    value={customDomain}
+                    onChange={(e) => setCustomDomain(e.target.value.toLowerCase().trim())}
+                    className="flex-1 min-w-0 px-3 py-2.5 text-xs rounded-none rounded-l-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none dir-ltr font-mono focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                    placeholder="www.mystore.com"
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">

@@ -239,9 +239,19 @@ export async function getPlatformStatsAction() {
 
 export async function getStoreBySlugAction(slug: string) {
   try {
-    const store = await prisma.store.findUnique({
-      where: { slug }
-    });
+    const isDomain = slug.includes('.');
+    let store = null;
+    if (isDomain) {
+      store = await prisma.store.findUnique({
+        where: { customDomain: slug }
+      });
+    }
+
+    if (!store) {
+      store = await prisma.store.findUnique({
+        where: { slug }
+      });
+    }
 
     if (!store) return null;
 
