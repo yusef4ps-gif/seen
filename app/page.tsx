@@ -439,7 +439,7 @@ export default function HomePage() {
                     </Link>
 
                     <ul className={`space-y-2.5 text-xs font-medium pt-2 ${isPro ? 'text-slate-200' : 'text-slate-700 dark:text-slate-300'}`}>
-                      {plan.features.map((feature, idx) => (
+                      {(plan.features || []).map((feature, idx) => (
                         <li key={idx} className="flex items-start gap-2">
                           <Check className={`w-4 h-4 mt-0.5 shrink-0 ${isPro ? 'text-accent' : 'text-emerald-500'}`} />
                           <span>{AVAILABLE_FEATURES.find(f => f.id === feature)?.name || feature}</span>
