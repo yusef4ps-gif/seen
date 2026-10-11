@@ -7,7 +7,7 @@ import {
   Store as StoreIcon, LayoutDashboard, Package, Boxes, 
   ShoppingCart, Bot, Settings, ExternalLink, ShieldCheck, Bell, 
   Menu, X, Sparkles, RefreshCw, Users, ArrowUpRight, Palette,
-  Ticket, Tag, BarChart, History, LogOut, Star, Crown
+  Ticket, Tag, BarChart, History, LogOut, Star, Crown, Lock, ShieldAlert
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
 import { Store, SystemBroadcast } from '@/lib/types';
@@ -146,6 +146,55 @@ export default function MerchantLayout({
     return null; // Return nothing while redirecting
   }
 
+  // 🔄 Ultra-fast Live Heartbeat to automatically detect status changes (freezing / unfreezing by admin within 3 seconds)
+  useEffect(() => {
+    if (!slug) return;
+
+    // 1. Instant cross-tab sync (0ms)
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'seen_clean_stores_v3' || !e.key) {
+        storeEngine.reloadFromStorage();
+        const local = storeEngine.getStoreBySlug(slug);
+        if (local && local.planStatus !== store?.planStatus) {
+          setStore(local);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // 2. Server heartbeat check every 2.5 seconds (under 5 seconds requirement)
+    const checkStatus = async () => {
+      try {
+        const latest = await getStoreBySlugAction(slug);
+        if (latest) {
+          if (latest.planStatus !== store?.planStatus) {
+            setStore(latest as any);
+          }
+        } else {
+          storeEngine.reloadFromStorage();
+          const local = storeEngine.getStoreBySlug(slug);
+          if (local && local.planStatus !== store?.planStatus) {
+            setStore(local);
+          }
+        }
+      } catch (err) {
+        // Fallback to local
+        storeEngine.reloadFromStorage();
+        const local = storeEngine.getStoreBySlug(slug);
+        if (local && local.planStatus !== store?.planStatus) {
+          setStore(local);
+        }
+      }
+    };
+
+    const interval = setInterval(checkStatus, 2500);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [slug, store?.planStatus]);
+
   if (!store) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 text-center">
@@ -157,6 +206,112 @@ export default function MerchantLayout({
             الرئيسية
           </Link>
         </div>
+      </div>
+    );
+  }
+
+  // ⛔ Suspended / Frozen Store Guard: Block entire dashboard if store is suspended
+  if (store.planStatus === 'suspended') {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white font-sans flex flex-col justify-between relative overflow-hidden select-none">
+        {/* Background Ambient Glow */}
+        <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden opacity-30">
+          <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] rounded-full bg-red-600/20 blur-[100px] animate-pulse" />
+          <div className="absolute bottom-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-amber-600/15 blur-[120px]" />
+        </div>
+
+        {/* Top Header */}
+        <header className="relative z-10 max-w-6xl mx-auto w-full p-6 flex items-center justify-between">
+          <BrandLogo size="md" />
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold font-mono">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+            <span>الحساب مُجمد (SUSPENDED)</span>
+          </div>
+        </header>
+
+        {/* Central Lockout Card */}
+        <main className="relative z-10 max-w-lg w-full mx-auto px-4 py-8">
+          <div className="bg-slate-800/80 backdrop-blur-2xl rounded-3xl border border-red-500/30 p-8 sm:p-10 shadow-2xl shadow-red-950/50 space-y-6 text-center">
+            
+            {/* Pulsing Lock Icon */}
+            <div className="w-20 h-20 mx-auto rounded-3xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500 shadow-xl shadow-red-500/10">
+              <Lock className="w-10 h-10 animate-bounce" />
+            </div>
+
+            <div className="space-y-2">
+              <h1 className="text-2xl font-black text-white tracking-tight">
+                تم تجميد هذا المتجر مؤقتاً
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                تم إيقاف صلاحيات الوصول والعمل على هذا المتجر مؤقتاً بسبب انتهاء الاشتراك أو بقرار من إدارة المنصة.
+              </p>
+            </div>
+
+            {/* Store Details Card */}
+            <div className="p-4 rounded-2xl bg-slate-900/70 border border-slate-700/80 text-right space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">اسم المتجر:</span>
+                <span className="font-bold text-white">{store.name}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">رابط المتجر:</span>
+                <span className="font-mono text-slate-300" dir="ltr">/store/{store.slug}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">حالة المتجر:</span>
+                <span className="px-2.5 py-0.5 rounded-md bg-red-500/20 text-red-400 font-bold border border-red-500/30 text-[11px]">
+                  مُجمد 🔒
+                </span>
+              </div>
+            </div>
+
+            {/* Notice Callout */}
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center gap-2.5 text-right">
+              <ShieldAlert className="w-5 h-5 shrink-0 text-amber-400" />
+              <span>يرجى مراجعة إدارة المنصة (مالك المنصة) لإعادة التفعيل وتجديد الاشتراك.</span>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-3 pt-2">
+              <a
+                href={`https://wa.me/967774448016?text=${encodeURIComponent(`مرحباً مالك منصة سِين، بخصوص متجري (${store.name})، أود مراجعة حالة الحساب لإعادة التفعيل وتجديد الاشتراك.`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-black shadow-lg shadow-emerald-600/30 active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <span>تواصل مع مالك المنصة عبر واتساب 💬</span>
+              </a>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="py-3 px-3 rounded-2xl bg-slate-700/80 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-600 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>فحص التفعيل 🔄</span>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    authEngine.logout();
+                    try { await fetch('/api/logout', { method: 'POST' }); } catch(e) {}
+                    router.push('/seenlogin5xa');
+                  }}
+                  className="py-3 px-3 rounded-2xl bg-red-950/40 hover:bg-red-900/60 text-red-300 text-xs font-bold border border-red-800/60 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>تسجيل الخروج 🚪</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="relative z-10 max-w-6xl mx-auto w-full p-6 text-center text-xs text-slate-500">
+          منصة سِين للتجارة الإلكترونية © {new Date().getFullYear()}
+        </footer>
       </div>
     );
   }

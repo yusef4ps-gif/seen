@@ -420,10 +420,10 @@ export default function HomePage() {
 
                     <div className={`py-3 border-y ${isPro ? 'border-slate-700' : 'border-slate-100 dark:border-slate-800'}`}>
                       <div className={`text-3xl font-black font-mono ${isPro ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
-                        {plan.priceMonthlyUSD > 0 ? yerPrice.toLocaleString() : 'مجاناً'} <span className={`text-xs font-normal ${isPro ? 'text-slate-300' : 'text-slate-500'}`}>{plan.priceMonthlyUSD > 0 ? `ر.ي / ${sarPrice.toLocaleString()} ر.س` : ''}</span>
+                        {plan.priceMonthlyUSD > 0 ? `$${plan.priceMonthlyUSD.toLocaleString()}` : 'مجاناً'} <span className={`text-xs font-normal ${isPro ? 'text-slate-300' : 'text-slate-500'}`}>{plan.priceMonthlyUSD > 0 ? ` / ${sarPrice.toLocaleString()} ر.س` : ''}</span>
                       </div>
                       <div className={`text-xs font-bold mt-1 ${isPro ? 'text-accent' : 'text-slate-400'}`}>
-                        {plan.priceYearlyUSD > 0 ? `أو ${yerPriceYearly.toLocaleString()} ر.ي سنوياً` : 'بدون رسوم خفية'}
+                        {plan.priceYearlyUSD > 0 ? `أو $${plan.priceYearlyUSD.toLocaleString()} سنوياً` : 'بدون رسوم خفية'}
                       </div>
                     </div>
 

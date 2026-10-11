@@ -13,7 +13,8 @@ import {
 import { storeEngine } from '@/lib/store-engine';
 import StoreRequestsTab from '@/components/admin/StoreRequestsTab';
 import SuperAdminsTab from '@/components/admin/SuperAdminsTab';
-import { getStoresAction, getPlatformStatsAction, deleteStoreAction, updateStoreAction } from '@/app/actions/store';
+import toast from 'react-hot-toast';
+import { getStoresAction, getPlatformStatsAction, deleteStoreAction, updateStoreAction, toggleStoreStatusAction } from '@/app/actions/store';
 import { authEngine } from '@/lib/auth-engine';
 import { Store, SubscriptionPlan, PlatformStats, SystemBroadcast, SubscriptionPlanTier, User as AuthUser, User, AVAILABLE_FEATURES } from '@/lib/types';
 import { defaultComparisonData, ComparisonCategory } from '@/lib/data/comparison';
@@ -59,6 +60,94 @@ const CSSDonutChart = ({ data }: { data: { label: string, value: number, color: 
   );
 };
 
+export const getSubscriptionExpiryInfo = (store: Store | any) => {
+  if (store.planStatus === 'suspended') {
+    return {
+      type: 'suspended',
+      badgeClass: 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700',
+      rowClass: 'bg-slate-100/50 dark:bg-slateDark-900/60 border-r-4 border-r-slate-500',
+      dotClass: 'bg-slate-500',
+      label: '🔒 مُجمد (موقوف)',
+      remainingText: 'المتجر موقوف بقرار إداري',
+      textColor: 'text-slate-600 dark:text-slate-400 font-bold',
+      daysLeft: 0,
+      isExpiringSoon: false,
+      isExpired: true,
+    };
+  }
+
+  let startDateStr = store.planStartDate || store.createdAt;
+  let endDateStr = store.planEndDate;
+  if (!endDateStr) {
+    const fallbackEnd = new Date(startDateStr || new Date());
+    fallbackEnd.setDate(fallbackEnd.getDate() + 14);
+    endDateStr = fallbackEnd;
+  }
+
+  const endDate = new Date(endDateStr);
+  const now = new Date();
+  const diffMs = endDate.getTime() - now.getTime();
+  const daysLeft = Math.ceil(diffMs / (1000 * 3600 * 24));
+
+  if (daysLeft <= 0 || store.planStatus === 'expired') {
+    return {
+      type: 'expired',
+      badgeClass: 'bg-red-50 text-red-700 border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800 shadow-sm font-black',
+      rowClass: 'bg-red-50/40 dark:bg-red-950/20 border-r-4 border-r-red-500',
+      dotClass: 'bg-red-500 animate-pulse',
+      label: '⛔ الاشتراك منتهي',
+      remainingText: 'انتهت الصلاحية (مطلوب التجديد)',
+      textColor: 'text-red-600 dark:text-red-400 font-bold',
+      daysLeft,
+      isExpiringSoon: false,
+      isExpired: true,
+    };
+  }
+
+  if (daysLeft <= 7) {
+    return {
+      type: 'expiring_soon',
+      badgeClass: 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 shadow-sm font-black',
+      rowClass: 'bg-amber-50/40 dark:bg-amber-950/20 border-r-4 border-r-amber-500',
+      dotClass: 'bg-amber-500 animate-ping',
+      label: '⏳ قارب على الانتهاء',
+      remainingText: `متبقي ${daysLeft} ${daysLeft === 1 ? 'يوم' : daysLeft === 2 ? 'يومان' : 'أيام'} (أصفر)`,
+      textColor: 'text-amber-700 dark:text-amber-400 font-bold',
+      daysLeft,
+      isExpiringSoon: true,
+      isExpired: false,
+    };
+  }
+
+  if (store.planStatus === 'trial') {
+    return {
+      type: 'trial',
+      badgeClass: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800 font-bold',
+      rowClass: '',
+      dotClass: 'bg-sky-500',
+      label: '✨ تجربة مجانية',
+      remainingText: `متبقي ${daysLeft} يوم`,
+      textColor: 'text-slate-500 dark:text-slate-400',
+      daysLeft,
+      isExpiringSoon: false,
+      isExpired: false,
+    };
+  }
+
+  return {
+    type: 'active',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 font-bold',
+    rowClass: '',
+    dotClass: 'bg-emerald-500',
+    label: '✓ نشط',
+    remainingText: `متبقي ${daysLeft} يوم`,
+    textColor: 'text-slate-500 dark:text-slate-400',
+    daysLeft,
+    isExpiringSoon: false,
+    isExpired: false,
+  };
+};
+
 export default function SuperAdminPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -74,7 +163,7 @@ export default function SuperAdminPage() {
 
   // Search & Filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'trial' | 'suspended'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expiring' | 'expired' | 'trial' | 'suspended'>('all');
 
   // Broadcast modal/input state
   const [newBroadcastTitle, setNewBroadcastTitle] = useState('');
@@ -223,11 +312,41 @@ export default function SuperAdminPage() {
 
   const handleToggleStoreStatus = async (storeId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' || currentStatus === 'trial' ? 'suspended' : 'active';
+    
+    // Auto-WhatsApp when activated (must be synchronous before await to bypass popup blockers)
+    if (newStatus === 'active') {
+      const store = storeEngine.getStoreBySlug(storeId) || stores.find(s => s.id === storeId || s.slug === storeId);
+      if (store && (store.whatsapp || store.phone)) {
+        const users = authEngine.getUsers(store.id);
+        const owner = users.find(u => u.role === 'owner');
+        
+        const merchantEmail = store.email || (owner ? owner.email : '') || 'البريد الإلكتروني الخاص بك';
+        const storeLink = 'https://seens.net/seenlogin5xa';
+        
+        const welcomeMsg = `مرحباً بك في منصة سين! 🎉\n\nيسعدنا إخبارك بأنه تم تفعيل متجرك: (${store.name}) بنجاح.\n\nرابط تسجيل الدخول للمتجر:\n${storeLink}\n\nبيانات الدخول:\nالبريد الإلكتروني: ${merchantEmail}\nكلمة المرور: كلمة المرور التي قمت بإنشائها وقت إنشاء المتجر\n\nنتمنى لك مبيعات موفقة ونجاحاً باهراً! 🚀`;
+        
+        let cleanPhone = (store.whatsapp || store.phone || '').replace(/[^0-9]/g, '');
+        if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.slice(2);
+        const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(welcomeMsg)}`;
+        window.open(waLink, '_blank');
+      }
+    }
+
     storeEngine.updateStore(storeId, { planStatus: newStatus as any });
     try {
-      await updateStoreAction(storeId, { planStatus: newStatus });
-    } catch (e) {
+      const res = await toggleStoreStatusAction(storeId, newStatus);
+      if (res.success) {
+        if (newStatus === 'suspended') {
+          toast.success('تم تجميد المتجر بنجاح 🔒 تم إيقاف المتجر ولوحة التحكم.', { id: 'status-toggle' });
+        } else {
+          toast.success('تم تفعيل وتنشيط المتجر بنجاح! ✓', { id: 'status-toggle' });
+        }
+      } else {
+        toast.error(res.error || 'حدث خطأ أثناء تعديل حالة المتجر', { id: 'status-toggle' });
+      }
+    } catch (e: any) {
       console.error(e);
+      toast.error(e.message || 'حدث خطأ غير متوقع', { id: 'status-toggle' });
     }
     refreshData();
   };
@@ -438,8 +557,18 @@ export default function SuperAdminPage() {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           s.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           s.city.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || s.planStatus === statusFilter;
-    return matchesSearch && matchesStatus;
+    if (!matchesSearch) return false;
+
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'expiring') {
+      const info = getSubscriptionExpiryInfo(s);
+      return info.isExpiringSoon;
+    }
+    if (statusFilter === 'expired') {
+      const info = getSubscriptionExpiryInfo(s);
+      return info.isExpired && s.planStatus !== 'suspended';
+    }
+    return s.planStatus === statusFilter;
   });
 
 
@@ -1490,9 +1619,41 @@ export default function SuperAdminPage() {
                     <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                       مراقبة المتاجر
                     </h1>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      إجمالي {filteredStores.length} متجر مسجل على منصة سِين
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slateDark-800 text-slate-700 dark:text-slate-300 text-xs font-bold">
+                        إجمالي: {stores.filter(s => s.planStatus !== 'pending_approval' && s.planStatus !== 'rejected').length}
+                      </span>
+                      <button 
+                        onClick={() => setStatusFilter(statusFilter === 'expiring' ? 'all' : 'expiring')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
+                          statusFilter === 'expiring'
+                            ? 'bg-amber-500 text-white border-amber-600 ring-2 ring-amber-400/50'
+                            : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
+                        }`}
+                      >
+                        ⏳ قارب على الانتهاء: {stores.filter(s => getSubscriptionExpiryInfo(s).isExpiringSoon && s.planStatus !== 'pending_approval' && s.planStatus !== 'rejected').length}
+                      </button>
+                      <button 
+                        onClick={() => setStatusFilter(statusFilter === 'expired' ? 'all' : 'expired')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
+                          statusFilter === 'expired'
+                            ? 'bg-red-600 text-white border-red-700 ring-2 ring-red-400/50'
+                            : 'bg-red-50 hover:bg-red-100 text-red-800 border-red-300 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800'
+                        }`}
+                      >
+                        ⛔ منتهي الصلاحية: {stores.filter(s => getSubscriptionExpiryInfo(s).isExpired && s.planStatus !== 'suspended' && s.planStatus !== 'pending_approval' && s.planStatus !== 'rejected').length}
+                      </button>
+                      <button 
+                        onClick={() => setStatusFilter(statusFilter === 'suspended' ? 'all' : 'suspended')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
+                          statusFilter === 'suspended'
+                            ? 'bg-slate-700 text-white border-slate-800 ring-2 ring-slate-400/50'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        🔒 مجمد / موقوف: {stores.filter(s => s.planStatus === 'suspended').length}
+                      </button>
+                    </div>
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-3">
@@ -1510,12 +1671,14 @@ export default function SuperAdminPage() {
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value as any)}
-                      className="px-4 py-2.5 text-xs font-bold rounded-xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slateDark-700 outline-none"
+                      className="px-4 py-2.5 text-xs font-bold rounded-xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slateDark-700 outline-none font-bold"
                     >
                       <option value="all">كافة الحالات</option>
-                      <option value="trial">فترة تجريبية</option>
-                      <option value="active">نشط</option>
-                      <option value="suspended">موقوف</option>
+                      <option value="expiring">⏳ قارب على الانتهاء (أصفر)</option>
+                      <option value="expired">⛔ منتهي الصلاحية (أحمر)</option>
+                      <option value="active">✓ نشط (أخضر)</option>
+                      <option value="trial">✨ فترة تجريبية</option>
+                      <option value="suspended">🔒 موقوف / مجمد</option>
                     </select>
                   </div>
                 </div>
@@ -1535,7 +1698,7 @@ export default function SuperAdminPage() {
                             <th className="py-4 px-5">المدينة</th>
                             <th className="py-4 px-5">بوابات الدفع</th>
                             <th className="py-4 px-5 w-40">الباقة والعمولة</th>
-                            <th className="py-4 px-5">الحالة</th>
+                            <th className="py-4 px-5">الحالة والاشتراك</th>
                             <th className="py-4 px-5 text-center">إجراءات</th>
                           </tr>
                         </thead>
@@ -1543,9 +1706,10 @@ export default function SuperAdminPage() {
                           {filteredStores.map((store) => {
                             const defaultCommission = plans.find(p => p.id === store.planTier)?.commissionRate || 0;
                             const currentCommission = store.customCommissionRate !== undefined ? store.customCommissionRate : defaultCommission;
+                            const statusInfo = getSubscriptionExpiryInfo(store);
 
                             return (
-                            <tr key={store.id} className="hover:bg-slate-50/50 dark:hover:bg-slateDark-800/20 transition-colors">
+                            <tr key={store.id} className={`hover:bg-slate-50/70 dark:hover:bg-slateDark-800/40 transition-colors ${statusInfo.rowClass}`}>
                               <td className="py-4 px-5">
                                 <div className="flex items-center gap-4">
                                   <img src={store.logo} alt="" className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slateDark-700" />
@@ -1591,14 +1755,15 @@ export default function SuperAdminPage() {
                                 </div>
                               </td>
                               <td className="py-4 px-5">
-                                <span className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold inline-flex items-center gap-1.5 ${
-                                  store.planStatus === 'trial' ? 'bg-teal-950/60 text-teal-400 border border-teal-800' : 
-                                  store.planStatus === 'active' ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800' : 
-                                  'bg-red-950/60 text-red-400 border border-red-800'
-                                }`}>
-                                  <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                                  {store.planStatus === 'trial' ? 'تجريبي' : store.planStatus === 'active' ? 'نشط' : 'موقوف'}
-                                </span>
+                                <div className="space-y-1">
+                                  <span className={`px-2.5 py-1.5 rounded-xl text-[10px] inline-flex items-center gap-1.5 border ${statusInfo.badgeClass}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dotClass}`}></span>
+                                    {statusInfo.label}
+                                  </span>
+                                  <div className={`text-[10px] ${statusInfo.textColor || 'text-slate-500 dark:text-slate-400'}`}>
+                                    {statusInfo.remainingText}
+                                  </div>
+                                </div>
                               </td>
                               <td className="py-4 px-5">
                                 <div className="flex items-center justify-center gap-2">

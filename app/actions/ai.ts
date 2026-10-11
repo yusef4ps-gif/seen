@@ -150,3 +150,22 @@ export async function generateAdDesignAction(prompt: string, storeName: string, 
     return { success: false, error: error.message === 'API_KEY_MISSING' ? 'MISSING_KEY' : 'FAILED' };
   }
 }
+
+export async function generateLegalPageAction(storeName: string, category: string, pageType: string) {
+  try {
+    const titles: Record<string, string> = {
+      privacy: 'سياسة الخصوصية',
+      terms: 'الشروط والأحكام',
+      returns: 'سياسة الاستبدال والاسترجاع',
+      shipping: 'سياسة الشحن والتوصيل'
+    };
+    const title = titles[pageType] || pageType;
+    return {
+      success: true,
+      content: `### ${title} - متجر ${storeName}\n\nنرحب بكم في متجر **${storeName}** المتخصص في **${category}**.\n\nنلتزم بتقديم تجربة تسوق موثوقة وآمنة وفق أفضل الممارسات التجارية والمعايير المعتمدة في منصة سِين.\n\n1. **الالتزام والجودة:** نحرص على مطابقة كافة المنتجات للمواصفات المعروضة وتوفير الدعم اللازم لكافة العملاء.\n2. **الحقوق والواجبات:** يحق للعميل التواصل معنا عبر قنوات الدعم الرسمية لأي استفسار أو طلب مساعدة.\n3. **التواصل:** لأي استفسار يرجى التواصل مع فريق دعم المتجر عبر بيانات الاتصال الموضحة في المتجر.`
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+

@@ -57,6 +57,11 @@ class StoreEngine {
     }
   }
 
+  public reloadFromStorage() {
+    this.isLoaded = false;
+    this.loadFromStorage();
+  }
+
   private saveToStorage(key: string, data: any) {
     if (!this.isClient) return;
     try {

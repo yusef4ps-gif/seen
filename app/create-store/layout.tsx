@@ -6,11 +6,7 @@ export default function CreateStoreLayout({
 }: {
   children: React.ReactNode
 }) {
-  const userId = cookies().get('seen_session_user_id')?.value;
-  
-  if (!userId) {
-    redirect('/seenlogin5xa');
-  }
+  // Remove auth check to allow new merchants to register
   
   return <>{children}</>;
 }

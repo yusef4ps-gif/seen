@@ -9,7 +9,7 @@ import {
   MapPin, Clock, ShieldCheck, X, Plus, Minus, Send, 
   Wallet, Image as ImageIcon, QrCode, ExternalLink, Flame, 
   Truck, RefreshCw, Star, Tag, Ticket, Cpu, Zap, Award, Coffee, Heart,
-  Facebook, Instagram, Twitter, Youtube, Linkedin, MessageCircle, Mail, User, Settings
+  Facebook, Instagram, Twitter, Youtube, Linkedin, MessageCircle, Mail, User, Settings, Lock
 } from 'lucide-react';
 import { Store, Product, ProductVariant, OrderItem, CurrencyCode, PaymentMethodType, ThemeConfig } from '@/lib/types';
 import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
@@ -397,6 +397,59 @@ export default function CustomerStorefrontPage() {
         <div className="space-y-4">
           <StoreIcon className="w-12 h-12 text-slate-400 mx-auto animate-pulse" />
           <h2 className="text-xl font-bold">جاري تحميل المتجر...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  // ⛔ Suspended Store Guard: If store is suspended, block storefront and show notice
+  if (store.planStatus === 'suspended') {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white font-sans flex items-center justify-center p-4 sm:p-6 text-center select-none relative overflow-hidden">
+        {/* Ambient Glow */}
+        <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden opacity-30">
+          <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] rounded-full bg-red-600/20 blur-[100px] animate-pulse" />
+        </div>
+
+        <div className="relative z-10 max-w-md w-full bg-slate-800/90 backdrop-blur-2xl rounded-3xl p-8 sm:p-10 border border-red-500/30 shadow-2xl space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 mx-auto flex items-center justify-center shadow-lg shadow-red-500/10">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-xl sm:text-2xl font-black text-white">المتجر مغلق مؤقتاً</h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              تم تعليق متجر ({store.name}) مؤقتاً من قبل إدارة منصة سِين. يرجى مراجعة إدارة المنصة لإعادة التفعيل.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-700/60 text-right text-xs space-y-1.5">
+            <div className="flex justify-between">
+              <span className="text-slate-400">اسم المتجر:</span>
+              <span className="font-bold text-white">{store.name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">الحالة:</span>
+              <span className="text-red-400 font-bold">معلق مؤقتاً 🔒</span>
+            </div>
+          </div>
+
+          <div className="pt-2 flex flex-col gap-3">
+            <a
+              href={`https://wa.me/967774448016?text=${encodeURIComponent(`مرحباً إدارة منصة سِين، بخصوص متجر ${store.name} المعلق، أود الاستفسار عن حالة المتجر.`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2"
+            >
+              تواصل مع مالك المنصة 💬
+            </a>
+            <Link
+              href="/"
+              className="w-full py-3 rounded-2xl bg-slate-700/80 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all"
+            >
+              العودة للرئيسية
+            </Link>
+          </div>
         </div>
       </div>
     );

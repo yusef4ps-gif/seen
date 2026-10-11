@@ -7,9 +7,19 @@ import { sendEmail, EmailTemplates } from '@/lib/notification-engine';
 
 export async function createOrderAction(data: any) {
   try {
+    // Check if store is suspended
+    const store = await prisma.store.findFirst({
+      where: {
+        OR: [{ id: data.storeId }, { slug: data.storeId }]
+      }
+    });
+    if (store && store.planStatus === 'suspended') {
+      return { success: false, error: 'المتجر موقوف مؤقتاً ولا يمكن استقبال طلبات جديدة حالياً.' };
+    }
+
     // Determine the next sequential order number for this store
     const storeOrderCount = await prisma.order.count({
-      where: { storeId: data.storeId }
+      where: { storeId: store?.id || data.storeId }
     });
     const sequentialOrderNumber = `#${1000 + storeOrderCount + 1}`;
 
@@ -63,8 +73,7 @@ export async function createOrderAction(data: any) {
       }
     }
 
-    // 3. Get Store info for emails
-    const store = await prisma.store.findUnique({ where: { id: data.storeId } });
+    // 3. Store info already fetched above if needed for notifications
 
     // 4. Mark Abandoned Cart as recovered (if any)
     if (data.customerPhone) {

@@ -8,6 +8,7 @@ import {
 import toast from 'react-hot-toast';
 import { getStoresAction, approveStoreRequestAction, rejectStoreRequestAction, deleteStoreAction } from '@/app/actions/store';
 import { Store } from '@/lib/types';
+import { authEngine } from '@/lib/auth-engine';
 
 export default function StoreRequestsTab() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -32,6 +33,23 @@ export default function StoreRequestsTab() {
   }, []);
 
   const handleApprove = async (id: string) => {
+    // Auto-WhatsApp when activated
+    const store = stores.find(s => s.id === id);
+    if (store && (store.whatsapp || store.phone)) {
+      const users = authEngine.getUsers(store.id);
+      const owner = users.find(u => u.role === 'owner');
+      
+      const merchantEmail = store.email || (owner ? owner.email : '') || 'البريد الإلكتروني الخاص بك';
+      const storeLink = 'https://seens.net/seenlogin5xa';
+      
+      const welcomeMsg = `مرحباً بك في منصة سين! 🎉\n\nيسعدنا إخبارك بأنه تم تفعيل متجرك: (${store.name}) بنجاح.\n\nرابط تسجيل الدخول للمتجر:\n${storeLink}\n\nبيانات الدخول:\nالبريد الإلكتروني: ${merchantEmail}\nكلمة المرور: كلمة المرور التي قمت بإنشائها وقت إنشاء المتجر\n\nنتمنى لك مبيعات موفقة ونجاحاً باهراً! 🚀`;
+      
+      let cleanPhone = (store.whatsapp || store.phone || '').replace(/[^0-9]/g, '');
+      if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.slice(2);
+      const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(welcomeMsg)}`;
+      window.open(waLink, '_blank');
+    }
+
     toast.loading('جاري التفعيل...', { id: 'approve' });
     const res = await approveStoreRequestAction(id);
     if (res.success) {

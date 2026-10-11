@@ -248,8 +248,13 @@ export async function getStoreBySlugAction(slug: string) {
     }
 
     if (!store) {
-      store = await prisma.store.findUnique({
-        where: { slug }
+      store = await prisma.store.findFirst({
+        where: {
+          OR: [
+            { slug: slug },
+            { id: slug }
+          ]
+        }
       });
     }
 
@@ -429,6 +434,37 @@ export async function rejectStoreRequestAction(storeId: string) {
     return { success: true, store };
   } catch (error: any) {
     console.error('Error rejecting store:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function toggleStoreStatusAction(storeId: string, newStatus: string) {
+  try {
+    const store = await prisma.store.findFirst({
+      where: {
+        OR: [
+          { id: storeId },
+          { slug: storeId }
+        ]
+      }
+    });
+
+    if (!store) {
+      throw new Error(`لم يتم العثور على المتجر: ${storeId}`);
+    }
+
+    const updated = await prisma.store.update({
+      where: { id: store.id },
+      data: { planStatus: newStatus }
+    });
+
+    revalidatePath('/seenayhq7x');
+    revalidatePath(`/merchant/${updated.slug}`, 'layout');
+    revalidatePath(`/store/${updated.slug}`, 'page');
+
+    return { success: true, store: updated };
+  } catch (error: any) {
+    console.error('Error toggling store status:', error);
     return { success: false, error: error.message };
   }
 }
