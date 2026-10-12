@@ -4,6 +4,8 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { requireAuth, requireStoreOwner, requireSuperAdmin } from '@/app/actions/auth';
 import { sendEmail, EmailTemplates } from '@/lib/notification-engine';
+import { INITIAL_PLANS } from '@/lib/initial-data';
+import { SubscriptionPlan } from '@/lib/types';
 
 // Re-export the initial default JSON from storeEngine logic to use when creating a new store
 const DEFAULT_CUSTOM_RATES = JSON.stringify({
@@ -465,6 +467,44 @@ export async function toggleStoreStatusAction(storeId: string, newStatus: string
     return { success: true, store: updated };
   } catch (error: any) {
     console.error('Error toggling store status:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getPlansAction(): Promise<SubscriptionPlan[]> {
+  try {
+    const item = await prisma.siteContent.findUnique({
+      where: { key: 'system_subscription_plans' }
+    });
+    if (item && item.value) {
+      return JSON.parse(item.value);
+    }
+  } catch (error) {
+    console.error('Error fetching plans from DB:', error);
+  }
+  return INITIAL_PLANS;
+}
+
+export async function updatePlansAction(plans: SubscriptionPlan[]) {
+  try {
+    await prisma.siteContent.upsert({
+      where: { key: 'system_subscription_plans' },
+      update: { value: JSON.stringify(plans) },
+      create: {
+        key: 'system_subscription_plans',
+        value: JSON.stringify(plans),
+        group: 'plans',
+        label: 'باقات الاشتراك وصلاحيات المتاجر',
+      }
+    });
+
+    revalidatePath('/seenayhq7x');
+    revalidatePath('/', 'layout');
+    revalidatePath('/merchant/[slug]', 'layout');
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error updating plans in DB:', error);
     return { success: false, error: error.message };
   }
 }

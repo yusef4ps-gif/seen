@@ -10,15 +10,36 @@ import {
   Ticket, Tag, BarChart, History, LogOut, Star, Crown, Lock, ShieldAlert
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
-import { Store, SystemBroadcast } from '@/lib/types';
+import { Store, SystemBroadcast, SubscriptionPlan } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
 import BrandLogo from '@/components/BrandLogo';
-import { getStoreBySlugAction } from '@/app/actions/store';
+import { getStoreBySlugAction, getPlansAction } from '@/app/actions/store';
 import { getStoreNotificationsAction } from '@/app/actions/notifications';
 import LiveVisitorPill from '@/components/LiveVisitorPill';
+import toast from 'react-hot-toast';
 
 import { authEngine } from '@/lib/auth-engine';
 import { User as AuthUser } from '@/lib/types';
+
+// Map sub-routes directly to their required plan feature ID
+const ROUTE_FEATURE_MAP: Record<string, string> = {
+  products: 'products',
+  inventory: 'inventory',
+  orders: 'orders',
+  returns: 'returns',
+  reviews: 'reviews',
+  'abandoned-carts': 'abandoned_carts',
+  customers: 'crm',
+  staff: 'staff',
+  'ai-advisor': 'ai_advisor',
+  'theme-builder': 'theme_builder',
+  settings: 'settings',
+  subscription: 'subscription',
+  coupons: 'coupons',
+  offers: 'offers',
+  reports: 'reports',
+  'activity-log': 'audit',
+};
 
 export default function MerchantLayout({
   children,
@@ -32,10 +53,10 @@ export default function MerchantLayout({
 
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [store, setStore] = useState<Store | null>(null);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>(() => storeEngine.getPlans());
   const [broadcasts, setBroadcasts] = useState<SystemBroadcast[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  
   
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -49,7 +70,14 @@ export default function MerchantLayout({
     
     async function loadData() {
       if (slug) {
-        const s = await getStoreBySlugAction(slug);
+        const [s, dbPlans] = await Promise.all([
+          getStoreBySlugAction(slug),
+          getPlansAction()
+        ]);
+        if (dbPlans && dbPlans.length > 0) {
+          storeEngine.setPlans(dbPlans);
+          setPlans(dbPlans);
+        }
         if (s) {
           setStore(s as any);
           
@@ -146,54 +174,100 @@ export default function MerchantLayout({
     return null; // Return nothing while redirecting
   }
 
-  // 🔄 Ultra-fast Live Heartbeat to automatically detect status changes (freezing / unfreezing by admin within 3 seconds)
+  // 🔄 Silent Live Refresh ("رفرش خفي") every 5 seconds for store freeze, tier changes, and feature permissions
   useEffect(() => {
     if (!slug) return;
 
     // 1. Instant cross-tab sync (0ms)
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'seen_clean_stores_v3' || !e.key) {
+      if (e.key === 'seen_clean_stores_v3' || e.key === 'seen_clean_plans_v3' || !e.key) {
         storeEngine.reloadFromStorage();
         const local = storeEngine.getStoreBySlug(slug);
-        if (local && local.planStatus !== store?.planStatus) {
-          setStore(local);
+        if (local) {
+          setStore((prev) => {
+            if (!prev || prev.planStatus !== local.planStatus || prev.planTier !== local.planTier) {
+              return local;
+            }
+            return prev;
+          });
         }
+        const updatedPlans = storeEngine.getPlans();
+        setPlans(updatedPlans);
+        router.refresh();
       }
     };
     window.addEventListener('storage', handleStorage);
 
-    // 2. Server heartbeat check every 2.5 seconds (under 5 seconds requirement)
-    const checkStatus = async () => {
+    // 2. Server heartbeat check every 5 seconds ("رفرش خفي" تلقائي)
+    const checkLiveUpdates = async () => {
       try {
-        const latest = await getStoreBySlugAction(slug);
-        if (latest) {
-          if (latest.planStatus !== store?.planStatus) {
-            setStore(latest as any);
-          }
-        } else {
-          storeEngine.reloadFromStorage();
-          const local = storeEngine.getStoreBySlug(slug);
-          if (local && local.planStatus !== store?.planStatus) {
-            setStore(local);
-          }
+        const [latestStore, latestPlans] = await Promise.all([
+          getStoreBySlugAction(slug),
+          getPlansAction()
+        ]);
+
+        if (latestStore) {
+          setStore((prev) => {
+            if (!prev) return latestStore as any;
+            if (
+              prev.planStatus !== latestStore.planStatus ||
+              prev.planTier !== latestStore.planTier ||
+              prev.name !== latestStore.name ||
+              prev.logo !== latestStore.logo
+            ) {
+              return latestStore as any;
+            }
+            return prev;
+          });
         }
+
+        if (latestPlans && latestPlans.length > 0) {
+          setPlans((prev) => {
+            if (JSON.stringify(prev) !== JSON.stringify(latestPlans)) {
+              storeEngine.setPlans(latestPlans);
+              return latestPlans;
+            }
+            return prev;
+          });
+        }
+
+        // Silent background Next.js revalidation
+        router.refresh();
       } catch (err) {
         // Fallback to local
         storeEngine.reloadFromStorage();
         const local = storeEngine.getStoreBySlug(slug);
-        if (local && local.planStatus !== store?.planStatus) {
-          setStore(local);
-        }
+        if (local) setStore(local);
+        setPlans(storeEngine.getPlans());
       }
     };
 
-    const interval = setInterval(checkStatus, 2500);
+    const interval = setInterval(checkLiveUpdates, 5000);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('storage', handleStorage);
     };
-  }, [slug, store?.planStatus]);
+  }, [slug, router]);
+
+  // 🛡️ Route Permission Guard: If merchant is on a page whose feature was revoked, redirect immediately to dashboard
+  useEffect(() => {
+    if (!pathname || !slug || !store) return;
+    
+    // Extract current sub-path: e.g. /merchant/[slug]/coupons -> "coupons"
+    const segments = pathname.split(`/merchant/${slug}/`);
+    const subRoute = segments[1]?.split('/')[0]?.split('?')[0];
+    if (!subRoute) return;
+
+    const requiredFeature = ROUTE_FEATURE_MAP[subRoute];
+    const currentStorePlan = plans.find(p => p.id === store.planTier) || storeEngine.getPlans().find(p => p.id === store.planTier);
+    const currentActiveFeatures = currentStorePlan?.features || [];
+
+    if (requiredFeature && currentActiveFeatures.length > 0 && !currentActiveFeatures.includes(requiredFeature)) {
+      toast.error('تم إلغاء صلاحية الوصول لهذه الميزة من قبل إدارة المنصة 🔒', { id: 'permission-revoked' });
+      router.replace(`/merchant/${slug}`);
+    }
+  }, [pathname, slug, store?.planTier, plans, router]);
 
   if (!store) {
     return (
@@ -409,7 +483,7 @@ export default function MerchantLayout({
     },
   ];
 
-  const storePlan = storeEngine.getPlans().find(p => p.id === store.planTier);
+  const storePlan = plans.find(p => p.id === store.planTier) || storeEngine.getPlans().find(p => p.id === store.planTier);
   const activeFeatures = storePlan?.features || [];
   const navItems = allNavItems.filter(item => activeFeatures.includes(item.id));
 

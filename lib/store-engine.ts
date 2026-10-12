@@ -308,6 +308,11 @@ class StoreEngine {
     return this.plans;
   }
 
+  public setPlans(plans: SubscriptionPlan[]) {
+    this.plans = plans;
+    this.saveToStorage(STORAGE_KEYS.PLANS, this.plans);
+  }
+
   public addPlan(plan: SubscriptionPlan): SubscriptionPlan {
     this.loadFromStorage();
     this.plans.push(plan);

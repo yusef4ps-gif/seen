@@ -14,7 +14,7 @@ import { storeEngine } from '@/lib/store-engine';
 import StoreRequestsTab from '@/components/admin/StoreRequestsTab';
 import SuperAdminsTab from '@/components/admin/SuperAdminsTab';
 import toast from 'react-hot-toast';
-import { getStoresAction, getPlatformStatsAction, deleteStoreAction, updateStoreAction, toggleStoreStatusAction } from '@/app/actions/store';
+import { getStoresAction, getPlatformStatsAction, deleteStoreAction, updateStoreAction, toggleStoreStatusAction, getPlansAction, updatePlansAction } from '@/app/actions/store';
 import { authEngine } from '@/lib/auth-engine';
 import { Store, SubscriptionPlan, PlatformStats, SystemBroadcast, SubscriptionPlanTier, User as AuthUser, User, AVAILABLE_FEATURES } from '@/lib/types';
 import { defaultComparisonData, ComparisonCategory } from '@/lib/data/comparison';
@@ -265,9 +265,15 @@ export default function SuperAdminPage() {
   const refreshData = async () => {
     const fetchedStores = await getStoresAction();
     const fetchedStats = await getPlatformStatsAction();
+    const fetchedPlans = await getPlansAction();
+    if (fetchedPlans && fetchedPlans.length > 0) {
+      storeEngine.setPlans(fetchedPlans);
+      setPlans(fetchedPlans);
+    } else {
+      setPlans(storeEngine.getPlans());
+    }
     setStores(fetchedStores as any);
     setStats(fetchedStats);
-    setPlans(storeEngine.getPlans());
     setBroadcasts(storeEngine.getBroadcasts());
 
     // Fetch dynamic texts
@@ -396,7 +402,7 @@ export default function SuperAdminPage() {
   };
 
   // Save edited plan
-  const handleSavePlan = (planId: string) => {
+  const handleSavePlan = async (planId: string) => {
     storeEngine.updatePlan(planId, {
       name: editName,
       nameAr: editNameAr,
@@ -407,13 +413,18 @@ export default function SuperAdminPage() {
       trialDays: Number(editTrialDays),
       features: editFeatures,
     });
+    try {
+      await updatePlansAction(storeEngine.getPlans());
+    } catch (e) {
+      console.error('Failed to sync plans to DB:', e);
+    }
     setEditingPlanId(null);
-    setPlanSaveSuccess(`تم تحديث باقة ${planId.toUpperCase()} بنجاح!`);
+    setPlanSaveSuccess(`تم تحديث باقة ${planId.toUpperCase()} وحفظ الصلاحيات بنجاح!`);
     setTimeout(() => setPlanSaveSuccess(null), 3000);
     refreshData();
   };
 
-  const handleAddPlan = () => {
+  const handleAddPlan = async () => {
     const newId = 'plan_' + Date.now();
     const newPlan: SubscriptionPlan = {
       id: newId,
@@ -432,14 +443,18 @@ export default function SuperAdminPage() {
       features: ['dashboard', 'products', 'orders', 'settings', 'subscription'],
     };
     storeEngine.addPlan(newPlan);
+    try {
+      await updatePlansAction(storeEngine.getPlans());
+    } catch (e) {}
     handleStartEditPlan(newPlan);
     refreshData();
   };
 
-  const handleDeletePlan = (planId: string) => {
+  const handleDeletePlan = async (planId: string) => {
     if (confirm('هل أنت متأكد من حذف هذه الباقة كلياً؟ تأكد أنه لا توجد متاجر مرتبطة بها.')) {
       try {
         storeEngine.deletePlan(planId);
+        await updatePlansAction(storeEngine.getPlans());
         refreshData();
       } catch (err: any) {
         alert(err.message);

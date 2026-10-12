@@ -68,6 +68,7 @@ export const INITIAL_PLANS: SubscriptionPlan[] = [
     whatsappAutomation: true,
     prioritySupport: true,
     badge: 'بدون أي عمولة 0% 👑',
+    features: ['dashboard', 'products', 'inventory', 'orders', 'returns', 'reviews', 'abandoned_carts', 'crm', 'staff', 'ai_advisor', 'theme_builder', 'settings', 'subscription', 'coupons', 'offers', 'reports', 'audit'],
   },
 ];
 
