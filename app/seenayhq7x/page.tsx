@@ -412,6 +412,7 @@ export default function SuperAdminPage() {
       maxProducts: Number(editMaxProducts),
       trialDays: Number(editTrialDays),
       features: editFeatures,
+      aiFeatures: editFeatures.includes('ai_advisor'),
     });
     try {
       await updatePlansAction(storeEngine.getPlans());
@@ -717,6 +718,28 @@ export default function SuperAdminPage() {
             <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slateDark-800">
               <div className="space-y-6 max-w-2xl">
                 
+                {/* Master Global AI Toggle */}
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slateDark-800/60 border border-slate-200 dark:border-slateDark-700 flex items-center justify-between">
+                  <div className="space-y-0.5 pr-1">
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-brand-600" />
+                      <span>إتاحة خدمات وأزرار الذكاء الاصطناعي في المنصة والمتاجر</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      عند التعطيل (إخفاء الذكاء الاصطناعي)، تختفي أزرار التوليد التلقائي في كافة المتاجر وتسمح للتاجر بكتابة البيانات يدوياً أو تركها فارغة.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0 mr-4">
+                    <input
+                      type="checkbox"
+                      checked={siteTexts['ai_enabled'] !== 'false'}
+                      onChange={(e) => setSiteTexts({ ...siteTexts, ai_enabled: e.target.checked ? 'true' : 'false' })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
+                  </label>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
                     المزود (AI Provider)

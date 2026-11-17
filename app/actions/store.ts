@@ -69,23 +69,33 @@ export async function createStoreAction(data: any) {
   try {
     let ownerId: string | null = null;
     
-    if (!data.email) {
-      return { success: false, error: 'البريد الإلكتروني مطلوب.' };
+    if (!data.name || !data.name.trim()) {
+      return { success: false, error: 'اسم المتجر حقل إلزامي مطلوب.' };
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
+    if (!data.phone || !data.phone.trim()) {
+      return { success: false, error: 'رقم الهاتف / الواتساب مطلوب لاستقبال الطلبات.' };
+    }
+
+    if (!data.email || !data.email.trim() || !data.email.includes('@')) {
+      return { success: false, error: 'يرجى إدخال بريد إلكتروني صالح ورسمي.' };
+    }
+
+    if (!data.password || data.password.trim().length < 4) {
+      return { success: false, error: 'كلمة المرور يجب أن لا تقل عن 4 خانات لحماية المتجر.' };
+    }
+
+    const cleanEmail = data.email.trim().toLowerCase();
+    const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (existingUser) {
       ownerId = existingUser.id;
     } else {
-      if (!data.password) {
-        return { success: false, error: 'كلمة المرور مطلوبة لإنشاء الحساب الجديد.' };
-      }
       const newUser = await prisma.user.create({
         data: {
-          email: data.email,
-          phone: data.phone || '',
-          password: data.password,
-          name: 'إدارة ' + data.name,
+          email: cleanEmail,
+          phone: data.phone.trim(),
+          password: data.password.trim(),
+          name: 'إدارة ' + data.name.trim(),
           role: 'STORE_OWNER',
           status: 'active'
         }
@@ -106,11 +116,17 @@ export async function createStoreAction(data: any) {
         ownerId: ownerId,
         slug: finalSlug,
         name: data.name,
-        description: data.description || `المتجر الإلكتروني الرسمي لـ ${data.name}. تسوق أفضل المنتجات بأفضل الأسعار.`,
-        category: data.category || 'عام',
-        logo: data.logo || 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=200&auto=format&fit=crop&q=80',
-        banner: data.banner || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&auto=format&fit=crop&q=80',
-        primaryColor: data.primaryColor || '#0f2b48',
+        description: data.description || (data.themeConfig?.storeType === 'SERVICE' 
+          ? `البروفايل المهني الرسمي لـ ${data.name}. استشارات وخدمات مهنية متخصصة بأعلى معايير الدقة والسرية.`
+          : `المتجر الإلكتروني الرسمي لـ ${data.name}. تسوق أفضل المنتجات بأفضل الأسعار.`),
+        category: data.category || (data.themeConfig?.storeType === 'SERVICE' ? 'محاماة واستشارات قانونية' : 'عام'),
+        logo: data.logo || (data.themeConfig?.storeType === 'SERVICE' 
+          ? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80'
+          : 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=200&auto=format&fit=crop&q=80'),
+        banner: data.banner || (data.themeConfig?.storeType === 'SERVICE'
+          ? 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&auto=format&fit=crop&q=80'
+          : 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&auto=format&fit=crop&q=80'),
+        primaryColor: data.primaryColor || (data.themeConfig?.storeType === 'SERVICE' ? '#0d9488' : '#0f2b48'),
         phone: data.phone,
         whatsapp: data.whatsapp || data.phone.replace(/[^0-9]/g, ''),
         email: data.email || `contact@${finalSlug}.com`,
@@ -299,6 +315,7 @@ export async function getOrdersByStoreAction(storeId: string) {
     const orders = await prisma.order.findMany({
       where: { storeId },
       orderBy: { createdAt: 'desc' },
+      take: 100,
     });
     return orders.map(o => ({
       ...o,
@@ -383,11 +400,137 @@ export async function updateStoreAction(storeId: string, data: any) {
 
 export async function getStoreCustomersAction(storeId: string) {
   try {
+    // 1. Fetch all registered customers for this store
     const customers = await prisma.customer.findMany({
       where: { storeId },
       orderBy: { createdAt: 'desc' }
     });
-    return { success: true, customers };
+
+    // 2. Fetch all orders for this store to aggregate accurate totals
+    const allStoreOrders = await prisma.order.findMany({
+      where: { storeId },
+      select: {
+        id: true,
+        customerId: true,
+        customerName: true,
+        customerPhone: true,
+        total: true,
+        status: true,
+        createdAt: true
+      }
+    });
+
+    // 3. Match and calculate live accurate stats for each customer
+    const customersWithLiveStats = await Promise.all(
+      customers.map(async (cust) => {
+        const cleanCustPhone = cust.phone ? cust.phone.replace(/[^0-9]/g, '') : '';
+
+        const matchedOrders = allStoreOrders.filter(o => {
+          if (o.customerId && o.customerId === cust.id) return true;
+          if (cleanCustPhone && o.customerPhone) {
+            const cleanOrderPhone = o.customerPhone.replace(/[^0-9]/g, '');
+            if (
+              cleanOrderPhone === cleanCustPhone ||
+              cleanOrderPhone.endsWith(cleanCustPhone) ||
+              cleanCustPhone.endsWith(cleanOrderPhone)
+            ) {
+              return true;
+            }
+          }
+          return false;
+        });
+
+        const validOrders = matchedOrders.filter(o => o.status !== 'cancelled');
+        const computedCount = validOrders.length;
+        const computedTotal = validOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+        // Sync with database if different so DB remains accurate
+        if (cust.ordersCount !== computedCount || Math.abs(cust.totalSpent - computedTotal) > 0.01) {
+          prisma.customer.update({
+            where: { id: cust.id },
+            data: {
+              ordersCount: computedCount,
+              totalSpent: computedTotal
+            }
+          }).catch(err => console.error('Failed to sync customer stats:', err));
+        }
+
+        // Link unlinked orders in database to this customer
+        const unlinkedOrderIds = matchedOrders.filter(o => !o.customerId).map(o => o.id);
+        if (unlinkedOrderIds.length > 0) {
+          prisma.order.updateMany({
+            where: { id: { in: unlinkedOrderIds } },
+            data: { customerId: cust.id }
+          }).catch(err => console.error('Failed to link orders to customer:', err));
+        }
+
+        return {
+          ...cust,
+          ordersCount: computedCount,
+          totalSpent: computedTotal
+        };
+      })
+    );
+
+    // 4. Find guest orders whose phone is not in the registered customer list
+    const existingPhones = new Set(
+      customers
+        .map(c => c.phone ? c.phone.replace(/[^0-9]/g, '') : '')
+        .filter(Boolean)
+    );
+
+    const guestOrdersByPhone = new Map<string, typeof allStoreOrders>();
+    for (const order of allStoreOrders) {
+      if (!order.customerId) {
+        const cleanPhone = order.customerPhone ? order.customerPhone.replace(/[^0-9]/g, '') : '';
+        if (cleanPhone && !existingPhones.has(cleanPhone)) {
+          if (!guestOrdersByPhone.has(cleanPhone)) {
+            guestOrdersByPhone.set(cleanPhone, []);
+          }
+          guestOrdersByPhone.get(cleanPhone)!.push(order);
+        }
+      }
+    }
+
+    const guestCustomers: any[] = [];
+    for (const [cleanPhone, gOrders] of guestOrdersByPhone.entries()) {
+      const validOrders = gOrders.filter(o => o.status !== 'cancelled');
+      const gTotal = validOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+      const latestOrder = gOrders[0];
+
+      try {
+        const createdGuest = await prisma.customer.create({
+          data: {
+            storeId,
+            name: latestOrder.customerName || 'عميل المتجر',
+            phone: latestOrder.customerPhone,
+            ordersCount: validOrders.length,
+            totalSpent: gTotal,
+            authProvider: 'guest'
+          }
+        });
+        await prisma.order.updateMany({
+          where: { id: { in: gOrders.map(o => o.id) } },
+          data: { customerId: createdGuest.id }
+        });
+        guestCustomers.push(createdGuest);
+      } catch {
+        guestCustomers.push({
+          id: `guest_${cleanPhone}`,
+          storeId,
+          name: latestOrder.customerName || 'عميل المتجر',
+          phone: latestOrder.customerPhone,
+          email: '',
+          ordersCount: validOrders.length,
+          totalSpent: gTotal,
+          createdAt: latestOrder.createdAt,
+          authProvider: 'guest'
+        });
+      }
+    }
+
+    const allResultCustomers = [...customersWithLiveStats, ...guestCustomers];
+    return { success: true, customers: allResultCustomers };
   } catch (error: any) {
     console.error('Error fetching store customers:', error);
     return { success: false, error: 'حدث خطأ أثناء جلب العملاء' };

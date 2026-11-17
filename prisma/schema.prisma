@@ -116,6 +116,9 @@ model Product {
 
   store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   variants       ProductVariant[]
+
+  @@index([storeId])
+  @@index([storeId, isAvailable])
 }
 
 model ProductVariant {
@@ -159,6 +162,9 @@ model Order {
   returns            OrderReturn[]
 
   @@unique([storeId, orderNumber])
+  @@index([storeId])
+  @@index([storeId, status])
+  @@index([createdAt])
 }
 
 model OrderReturn {
@@ -175,6 +181,8 @@ model OrderReturn {
   
   order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, status])
 }
 
 model Customer {
@@ -200,6 +208,7 @@ model Customer {
 
   @@unique([storeId, email])
   @@unique([storeId, phone])
+  @@index([storeId])
 }
 
 model AbandonedCart {
@@ -215,6 +224,8 @@ model AbandonedCart {
   recovered      Boolean   @default(false)
 
   store          Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, recovered])
 }
 
 model SystemBroadcast {
@@ -246,6 +257,8 @@ model ActivityLog {
   createdAt DateTime @default(now())
 
   store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, createdAt])
 }
 
 model StoreReview {
@@ -260,6 +273,8 @@ model StoreReview {
 
   store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, status])
 }
 
 model SystemLog {

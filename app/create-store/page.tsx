@@ -7,8 +7,10 @@ import {
   Store as StoreIcon, Sparkles, Palette, ArrowLeft, ArrowRight, 
   Check, CheckCircle2, ShoppingBag, ShieldCheck, Wallet, Globe, 
   Phone, MapPin, Eye, Cpu, Coffee, Zap, Layers, Smartphone, 
-  Monitor, Rocket, Flame, Clock, Image as ImageIcon, Truck, Gift, MessageCircle, Bot
+  Monitor, Rocket, Flame, Clock, Image as ImageIcon, Truck, Gift, MessageCircle, Bot, AlertCircle,
+  Briefcase, UserCheck, Package
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { createStoreAction } from '@/app/actions/store';
 import { ThemeConfig, ThemePreset, CurrencyCode } from '@/lib/types';
 import { THEME_PRESETS } from '@/lib/theme-presets';
@@ -32,7 +34,8 @@ export default function CreateStorePage() {
   const [storeName, setStoreName] = useState('');
   const [slug, setSlug] = useState('');
   const [category, setCategory] = useState('أزياء وملابس وعبايات');
-  const [storeType, setStoreType] = useState('PHYSICAL');
+  const [storeType, setStoreType] = useState<'PHYSICAL' | 'SERVICE'>('PHYSICAL');
+  const [professionalTitle, setProfessionalTitle] = useState('');
   const [city, setCity] = useState('عدن');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -80,9 +83,69 @@ export default function CreateStorePage() {
     setCustomBorderRadius(preset.config.layout.borderRadius as any);
   };
 
+  // Validation Errors State
+  const [errors, setErrors] = useState<{
+    storeName?: string;
+    slug?: string;
+    phone?: string;
+    email?: string;
+    password?: string;
+  }>({});
+
+  const validateStep1 = () => {
+    const errs: Record<string, string> = {};
+
+    if (!storeName.trim()) {
+      errs.storeName = 'اسم المتجر حقل إلزامي لا يمكن تركه فارغاً.';
+    } else if (storeName.trim().length < 2) {
+      errs.storeName = 'اسم المتجر يجب أن يكون حرفين على الأقل.';
+    }
+
+    const cleanSlug = slug.trim().toLowerCase();
+    if (!cleanSlug) {
+      errs.slug = 'رابط المتجر (Slug) حقل إلزامي.';
+    } else if (!/^[a-z0-9-]+$/i.test(cleanSlug)) {
+      errs.slug = 'الرابط يجب أن يحتوي على أحرف وأرقام إنجليزية وشرطات (-) فقط بدون مسافات.';
+    }
+
+    const cleanPhone = phone.replace(/[\s-]/g, '');
+    if (!cleanPhone) {
+      errs.phone = 'رقم الواتساب / الهاتف إلزامي لاستقبال الطلبات والتواصل معك.';
+    } else if (cleanPhone.length < 8) {
+      errs.phone = 'يرجى كتابة رقم هاتف صالح لا يقل عن 8 أرقام.';
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim()) {
+      errs.email = 'البريد الإلكتروني الرسمي حقل إلزامي للدخول وإدارة المتجر.';
+    } else if (!emailRegex.test(email.trim())) {
+      errs.email = 'صيغة البريد الإلكتروني غير صحيحة (مثال: store@example.com).';
+    }
+
+    if (!password) {
+      errs.password = 'كلمة المرور مطلوبة لحماية لوحة تحكم متجرك.';
+    } else if (password.length < 4) {
+      errs.password = 'كلمة المرور يجب أن لا تقل عن 4 خانات.';
+    }
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleNextToStep2 = () => {
+    if (!validateStep1()) {
+      toast.error('يرجى تعبئة الحقول الإلزامية المطلوبة أولاً');
+      return;
+    }
+    setCurrentStep(2);
+  };
+
   // Generate slug automatically from name if user hasn't typed a custom slug
   const handleNameChange = (name: string) => {
     setStoreName(name);
+    if (errors.storeName) {
+      setErrors(prev => ({ ...prev, storeName: undefined }));
+    }
     // Simple transliteration/slugify
     const autoSlug = name
       .toLowerCase()
@@ -93,11 +156,20 @@ export default function CreateStorePage() {
     
     if (autoSlug.length > 2) {
       setSlug(autoSlug);
+      if (errors.slug) {
+        setErrors(prev => ({ ...prev, slug: undefined }));
+      }
     }
   };
 
   // Launch and create the store
   const handleLaunchStore = async () => {
+    if (!validateStep1()) {
+      setCurrentStep(1);
+      toast.error('يرجى تعبئة كافة بيانات المتجر الإلزامية بشكل صحيح أولاً');
+      return;
+    }
+
     setIsGenerating(true);
     setGenerationStage('تهيئة قاعدة البيانات السحابية...');
     setGenerationProgress(25);
@@ -173,6 +245,9 @@ export default function CreateStorePage() {
       const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-') || `store-${Math.floor(100 + Math.random() * 900)}`;
 
       finalThemeConfig.storeType = storeType;
+      if (storeType === 'SERVICE' && professionalTitle) {
+        finalThemeConfig.professionalTitle = professionalTitle;
+      }
 
       const res = await createStoreAction({
         name: storeName,
@@ -270,44 +345,165 @@ export default function CreateStorePage() {
                   معلومات وهوية متجرك الجديد 🏪
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                  أدخل اسم متجرك ونشاطك التجاري ليتم تهيئة إعدادات المتجر تلقائياً مع 14 يوماً فترة تجريبية مجانية.
+                  اختر نوع نشاطك وأدخل بياناتك الأساسية لتخصيص لوحة التحكم والواجهة تلقائياً مع 14 يوماً تجربة مجانية.
                 </p>
+              </div>
+
+              {/* Business Model Selection Cards */}
+              <div className="space-y-2">
+                <label className="block text-xs font-black text-slate-800 dark:text-slate-200">
+                  نوع المتجر أو البروفايل المهني <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Option 1: Physical Store */}
+                  <div
+                    onClick={() => {
+                      setStoreType('PHYSICAL');
+                      if (category.includes('محاماة') || category.includes('استشارات') || category.includes('عيادات')) {
+                        setCategory('أزياء وملابس وعبايات');
+                      }
+                      handleSelectPreset(THEME_PRESETS[0]);
+                      setCustomPrimaryColor('#0f2b48');
+                      setStoreServices(prev => ({ ...prev, delivery: true }));
+                    }}
+                    className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col justify-between ${
+                      storeType === 'PHYSICAL'
+                        ? 'border-brand-600 bg-brand-50/40 dark:bg-brand-950/30 shadow-md ring-2 ring-brand-500/20'
+                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-800/40 opacity-75 hover:opacity-100'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-brand-100 dark:bg-brand-900/50 flex items-center justify-center text-brand-600 mb-2">
+                        <Package className="w-5 h-5" />
+                      </div>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                        storeType === 'PHYSICAL' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300'
+                      }`}>
+                        {storeType === 'PHYSICAL' ? '✓ تم التحديد' : 'تحديد'}
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                        متجر سلع وبضائع ملموسة
+                      </h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        ملابس، إلكترونيات، مقاهي، عطور. يتضمن سلة تسوق، إدارة المخزون، والشحن والتوصيل.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Option 2: Service Profile */}
+                  <div
+                    onClick={() => {
+                      setStoreType('SERVICE');
+                      setCategory('محاماة واستشارات قانونية');
+                      const servicePreset = THEME_PRESETS.find(p => p.id === 'service-expert') || THEME_PRESETS[0];
+                      handleSelectPreset(servicePreset);
+                      setCustomPrimaryColor('#0d9488');
+                      setStoreServices(prev => ({ ...prev, delivery: false }));
+                    }}
+                    className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col justify-between ${
+                      storeType === 'SERVICE'
+                        ? 'border-teal-600 bg-teal-50/40 dark:bg-teal-950/30 shadow-md ring-2 ring-teal-500/20'
+                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-800/40 opacity-75 hover:opacity-100'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/50 flex items-center justify-center text-teal-600 mb-2">
+                        <Briefcase className="w-5 h-5" />
+                      </div>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                        storeType === 'SERVICE' ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300'
+                      }`}>
+                        {storeType === 'SERVICE' ? '✓ تم التحديد' : 'تحديد'}
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                        بروفايل خدمات مهنية واستشارات
+                      </h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        محامين، عيادات، مستشارين، مصممين. بروفايل مهني، حجز استشارات وطلب خدمات بدون شحن.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
-                    اسم المتجر التجاري <span className="text-red-500">*</span>
+                    {storeType === 'SERVICE' ? 'اسم المكتب / البروفايل المهني' : 'اسم المتجر التجاري'} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={storeName}
                     onChange={(e) => handleNameChange(e.target.value)}
-                    placeholder="مثال: متجر صنعاء للإلكترونيات"
-                    className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-500"
+                    placeholder={storeType === 'SERVICE' ? 'مثال: مكتب المحامي يوسف العدني، استشارات د. محمد' : 'مثال: متجر صنعاء للإلكترونيات'}
+                    className={`w-full px-4 py-3 rounded-2xl border ${
+                      errors.storeName
+                        ? 'border-red-500 bg-red-50/40 dark:bg-red-950/20 focus:ring-red-500'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-brand-500'
+                    } text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 transition-all`}
                   />
+                  {errors.storeName && (
+                    <p className="text-xs text-red-500 font-bold mt-1.5 flex items-center gap-1.5 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{errors.storeName}</span>
+                    </p>
+                  )}
                 </div>
+
+                {storeType === 'SERVICE' && (
+                  <div className="animate-fadeIn">
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                      المسمى المهني / التخصص (اختياري)
+                    </label>
+                    <input
+                      type="text"
+                      value={professionalTitle}
+                      onChange={(e) => setProfessionalTitle(e.target.value)}
+                      placeholder="مثال: محامي ومستشار قانوني معتمد، استشاري طب أطفال، مصمم واجهات رقمية..."
+                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
                     رابط المتجر السحابي (Slug URL) <span className="text-red-500">*</span>
                   </label>
-                  <div className="flex items-center rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs font-mono">
+                  <div
+                    className={`flex items-center rounded-2xl border ${
+                      errors.slug
+                        ? 'border-red-500 bg-red-50/40 dark:bg-red-950/20'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800'
+                    } px-3 py-2 text-xs font-mono transition-all`}
+                  >
                     <span className="text-slate-400">seen.store/store/</span>
                     <input
                       type="text"
                       value={slug}
                       placeholder="my-store"
-                      onChange={(e) => setSlug(e.target.value)}
+                      onChange={(e) => {
+                        setSlug(e.target.value);
+                        if (errors.slug) setErrors((prev) => ({ ...prev, slug: undefined }));
+                      }}
                       className="bg-transparent outline-none flex-1 text-brand-600 font-bold"
                     />
                   </div>
+                  {errors.slug && (
+                    <p className="text-xs text-red-500 font-bold mt-1.5 flex items-center gap-1.5 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{errors.slug}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
-                      تصنيف النشاط التجاري
+                      تصنيف النشاط
                     </label>
                     <input
                       type="text"
@@ -318,32 +514,33 @@ export default function CreateStorePage() {
                         setCategory(e.target.value);
                         if (e.target.value.includes('إلكترونيات')) handleSelectPreset(THEME_PRESETS[1]);
                         else if (e.target.value.includes('بن') || e.target.value.includes('أغذية')) handleSelectPreset(THEME_PRESETS[2]);
-                        else handleSelectPreset(THEME_PRESETS[0]);
+                        else if (e.target.value.includes('محاماة') || e.target.value.includes('استشارات')) {
+                          const sPreset = THEME_PRESETS.find(p => p.id === 'service-expert');
+                          if (sPreset) handleSelectPreset(sPreset);
+                        } else handleSelectPreset(THEME_PRESETS[0]);
                       }}
                       className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold outline-none"
                     />
-                    <datalist id="categories">
-                      <option value="أزياء وملابس وعبايات" />
-                      <option value="إلكترونيات وهواتف ذكية" />
-                      <option value="بن يماني ومقاهي وأغذية" />
-                      <option value="عطور ومستحضرات تجميل" />
-                      <option value="خدمات وبطاقات إلكترونية" />
-                      <option value="عام ومنوع" />
-                    </datalist>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
-                      نوع المنتجات والخدمات
-                    </label>
-                    <select
-                      value={storeType}
-                      onChange={(e) => setStoreType(e.target.value)}
-                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold outline-none"
-                    >
-                      <option value="PHYSICAL">منتجات ملموسة (تتطلب شحن وتوصيل)</option>
-                      <option value="DIGITAL">رقمية وخدمات (لا تتطلب شحن وتوصيل)</option>
-                    </select>
+                    {storeType === 'SERVICE' ? (
+                      <datalist id="categories">
+                        <option value="محاماة واستشارات قانونية" />
+                        <option value="عيادات واستشارات طبية" />
+                        <option value="تصميم وبرمجة وتقنية" />
+                        <option value="استشارات أعمال ومالية" />
+                        <option value="تدريب وتعليم وتطوير" />
+                        <option value="خدمات هندسية ومعمارية" />
+                        <option value="خدمات عامة وحرفية" />
+                      </datalist>
+                    ) : (
+                      <datalist id="categories">
+                        <option value="أزياء وملابس وعبايات" />
+                        <option value="إلكترونيات وهواتف ذكية" />
+                        <option value="بن يماني ومقاهي وأغذية" />
+                        <option value="عطور ومستحضرات تجميل" />
+                        <option value="هدايا وتحف وإكسسوارات" />
+                        <option value="عام ومنوع" />
+                      </datalist>
+                    )}
                   </div>
 
                   <div>
@@ -371,10 +568,23 @@ export default function CreateStorePage() {
                   <input
                     type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      if (errors.phone) setErrors((prev) => ({ ...prev, phone: undefined }));
+                    }}
                     placeholder="770 000 000"
-                    className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none"
+                    className={`w-full px-4 py-3 rounded-2xl border ${
+                      errors.phone
+                        ? 'border-red-500 bg-red-50/40 dark:bg-red-950/20 focus:ring-red-500'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-brand-500'
+                    } text-xs font-mono font-bold outline-none focus:ring-2 transition-all`}
                   />
+                  {errors.phone && (
+                    <p className="text-xs text-red-500 font-bold mt-1.5 flex items-center gap-1.5 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{errors.phone}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -384,10 +594,23 @@ export default function CreateStorePage() {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                    }}
                     placeholder="example@gmail.com"
-                    className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none"
+                    className={`w-full px-4 py-3 rounded-2xl border ${
+                      errors.email
+                        ? 'border-red-500 bg-red-50/40 dark:bg-red-950/20 focus:ring-red-500'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-brand-500'
+                    } text-xs font-mono font-bold outline-none focus:ring-2 transition-all`}
                   />
+                  {errors.email && (
+                    <p className="text-xs text-red-500 font-bold mt-1.5 flex items-center gap-1.5 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{errors.email}</span>
+                    </p>
+                  )}
                 </div>
                 
                 <div>
@@ -397,11 +620,24 @@ export default function CreateStorePage() {
                   <input
                     type="password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                    }}
                     placeholder="••••••••"
                     required
-                    className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold outline-none"
+                    className={`w-full px-4 py-3 rounded-2xl border ${
+                      errors.password
+                        ? 'border-red-500 bg-red-50/40 dark:bg-red-950/20 focus:ring-red-500'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-brand-500'
+                    } text-xs font-mono font-bold outline-none focus:ring-2 transition-all`}
                   />
+                  {errors.password && (
+                    <p className="text-xs text-red-500 font-bold mt-1.5 flex items-center gap-1.5 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{errors.password}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -420,8 +656,9 @@ export default function CreateStorePage() {
 
               <div className="pt-4 flex justify-end">
                 <button
-                  onClick={() => setCurrentStep(2)}
-                  className="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-brand-600/20"
+                  type="button"
+                  onClick={handleNextToStep2}
+                  className="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-brand-600/20 active:scale-95 transition-all"
                 >
                   <span>التالي: اختيار القالب والهوية 🎨</span>
                   <ArrowLeft className="w-4 h-4" />

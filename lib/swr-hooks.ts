@@ -7,12 +7,20 @@ export function useStoreData(slug: string) {
 }
 
 export function useStoreOrders(storeId?: string) {
-  const { data: orders, error, isLoading, mutate } = useSWR(storeId ? `orders-${storeId}` : null, () => getOrdersByStoreAction(storeId!), { revalidateOnFocus: false, dedupingInterval: 5000, refreshInterval: 5000 });
+  const { data: orders, error, isLoading, mutate } = useSWR(
+    storeId ? `orders-${storeId}` : null,
+    () => getOrdersByStoreAction(storeId!),
+    { revalidateOnFocus: true, dedupingInterval: 15000, refreshInterval: 30000 }
+  );
   return { orders, error, isLoading, mutate };
 }
 
 export function useStoreProducts(storeId?: string) {
-  const { data: products, error, isLoading, mutate } = useSWR(storeId ? `products-${storeId}` : null, () => getProductsByStoreAction(storeId!), { revalidateOnFocus: false, dedupingInterval: 30000 });
+  const { data: products, error, isLoading, mutate } = useSWR(
+    storeId ? `products-${storeId}` : null,
+    () => getProductsByStoreAction(storeId!),
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  );
   return { products, error, isLoading, mutate };
 }
 

@@ -7,56 +7,89 @@ export async function getStoreNotificationsAction(storeId: string) {
   try {
     await requireAuth();
 
-    // 1. Fetch Abandoned Carts
-    const abandonedCarts = await prisma.abandonedCart.findMany({
-      where: {
-        storeId,
-        recovered: false
-      }
-    });
-    
+    // Execute all notification queries in parallel via Promise.all to cut database latency
+    const [
+      abandonedCarts,
+      lowStockProducts,
+      store,
+      recentNewOrders,
+      newOrdersCount,
+      newReturnsCount
+    ] = await Promise.all([
+      // 1. Abandoned carts total & count (select only total to minimize payload)
+      prisma.abandonedCart.findMany({
+        where: {
+          storeId,
+          recovered: false
+        },
+        select: {
+          total: true
+        }
+      }),
+
+      // 2. Low Stock Products
+      prisma.product.findMany({
+        where: {
+          storeId,
+          stock: {
+            lte: 5
+          }
+        },
+        select: {
+          name: true,
+          stock: true
+        },
+        take: 5
+      }),
+
+      // 3. Store Details for Trial Calculation
+      prisma.store.findUnique({
+        where: { id: storeId },
+        select: { createdAt: true, planStatus: true, planTier: true }
+      }),
+
+      // 4. Recent New Orders
+      prisma.order.findMany({
+        where: {
+          storeId,
+          status: 'new'
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          orderNumber: true,
+          customerName: true,
+          customerPhone: true,
+          total: true,
+          currency: true,
+          createdAt: true,
+          items: true,
+        }
+      }),
+
+      // 5. Total New Orders Count
+      prisma.order.count({
+        where: {
+          storeId,
+          status: 'new'
+        }
+      }),
+
+      // 6. New Returns Count
+      prisma.orderReturn.count({
+        where: {
+          storeId,
+          status: 'pending_approval'
+        }
+      })
+    ]);
+
     const abandonedCount = abandonedCarts.length;
     let abandonedTotal = 0;
-    abandonedCarts.forEach(cart => {
-      abandonedTotal += cart.total;
-    });
-
-    // 2. Fetch Low Stock Products
-    const lowStockProducts = await prisma.product.findMany({
-      where: {
-        storeId,
-        stock: {
-          lte: prisma.product.fields.lowStockAlert
-        }
-      },
-      select: {
-        name: true,
-        stock: true
-      },
-      take: 5
-    });
-
-    // 3. Fetch Store Creation Date for Subscription Trial Calculation
-    const store = await prisma.store.findUnique({
-      where: { id: storeId },
-      select: { createdAt: true, planStatus: true, planTier: true }
-    });
-
-    // 4. Fetch New Orders Count
-    const newOrdersCount = await prisma.order.count({
-      where: {
-        storeId,
-        status: 'new'
-      }
-    });
-
-    // 5. Fetch New Returns Count
-    const newReturnsCount = await prisma.orderReturn.count({
-      where: {
-        storeId,
-        status: 'pending_approval'
-      }
-    });
+    for (let i = 0; i < abandonedCarts.length; i++) {
+      abandonedTotal += abandonedCarts[i].total;
+    }
 
     return {
       success: true,
@@ -68,6 +101,7 @@ export async function getStoreNotificationsAction(storeId: string) {
         lowStock: lowStockProducts,
         storeDetails: store,
         newOrdersCount,
+        recentNewOrders,
         newReturnsCount
       }
     };

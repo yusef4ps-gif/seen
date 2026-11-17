@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation';
 import { 
   ShoppingBag, Search, Filter, Eye, CheckCircle2, 
   Clock, AlertTriangle, Printer, Phone, MessageSquare, 
-  X, Check, DollarSign, Image as ImageIcon, ArrowLeft, RefreshCw
+  X, Check, DollarSign, Image as ImageIcon, ArrowLeft, RefreshCw,
+  CalendarCheck
 } from 'lucide-react';
 import { Store, Order, OrderStatus } from '@/lib/types';
 import { getStoreBySlugAction, getOrdersByStoreAction } from '@/app/actions/store';

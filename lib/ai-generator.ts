@@ -38,19 +38,38 @@ export function generateWhatsAppOrderMessage(orderData: {
   storeName: string;
   orderNumber: string;
   customerName: string;
+  customerPhone?: string;
   items: { name: string; quantity: number; priceFormatted: string }[];
   totalFormatted: string;
   discountFormatted?: string;
   paymentMethodName: string;
   city: string;
   address: string;
+  notes?: string;
+  paymentProofUrl?: string;
 }): string {
   let text = `🛍️ *طلب جديد من متجر ${orderData.storeName}*\n`;
   text += `━━━━━━━━━━━━━━━━━━━━━\n`;
   text += `📄 *رقم الطلب:* #${orderData.orderNumber}\n`;
   text += `👤 *اسم العميل:* ${orderData.customerName}\n`;
+  if (orderData.customerPhone) {
+    text += `📞 *رقم الهاتف:* ${orderData.customerPhone}\n`;
+  }
   text += `📍 *العنوان:* ${orderData.city} - ${orderData.address}\n`;
   text += `💳 *طريقة الدفع:* ${orderData.paymentMethodName}\n`;
+  
+  if (orderData.paymentProofUrl && orderData.paymentProofUrl.trim()) {
+    if (orderData.paymentProofUrl.startsWith('http://') || orderData.paymentProofUrl.startsWith('https://')) {
+      text += `🧾 *رابط إشعار التحويل:* ${orderData.paymentProofUrl.trim()}\n`;
+    } else {
+      text += `🧾 *إشعار التحويل:* تم إرفاق صورة السند/الإشعار في الطلب بنجاح 📎\n`;
+    }
+  }
+
+  if (orderData.notes && orderData.notes.trim()) {
+    text += `📝 *ملاحظات:* ${orderData.notes.trim()}\n`;
+  }
+
   text += `━━━━━━━━━━━━━━━━━━━━━\n`;
   text += `📦 *المنتجات المطلوبة:*\n`;
   
@@ -63,7 +82,7 @@ export function generateWhatsAppOrderMessage(orderData: {
     text += `🏷️ *الخصم:* -${orderData.discountFormatted}\n`;
   }
   text += `💰 *الإجمالي الكلي:* *${orderData.totalFormatted}*\n\n`;
-  text += `شكراً لتسوقكم معنا! يرجى تأكيد الطلب للبدء في التجهيز فوراً. ✨`;
+  text += `✨ تم تسجيل الطلب بنجاح عبر المتجر، نرجو تأكيد الطلب للبدء في التجهيز.`;
 
-  return encodeURIComponent(text);
+  return text;
 }

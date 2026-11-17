@@ -12,6 +12,7 @@ interface ImageUploaderProps {
   label?: string;
   maxSizeMB?: number;
   className?: string;
+  successSubtitle?: string;
 }
 
 export default function ImageUploader({
@@ -20,6 +21,7 @@ export default function ImageUploader({
   label = 'صورة المنتج',
   maxSizeMB = 5,
   className = '',
+  successSubtitle,
 }: ImageUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -192,7 +194,7 @@ export default function ImageUploader({
                   <span>تم رفع وضغط الصورة بنجاح (WebP)</span>
                 </div>
                 <div className="text-[10px] text-slate-400 mt-1">
-                  جاهزة للعرض السريع في المتجر
+                  {successSubtitle || 'جاهزة للعرض والحفظ السريع'}
                 </div>
 
                 <div className="flex items-center gap-2 mt-2">

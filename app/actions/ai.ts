@@ -162,10 +162,42 @@ export async function generateLegalPageAction(storeName: string, category: strin
     const title = titles[pageType] || pageType;
     return {
       success: true,
-      content: `### ${title} - متجر ${storeName}\n\nنرحب بكم في متجر **${storeName}** المتخصص في **${category}**.\n\nنلتزم بتقديم تجربة تسوق موثوقة وآمنة وفق أفضل الممارسات التجارية والمعايير المعتمدة في منصة سِين.\n\n1. **الالتزام والجودة:** نحرص على مطابقة كافة المنتجات للمواصفات المعروضة وتوفير الدعم اللازم لكافة العملاء.\n2. **الحقوق والواجبات:** يحق للعميل التواصل معنا عبر قنوات الدعم الرسمية لأي استفسار أو طلب مساعدة.\n3. **التواصل:** لأي استفسار يرجى التواصل مع فريق دعم المتجر عبر بيانات الاتصال الموضحة في المتجر.`
+      text: `### ${title} - متجر ${storeName}\n\nنرحب بكم في متجر **${storeName}** المتخصص في **${category}**.\n\nنلتزم بتقديم تجربة تسوق موثوقة وآمنة وفق أفضل الممارسات التجارية والمعايير المعتمدة في منصة سِين.\n\n1. **الالتزام والجودة:** نحرص على مطابقة كافة المنتجات للمواصفات المعروضة وتوفير الدعم اللازم لكافة العملاء.\n2. **الحقوق والواجبات:** يحق للعميل التواصل معنا عبر قنوات الدعم الرسمية لأي استفسار أو طلب مساعدة.\n3. **التواصل:** لأي استفسار يرجى التواصل مع فريق دعم المتجر عبر بيانات الاتصال الموضحة في المتجر.`
     };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
 }
+
+export async function checkAiAccessAction(storeSlug?: string) {
+  try {
+    const globalRow = await prisma.siteContent.findUnique({ where: { key: 'ai_enabled' } });
+    const globalEnabled = globalRow ? globalRow.value !== 'false' : true;
+    if (!globalEnabled) return { success: true, allowed: false };
+
+    if (!storeSlug) return { success: true, allowed: globalEnabled };
+
+    const store = await prisma.store.findUnique({ where: { slug: storeSlug } });
+    if (!store) return { success: true, allowed: globalEnabled };
+
+    if (store.themeConfig) {
+      try {
+        const cfg = JSON.parse(store.themeConfig);
+        if (cfg.hideAi === true) return { success: true, allowed: false };
+      } catch {}
+    }
+
+    if (store.storeServices) {
+      try {
+        const svcs = JSON.parse(store.storeServices);
+        if (svcs && svcs.aiAdvisor === false) return { success: true, allowed: false };
+      } catch {}
+    }
+
+    return { success: true, allowed: true };
+  } catch {
+    return { success: true, allowed: true };
+  }
+}
+
 

@@ -17,19 +17,39 @@ export async function createOrderAction(data: any) {
       return { success: false, error: 'المتجر موقوف مؤقتاً ولا يمكن استقبال طلبات جديدة حالياً.' };
     }
 
+    const effectiveStoreId = store?.id || data.storeId;
+
     // Determine the next sequential order number for this store
     const storeOrderCount = await prisma.order.count({
-      where: { storeId: store?.id || data.storeId }
+      where: { storeId: effectiveStoreId }
     });
     const sequentialOrderNumber = `#${1000 + storeOrderCount + 1}`;
+
+    // Resolve or link Customer in CRM
+    let linkedCustomerId = data.customerId || null;
+    if (!linkedCustomerId && effectiveStoreId && (data.customerPhone || data.customerEmail)) {
+      const cleanPhone = data.customerPhone ? data.customerPhone.replace(/[^0-9]/g, '') : '';
+      const existingCustomer = await prisma.customer.findFirst({
+        where: {
+          storeId: effectiveStoreId,
+          OR: [
+            ...(cleanPhone ? [{ phone: cleanPhone }, { phone: data.customerPhone }] : []),
+            ...(data.customerEmail ? [{ email: data.customerEmail }] : [])
+          ]
+        }
+      });
+      if (existingCustomer) {
+        linkedCustomerId = existingCustomer.id;
+      }
+    }
 
     // 1. Create the order
     const order = await prisma.order.create({
       data: {
         id: data.id,
         orderNumber: sequentialOrderNumber,
-        storeId: data.storeId,
-        customerId: data.customerId || null,
+        storeId: effectiveStoreId,
+        customerId: linkedCustomerId,
         customerName: data.customerName,
         customerPhone: data.customerPhone,
         city: data.city,
@@ -48,6 +68,18 @@ export async function createOrderAction(data: any) {
         notes: data.notes,
       }
     });
+
+    // Update Customer CRM statistics in database
+    if (linkedCustomerId) {
+      await prisma.customer.update({
+        where: { id: linkedCustomerId },
+        data: {
+          ordersCount: { increment: 1 },
+          totalSpent: { increment: Number(data.total) || 0 },
+          lastLoginAt: new Date()
+        }
+      }).catch(err => console.error('Failed to update customer CRM stats:', err));
+    }
 
     // 2. Decrement stock & increment sales count for each item
     if (data.items && Array.isArray(data.items)) {
@@ -73,7 +105,21 @@ export async function createOrderAction(data: any) {
       }
     }
 
-    // 3. Store info already fetched above if needed for notifications
+    // 3. Send email alert to store owner if email configured
+    if (store && store.email) {
+      sendEmail({
+        to: store.email,
+        subject: `🛒 طلب جديد في متجرك (${sequentialOrderNumber}) بقيمة ${data.total} ${data.currency}`,
+        html: EmailTemplates.MerchantNewOrder(
+          store.name,
+          sequentialOrderNumber,
+          data.customerName || 'عميل المتجر',
+          data.total,
+          data.currency,
+          `/merchant/${store.slug}/orders`
+        )
+      }).catch(err => console.error('Failed to send merchant order alert email:', err));
+    }
 
     // 4. Mark Abandoned Cart as recovered (if any)
     if (data.customerPhone) {
@@ -124,6 +170,26 @@ export async function updateOrderStatusAction(id: string, status: string) {
           });
         }
       }
+
+      // Decrement customer stats if cancelled
+      if (order.customerId) {
+        await prisma.customer.update({
+          where: { id: order.customerId },
+          data: {
+            ordersCount: { decrement: 1 },
+            totalSpent: { decrement: order.total }
+          }
+        }).catch(() => {});
+      }
+    } else if (order.status === 'cancelled' && status !== 'cancelled' && order.customerId) {
+      // Re-increment customer stats if un-cancelled
+      await prisma.customer.update({
+        where: { id: order.customerId },
+        data: {
+          ordersCount: { increment: 1 },
+          totalSpent: { increment: order.total }
+        }
+      }).catch(() => {});
     }
 
     const updatedOrder = await prisma.order.update({

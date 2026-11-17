@@ -4,13 +4,16 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { 
   Package, Plus, Search, Filter, Edit, Trash2, Sparkles, 
-  Bot, Image as ImageIcon, AlertTriangle, Check, X, Layers, Eye, DollarSign, Download, FileSpreadsheet, Database, RefreshCw
+  Bot, Image as ImageIcon, AlertTriangle, Check, X, Layers, Eye, DollarSign, Download, FileSpreadsheet, Database, RefreshCw,
+  Briefcase
 } from 'lucide-react';
 import { formatCurrency, convertCurrency } from '@/lib/currency-engine';
 import { Store, Product, ProductVariant } from '@/lib/types';
 import { generateAIProductDescription } from '@/lib/ai-generator';
 import ImageUploader from '@/components/ImageUploader';
-import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
+import { getStoreBySlugAction, getProductsByStoreAction, getPlansAction } from '@/app/actions/store';
+import { getSiteContentAction } from '@/app/actions/content';
+import { isAiAllowedForStore } from '@/lib/ai-access';
 import { createProductAction, updateProductAction, deleteProductAction } from '@/app/actions/product';
 import { useStoreData, useStoreProducts } from '@/lib/swr-hooks';
 import { bulkCreateProductsAction } from '@/app/actions/importProducts';
@@ -27,6 +30,35 @@ export default function MerchantProductsPage() {
   const { products = [], isLoading, mutate } = useStoreProducts(store?.id);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+
+  const isServiceStore = (() => {
+    if (!store) return false;
+    const cfg: any = typeof store.themeConfig === 'string'
+      ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })()
+      : store.themeConfig;
+    return cfg?.storeType === 'SERVICE' || cfg?.presetId === 'service-expert';
+  })();
+
+  // AI Access State
+  const [isAiEnabled, setIsAiEnabled] = useState(true);
+
+  useEffect(() => {
+    async function checkAi() {
+      if (!store) return;
+      try {
+        const [dbPlans, siteContentRes] = await Promise.all([
+          getPlansAction(),
+          getSiteContentAction()
+        ]);
+        const globalAiEnabled = siteContentRes?.dictionary?.['ai_enabled'];
+        const allowed = isAiAllowedForStore(store as any, dbPlans || [], globalAiEnabled);
+        setIsAiEnabled(allowed);
+      } catch (e) {
+        // fallback
+      }
+    }
+    checkAi();
+  }, [store]);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -196,13 +228,17 @@ export default function MerchantProductsPage() {
     setEditingProductId(null);
     setName('');
     setDescription('');
-    setMainCategory('جوالات');
+    setMainCategory(isServiceStore ? 'استشارات وخدمات' : 'عام');
     setSubCategory('');
-    setPrice(50);
+    setPrice(isServiceStore ? 100 : 50);
     setComparePrice(undefined);
-    setImageUrl('https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80');
-    setStock(20);
-    setLowStockAlert(5);
+    setImageUrl(
+      isServiceStore
+        ? 'https://images.unsplash.com/photo-1450133064473-71024230f91b?w=800&auto=format&fit=crop&q=80'
+        : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80'
+    );
+    setStock(isServiceStore ? 9999 : 20);
+    setLowStockAlert(isServiceStore ? 0 : 5);
     setIsFeatured(false);
     setVariants([]);
     setIsModalOpen(true);
@@ -366,30 +402,37 @@ export default function MerchantProductsPage() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-            إدارة المنتجات والتصنيفات
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+            {isServiceStore ? <Briefcase className="w-6 h-6 text-teal-600" /> : <Package className="w-6 h-6 text-brand-600" />}
+            <span>{isServiceStore ? 'إدارة الخدمات والاستشارات' : 'إدارة المنتجات والتصنيفات'}</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            إضافة وتعديل المنتجات، خيارات الألوان والمقاسات، وتوليد الأوصاف بالذكاء الاصطناعي
+            {isServiceStore 
+              ? 'إضافة وتعديل باقات الخدمات، الاستشارات، وتحديد الأسعار وتفاصيل المواعيد'
+              : 'إضافة وتعديل المنتجات، خيارات الألوان والمقاسات، وتوليد الأوصاف بالذكاء الاصطناعي'}
           </p>
         </div>
 
         
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-all shadow-sm flex items-center justify-center gap-1.5"
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">استيراد المنتجات</span>
-          </button>
+          {!isServiceStore && (
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-all shadow-sm flex items-center justify-center gap-1.5"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">استيراد المنتجات</span>
+            </button>
+          )}
 
           <button
             onClick={handleOpenNewModal}
-          className="px-4 py-2.5 rounded-xl font-bold text-xs bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-md shadow-brand-600/25 flex items-center justify-center gap-1.5"
-        >
-          <Plus className="w-4 h-4" />
-          <span>إضافة منتج جديد</span>
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs ${
+              isServiceStore ? 'bg-teal-600 hover:bg-teal-500 shadow-teal-600/25' : 'bg-brand-600 hover:bg-brand-500 shadow-brand-600/25'
+            } text-white transition-all shadow-md flex items-center justify-center gap-1.5`}
+          >
+            <Plus className="w-4 h-4" />
+            <span>{isServiceStore ? 'إضافة خدمة جديدة' : 'إضافة منتج جديد'}</span>
           </button>
         </div>
       </div>
@@ -547,8 +590,12 @@ export default function MerchantProductsPage() {
             
             <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Package className="w-5 h-5 text-brand-600" />
-                <span>{editingProductId ? 'تعديل المنتج' : 'إضافة منتج جديد'}</span>
+                {isServiceStore ? <Briefcase className="w-5 h-5 text-teal-600" /> : <Package className="w-5 h-5 text-brand-600" />}
+                <span>
+                  {editingProductId 
+                    ? (isServiceStore ? 'تعديل الخدمة' : 'تعديل المنتج') 
+                    : (isServiceStore ? 'إضافة خدمة / استشارة جديدة' : 'إضافة منتج جديد')}
+                </span>
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -563,12 +610,12 @@ export default function MerchantProductsPage() {
               {/* Product Name */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  اسم المنتج <span className="text-red-500">*</span>
+                  {isServiceStore ? 'اسم الخدمة / الاستشارة' : 'اسم المنتج'} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="مثال: فستان حرير ملكي بتطريز يدوي"
+                  placeholder={isServiceStore ? "مثال: استشارة قانونية تجارية أو جلسة فحص واستشارة" : "مثال: فستان حرير ملكي بتطريز يدوي"}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-brand-500"
@@ -579,21 +626,23 @@ export default function MerchantProductsPage() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    وصف المنتج التسويقي
+                    {isServiceStore ? 'تفاصيل ومحاور الخدمة' : 'وصف المنتج التسويقي'}
                   </label>
-                  <button
-                    type="button"
-                    onClick={handleGenerateAI}
-                    disabled={isGeneratingAI}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white flex items-center gap-1 shadow-xs transition-all disabled:opacity-50"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>{isGeneratingAI ? 'جاري التوليد...' : 'توليد الوصف بالذكاء الاصطناعي ✨'}</span>
-                  </button>
+                  {isAiEnabled && (
+                    <button
+                      type="button"
+                      onClick={handleGenerateAI}
+                      disabled={isGeneratingAI}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white flex items-center gap-1 shadow-xs transition-all disabled:opacity-50"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>{isGeneratingAI ? 'جاري التوليد...' : 'توليد الوصف بالذكاء الاصطناعي ✨'}</span>
+                    </button>
+                  )}
                 </div>
                 <textarea
                   rows={3}
-                  placeholder="اكتب وصفاً جذاباً أو اضغط زر التوليد بالذكاء الاصطناعي..."
+                  placeholder={isAiEnabled ? (isServiceStore ? "اكتب تفاصيل الخدمة أو اضغط زر التوليد بالذكاء الاصطناعي..." : "اكتب وصفاً جذاباً أو اضغط زر التوليد بالذكاء الاصطناعي...") : (isServiceStore ? "اكتب محاور وتفاصيل الخدمة..." : "اكتب وصفاً جذاباً للمنتج...")}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-brand-500"
@@ -604,12 +653,12 @@ export default function MerchantProductsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    القسم الرئيسي <span className="text-red-500">*</span>
+                    {isServiceStore ? 'مجال / تصنيف الخدمة' : 'القسم الرئيسي'} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="مثال: جوالات، عطور، لابتوبات"
+                    placeholder={isServiceStore ? "مثال: استشارات قانونية، جلسات تدريب" : "مثال: جوالات، عطور، لابتوبات"}
                     value={mainCategory}
                     onChange={(e) => setMainCategory(e.target.value)}
                     className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
@@ -618,11 +667,11 @@ export default function MerchantProductsPage() {
                 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    القسم الفرعي / الماركة (اختياري)
+                    {isServiceStore ? 'الفرع أو التخصص الدقيق' : 'القسم الفرعي / الماركة (اختياري)'}
                   </label>
                   <input
                     type="text"
-                    placeholder="مثال: سامسونج، آبل، شانيل"
+                    placeholder={isServiceStore ? "مثال: شركات وعقود، استشارات فردية" : "مثال: سامسونج، آبل، شانيل"}
                     value={subCategory}
                     onChange={(e) => setSubCategory(e.target.value)}
                     className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
@@ -631,7 +680,7 @@ export default function MerchantProductsPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    السعر ({store?.baseCurrency}) <span className="text-red-500">*</span>
+                    {isServiceStore ? `أتعاب / سعر الخدمة (${store?.baseCurrency})` : `السعر (${store?.baseCurrency})`} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -669,37 +718,39 @@ export default function MerchantProductsPage() {
               <ImageUploader
                 value={imageUrl}
                 onChange={setImageUrl}
-                label="صورة المنتج الرئيسية (سحب وإفلات أو اختيار من الجهاز)"
+                label={isServiceStore ? "صورة معبرة أو بنر تعريفي للخدمة" : "صورة المنتج الرئيسية (سحب وإفلات أو اختيار من الجهاز)"}
               />
 
-              {/* Stock and Alert Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    الكمية المتوفرة في المخزون
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={stock}
-                    onChange={(e) => setStock(parseInt(e.target.value) || 0)}
-                    className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
-                  />
-                </div>
+              {/* Stock and Alert Row (Only for Physical Stores) */}
+              {!isServiceStore && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      الكمية المتوفرة في المخزون
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={stock}
+                      onChange={(e) => setStock(parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    تنبيه انخفاض المخزون عند
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={lowStockAlert}
-                    onChange={(e) => setLowStockAlert(parseInt(e.target.value) || 5)}
-                    className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
-                  />
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      تنبيه انخفاض المخزون عند
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={lowStockAlert}
+                      onChange={(e) => setLowStockAlert(parseInt(e.target.value) || 5)}
+                      className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Variants Matrix Section */}
               <div className="pt-2 border-t border-slate-200 dark:border-slate-800">

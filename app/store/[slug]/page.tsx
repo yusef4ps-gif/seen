@@ -9,7 +9,8 @@ import {
   MapPin, Clock, ShieldCheck, X, Plus, Minus, Send, 
   Wallet, Image as ImageIcon, QrCode, ExternalLink, Flame, 
   Truck, RefreshCw, Star, Tag, Ticket, Cpu, Zap, Award, Coffee, Heart,
-  Facebook, Instagram, Twitter, Youtube, Linkedin, MessageCircle, Mail, User, Settings, Lock
+  Facebook, Instagram, Twitter, Youtube, Linkedin, MessageCircle, Mail, User, Settings, Lock,
+  Briefcase, CalendarCheck
 } from 'lucide-react';
 import { Store, Product, ProductVariant, OrderItem, CurrencyCode, PaymentMethodType, ThemeConfig } from '@/lib/types';
 import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
@@ -24,6 +25,8 @@ import { formatCurrency, convertCurrency, DEFAULT_CURRENCIES } from '@/lib/curre
 import { generateWhatsAppOrderMessage } from '@/lib/ai-generator';
 import { THEME_PRESETS } from '@/lib/theme-presets';
 import toast from 'react-hot-toast';
+import WhatsAppSupportButton, { formatWhatsAppUrl } from '@/components/WhatsAppSupportButton';
+import ImageUploader from '@/components/ImageUploader';
 
 function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, legacyBannerInterval, secondaryColor }: any) {
   const slides = (section.settings.heroSlides && section.settings.heroSlides.length > 0)
@@ -169,6 +172,87 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
     );
   }
 
+  if (presetId === 'service-expert') {
+    const profTitle = typeof store.themeConfig === 'string'
+      ? (() => { try { return JSON.parse(store.themeConfig).professionalTitle; } catch { return ''; } })()
+      : store.themeConfig?.professionalTitle;
+
+    return (
+      <section className="relative w-full bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white py-12 sm:py-20 px-4 sm:px-8 overflow-hidden">
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#0d9488_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 relative z-10 text-right">
+          
+          <div className="flex-1 space-y-4">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-teal-500/15 border border-teal-500/30 text-teal-300 text-xs font-bold backdrop-blur-md">
+              <Briefcase className="w-4 h-4 text-teal-400" />
+              <span>بروفايل مهني واستشارات معتمدة</span>
+            </div>
+            
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white drop-shadow-md">
+              {store.name}
+            </h1>
+
+            {profTitle && (
+              <div className="text-sm sm:text-base font-bold text-teal-300 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-teal-400" />
+                <span>{profTitle}</span>
+              </div>
+            )}
+
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
+              {subtitle || store.description || 'نقدم خدمات واستشارات مهنية متخصصة بأعلى معايير الجودة والسرية والاحترافية لخدمة عملائنا الكرام.'}
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <a
+                href="#products-grid"
+                className="px-6 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-teal-600/30 transition-all flex items-center gap-2 active:scale-95"
+              >
+                <CalendarCheck className="w-4 h-4" />
+                <span>طلب خدمة / حجز موعد 📅</span>
+              </a>
+
+              {store.whatsapp && (
+                <a
+                  href={`https://wa.me/${store.whatsapp.replace(/[^0-9]/g, '')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-5 py-3 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 font-bold text-xs sm:text-sm transition-all flex items-center gap-2"
+                >
+                  <MessageCircle className="w-4 h-4 text-emerald-400" />
+                  <span>تواصل واتساب مباشر</span>
+                </a>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-4 pt-3 text-[11px] text-slate-400 font-medium">
+              <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-teal-400" /> خصوصية وسرية تامة</span>
+              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-teal-400" /> دقة في المواعيد</span>
+              <span className="flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-teal-400" /> خبرة معتمدة</span>
+            </div>
+          </div>
+
+          {/* Profile Card / Avatar */}
+          <div className="relative shrink-0">
+            <div className="w-36 h-36 sm:w-48 sm:h-48 rounded-3xl overflow-hidden border-4 border-teal-500/40 shadow-2xl bg-slate-800 relative group">
+              <img
+                src={store.logo || (slides[0]?.image) || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80'}
+                alt={store.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent" />
+            </div>
+            <div className="absolute -bottom-2 -right-2 px-3 py-1 rounded-full bg-teal-600 text-white text-[10px] font-black shadow-lg border border-teal-400 flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3" />
+              <span>موثّق</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    );
+  }
+
   if (presetId === 'minimal-clean') {
     return (
       <section className="max-w-7xl mx-auto px-3 sm:px-8 pt-4">
@@ -254,6 +338,7 @@ export default function CustomerStorefrontPage() {
     try { return typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig) : store.themeConfig; } catch { return {}; }
   }, [store?.themeConfig]);
   const storeType = parsedThemeConfigForType.storeType || 'PHYSICAL';
+  const isServiceStore = storeType === 'SERVICE' || storeType === 'DIGITAL' || parsedThemeConfigForType.presetId === 'service-expert';
   
   const [customerEmail, setCustomerEmail] = useState('');
 
@@ -562,8 +647,8 @@ export default function CustomerStorefrontPage() {
     }
   }
 
-  const selectedShipping = storeType === 'DIGITAL' ? null : store.shippingMethods.find(m => m.isActive && (deliveryType === 'pickup' ? m.isPickup : !m.isPickup));
-  let shippingCostConverted = storeType === 'DIGITAL' ? 0 : (deliveryType === 'pickup' ? 0 : (selectedShipping?.cost || 3000));
+  const selectedShipping = isServiceStore ? null : store.shippingMethods.find(m => m.isActive && (deliveryType === 'pickup' ? m.isPickup : !m.isPickup));
+  let shippingCostConverted = isServiceStore ? 0 : (deliveryType === 'pickup' ? 0 : (selectedShipping?.cost || 3000));
   
   if (appliedCoupon?.type === 'shipping') {
     shippingCostConverted = 0;
@@ -628,8 +713,8 @@ export default function CustomerStorefrontPage() {
       customerName: finalName,
       customerPhone: finalPhone,
       customerEmail: finalEmail,
-      city: storeType === 'DIGITAL' ? 'تسليم رقمي' : (city || store.city),
-      address: storeType === 'DIGITAL' ? 'تسليم إلكتروني (لا يوجد عنوان)' : (deliveryType === 'pickup' ? 'استلام من الفرع' : address),
+      city: isServiceStore ? 'خدمة واستشارة مهنية' : (city || store.city),
+      address: isServiceStore ? 'تقديم واستلام الخدمة مباشرة' : (deliveryType === 'pickup' ? 'استلام من الفرع' : address),
       deliveryType,
       items: cart,
       subtotal: cartSubtotalConverted,
@@ -673,14 +758,45 @@ export default function CustomerStorefrontPage() {
       }));
 
       const activeAccount = store.paymentAccounts.find(a => a.type === selectedPayment);
-      const paymentName = activeAccount?.name || selectedPayment;
+      const paymentName = activeAccount?.name || (selectedPayment === 'cod' ? 'الدفع عند الاستلام (COD)' : selectedPayment);
+
+      // Build WhatsApp order message for the store owner
+      const whatsAppMessage = generateWhatsAppOrderMessage({
+        storeName: store.name,
+        orderNumber: newOrder?.orderNumber || '---',
+        customerName: finalName,
+        customerPhone: finalPhone,
+        items: formattedItems,
+        totalFormatted: formatCurrency(cartTotalConverted, activeCurrency),
+        discountFormatted: appliedCoupon && discountConverted > 0 ? formatCurrency(discountConverted, activeCurrency) : undefined,
+        paymentMethodName: paymentName,
+        city: isServiceStore ? 'خدمة واستشارة مهنية' : (city || store.city || 'اليمن'),
+        address: isServiceStore ? 'تقديم واستلام الخدمة مباشرة' : (deliveryType === 'pickup' ? 'استلام من الفرع' : address),
+        notes,
+        paymentProofUrl: paymentProofUrl || undefined,
+      });
+
+      const waUrl = formatWhatsAppUrl(
+        store.whatsapp || store.phone,
+        store.name,
+        whatsAppMessage
+      );
+
+      // Automatically open WhatsApp directly for the store owner
+      if (waUrl && typeof window !== 'undefined') {
+        try {
+          window.open(waUrl, '_blank');
+        } catch (e) {
+          console.error('Failed to auto-open WhatsApp:', e);
+        }
+      }
 
       setCart([]);
       setIsCheckoutOpen(false);
       setIsSubmittingOrder(false);
 
-      // Show success modal instead of redirecting
-      setOrderSuccess(newOrder);
+      // Show success modal with WhatsApp action button
+      setOrderSuccess({ ...(newOrder || {}), waUrl });
       
       // router.push(`/store/${store.slug}/track/${newOrder?.id}`); // Removed redirect
     } else {
@@ -841,25 +957,40 @@ export default function CustomerStorefrontPage() {
                 </button>
               )}
 
-              {/* Cart Drawer Trigger Button */}
-              <button
-                onClick={() => setIsCartOpen(true)}
-                className={`relative px-3 py-1.5 sm:px-4 sm:py-2.5 font-bold text-xs sm:text-sm text-white flex items-center gap-1.5 shadow-md active:scale-95 transition-all ${
-                  presetId === 'minimal-clean' ? 'rounded-none border-2 border-black bg-black text-white' : ''
-                }`}
-                style={{ 
-                  backgroundColor: presetId === 'minimal-clean' ? '#000000' : primaryColor,
-                  borderRadius: presetId === 'minimal-clean' ? '0px' : buttonRadiusClass === 'rounded-full' ? '9999px' : '14px',
-                }}
-              >
-                <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">السلة</span>
-                {cart.length > 0 && (
-                  <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white text-slate-950 text-[10px] sm:text-xs font-black flex items-center justify-center shadow-xs">
-                    {cart.reduce((s, i) => s + i.quantity, 0)}
-                  </span>
-                )}
-              </button>
+              {/* Cart / Booking Drawer Trigger Button */}
+              {isServiceStore ? (
+                <button
+                  onClick={() => setIsCheckoutOpen(true)}
+                  className="relative px-3 py-1.5 sm:px-4 sm:py-2.5 font-bold text-xs sm:text-sm text-white flex items-center gap-1.5 shadow-md active:scale-95 transition-all rounded-2xl bg-teal-600 hover:bg-teal-500"
+                >
+                  <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">حجز خدمة</span>
+                  {cart.length > 0 && (
+                    <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white text-teal-900 text-[10px] sm:text-xs font-black flex items-center justify-center shadow-xs">
+                      {cart.reduce((s, i) => s + i.quantity, 0)}
+                    </span>
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsCartOpen(true)}
+                  className={`relative px-3 py-1.5 sm:px-4 sm:py-2.5 font-bold text-xs sm:text-sm text-white flex items-center gap-1.5 shadow-md active:scale-95 transition-all ${
+                    presetId === 'minimal-clean' ? 'rounded-none border-2 border-black bg-black text-white' : ''
+                  }`}
+                  style={{ 
+                    backgroundColor: presetId === 'minimal-clean' ? '#000000' : primaryColor,
+                    borderRadius: presetId === 'minimal-clean' ? '0px' : buttonRadiusClass === 'rounded-full' ? '9999px' : '14px',
+                  }}
+                >
+                  <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">السلة</span>
+                  {cart.length > 0 && (
+                    <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white text-slate-950 text-[10px] sm:text-xs font-black flex items-center justify-center shadow-xs">
+                      {cart.reduce((s, i) => s + i.quantity, 0)}
+                    </span>
+                  )}
+                </button>
+              )}
 
             </div>
 
@@ -1001,21 +1132,21 @@ export default function CustomerStorefrontPage() {
             // --- SECTION: PRODUCTS GRID (Visually different per template) ---
             if (section.type === 'products_grid') {
               return (
-                <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 space-y-4">
+                <section id="products-grid" key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 space-y-4 scroll-mt-24">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm sm:text-xl font-black">
-                      {section.settings.bannerTitle || 'المنتجات المميزة'}
+                      {isServiceStore ? (section.settings.bannerTitle || 'الخدمات والاستشارات المتاحة') : (section.settings.bannerTitle || 'المنتجات المميزة')}
                     </h3>
                     <span className="text-xs font-bold" style={{ color: primaryColor }}>
-                      {filteredProducts.length} منتج متوفر
+                      {filteredProducts.length} {isServiceStore ? 'خدمة متاحة' : 'منتج متوفر'}
                     </span>
                   </div>
 
                   {filteredProducts.length === 0 ? (
                     <div className="p-12 text-center bg-white dark:bg-slateDark-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
-                      <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto" />
-                      <h3 className="text-sm font-bold">لا توجد منتجات مطابقة للبحث</h3>
-                      <p className="text-xs text-slate-500">جرب البحث بكلمات أخرى أو اختر تصنيفاً مختلفاً.</p>
+                      {isServiceStore ? <Briefcase className="w-10 h-10 text-slate-300 mx-auto" /> : <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto" />}
+                      <h3 className="text-sm font-bold">{isServiceStore ? 'لا توجد خدمات متاحة حالياً' : 'لا توجد منتجات مطابقة للبحث'}</h3>
+                      <p className="text-xs text-slate-500">{isServiceStore ? 'سيتم إضافة باقات الاستشارات والخدمات قريباً.' : 'جرب البحث بكلمات أخرى أو اختر تصنيفاً مختلفاً.'}</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-6">
@@ -1105,7 +1236,72 @@ export default function CustomerStorefrontPage() {
                           );
                         }
 
-                        // 3. Swiss Minimalist Card
+                        // 3. Executive Professional Service Card
+                        if (isServiceStore || presetId === 'service-expert') {
+                          return (
+                            <div
+                              key={prod.id}
+                              className="touch-card bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500 rounded-3xl overflow-hidden shadow-sm hover:shadow-md flex flex-col justify-between text-right transition-all group col-span-2 sm:col-span-1"
+                            >
+                              <div 
+                                onClick={() => {
+                                  setSelectedProduct(prod);
+                                  setSelectedVariant(prod.variants && prod.variants.length > 0 ? prod.variants[0] : null);
+                                  setItemQuantity(1);
+                                }}
+                                className="relative h-44 sm:h-48 w-full overflow-hidden bg-slate-100 dark:bg-slate-800 cursor-pointer"
+                              >
+                                <img 
+                                  src={prod.images[0] || 'https://images.unsplash.com/photo-1450133064473-71024230f91b?w=800'} 
+                                  alt={prod.name} 
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                                />
+                                <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-teal-600 text-white text-[10px] font-black shadow-md flex items-center gap-1">
+                                  <Briefcase className="w-3 h-3" />
+                                  <span>خدمة مهنية</span>
+                                </div>
+                              </div>
+
+                              <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
+                                <div className="space-y-1.5">
+                                  <div className="text-[11px] font-bold text-teal-600 dark:text-teal-400">
+                                    {prod.category}
+                                  </div>
+                                  <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white line-clamp-2">
+                                    {prod.name}
+                                  </h4>
+                                  {prod.description && (
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                                      {prod.description}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-bold text-slate-400">أتعاب الخدمة:</span>
+                                    <span className="text-sm sm:text-base font-black text-teal-600 dark:text-teal-400 font-mono">
+                                      {getFormattedPrice(prod.price)}
+                                    </span>
+                                  </div>
+
+                                  <button
+                                    onClick={() => {
+                                      handleAddToCart(prod, undefined, 1);
+                                      setIsCheckoutOpen(true);
+                                    }}
+                                    className="w-full py-2.5 sm:py-3 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-teal-600/20 active:scale-95 transition-all"
+                                  >
+                                    <CalendarCheck className="w-4 h-4" />
+                                    <span>طلب الخدمة / حجز موعد 📅</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // 4. Swiss Minimalist Card
                         if (presetId === 'minimal-clean') {
                           return (
                             <div
@@ -1562,8 +1758,8 @@ export default function CustomerStorefrontPage() {
             
             <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
               <h3 className="text-xs sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-brand-600" />
-                <span>إتمام الطلب في خطوة واحدة</span>
+                {isServiceStore ? <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-teal-600" /> : <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-brand-600" />}
+                <span>{isServiceStore ? 'تأكيد حجز الخدمة والاستشارة 📅' : 'إتمام الطلب في خطوة واحدة'}</span>
               </h3>
               <button
                 onClick={() => setIsCheckoutOpen(false)}
@@ -1577,7 +1773,7 @@ export default function CustomerStorefrontPage() {
               
               <div className="space-y-2.5">
                 <div className="font-bold text-slate-900 dark:text-white text-xs">
-                  1. معلومات المستلم والتوصيل:
+                  {isServiceStore ? '1. بيانات العميل والمستفيد:' : '1. معلومات المستلم والتوصيل:'}
                 </div>
 
                 {(!currentCustomer || !currentCustomer.name || !currentCustomer.phone) && (
@@ -1600,7 +1796,7 @@ export default function CustomerStorefrontPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                      الاسم الكامل
+                      الاسم الكامل <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -1613,7 +1809,7 @@ export default function CustomerStorefrontPage() {
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                      رقم الهاتف (للتواصل)
+                      رقم الهاتف / الواتساب <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="tel"
@@ -1625,61 +1821,80 @@ export default function CustomerStorefrontPage() {
                       className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none text-left"
                     />
                   </div>
-                </div>                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                      المدينة
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                      طريقة الاستلام
-                    </label>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setDeliveryType('delivery')}
-                        className={`flex-1 py-2 rounded-xl text-[11px] font-bold ${
-                          deliveryType === 'delivery' ? 'text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'
-                        }`}
-                        style={{ backgroundColor: deliveryType === 'delivery' ? primaryColor : undefined }}
-                      >
-                        توصيل للمنزل
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeliveryType('pickup')}
-                        className={`flex-1 py-2 rounded-xl text-[11px] font-bold ${
-                          deliveryType === 'pickup' ? 'text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'
-                        }`}
-                        style={{ backgroundColor: deliveryType === 'pickup' ? primaryColor : undefined }}
-                      >
-                        استلام من الفرع
-                      </button>
-                    </div>
-                  </div>
                 </div>
 
-                {deliveryType === 'delivery' && (
+                {!isServiceStore ? (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                          المدينة
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                          طريقة الاستلام
+                        </label>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setDeliveryType('delivery')}
+                            className={`flex-1 py-2 rounded-xl text-[11px] font-bold ${
+                              deliveryType === 'delivery' ? 'text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'
+                            }`}
+                            style={{ backgroundColor: deliveryType === 'delivery' ? primaryColor : undefined }}
+                          >
+                            توصيل للمنزل
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeliveryType('pickup')}
+                            className={`flex-1 py-2 rounded-xl text-[11px] font-bold ${
+                              deliveryType === 'pickup' ? 'text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'
+                            }`}
+                            style={{ backgroundColor: deliveryType === 'pickup' ? primaryColor : undefined }}
+                          >
+                            استلام من الفرع
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {deliveryType === 'delivery' && (
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                          العنوان بالتفصيل
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="مثال: المعلا - الشارع الرئيسي بجانب بنك الكريمي"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                        />
+                      </div>
+                    )}
+                  </>
+                ) : (
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                      العنوان بالتفصيل
+                      موعد الحجز المفضل أو تفاصيل الاستشارة (اختياري)
                     </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="مثال: المعلا - الشارع الرئيسي بجانب بنك الكريمي"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                    <textarea
+                      rows={2}
+                      placeholder="مثال: أرغب بالحجز يوم الأحد الساعة 4 عصراً، أو تفاصيل الاستشارة..."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
                     />
                   </div>
                 )}
@@ -1691,7 +1906,7 @@ export default function CustomerStorefrontPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  {store.paymentAccounts.filter(a => a.isActive && !(storeType === 'DIGITAL' && a.type === 'cod')).map((acc) => (
+                  {store.paymentAccounts.filter(a => a.isActive && !(isServiceStore && a.type === 'cod')).map((acc) => (
                     <button
                       key={acc.id}
                       type="button"
@@ -1730,17 +1945,18 @@ export default function CustomerStorefrontPage() {
                             </p>
                           </div>
 
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                              صورة إشعار التحويل:
-                            </label>
-                            <input
-                              type="url"
-                              placeholder="https://... (رابط صورة السند أو إشعار البنك)"
+                          <div className="pt-1">
+                            <ImageUploader
                               value={paymentProofUrl}
-                              onChange={(e) => setPaymentProofUrl(e.target.value)}
-                              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                              onChange={(url) => setPaymentProofUrl(url)}
+                              label="صورة إشعار أو سند التحويل (اختياري)"
+                              successSubtitle="جاهز للإرسال والتأكيد مع الطلب"
+                              maxSizeMB={5}
                             />
+                            <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+                              <span>💡</span>
+                              <span>إرفاق الصورة اختياري؛ يمكنك إرفاقها لتسريع التحقق أو إرسالها لاحقاً عبر واتساب.</span>
+                            </p>
                           </div>
                         </>
                       );
@@ -1800,12 +2016,14 @@ export default function CustomerStorefrontPage() {
                     <span className="font-bold">- {formatCurrency(discountConverted, activeCurrency)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500">رسوم التوصيل:</span>
-                  <span className="font-bold">
-                    {deliveryType === 'pickup' ? 'مجاني (استلام)' : appliedCoupon?.type === 'shipping' ? 'مجاني بالكوبون' : formatCurrency(shippingCostConverted, activeCurrency)}
-                  </span>
-                </div>
+                {!isServiceStore && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">رسوم التوصيل:</span>
+                    <span className="font-bold">
+                      {deliveryType === 'pickup' ? 'مجاني (استلام)' : appliedCoupon?.type === 'shipping' ? 'مجاني بالكوبون' : formatCurrency(shippingCostConverted, activeCurrency)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 pt-1.5 border-t border-slate-200 dark:border-slate-700">
                   <span>الإجمالي النهائي المستحق:</span>
                   <span>{formatCurrency(cartTotalConverted, activeCurrency)}</span>
@@ -1818,7 +2036,11 @@ export default function CustomerStorefrontPage() {
                 className="w-full py-3.5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 active:scale-95"
               >
                 <Send className="w-4 h-4" />
-                <span>{isSubmittingOrder ? 'جاري تأكيد الطلب...' : 'تأكيد الطلب'}</span>
+                <span>
+                  {isSubmittingOrder 
+                    ? 'جاري تأكيد الحجز...' 
+                    : (isServiceStore ? 'تأكيد حجز الخدمة وإرسال التفاصيل عبر الواتساب ✨' : 'تأكيد الطلب وإرساله إلى واتساب المتجر مباشرة ✨')}
+                </span>
               </button>
 
             </form>
@@ -1928,10 +2150,16 @@ export default function CustomerStorefrontPage() {
                 </div>
               )}
               {store.whatsapp && (
-                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+                <a 
+                  href={formatWhatsAppUrl(store.whatsapp || store.phone, store.name) || '#'} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 text-sm text-green-600 dark:text-green-400 hover:underline"
+                  title="تواصل مباشرة عبر واتساب"
+                >
                   <MessageCircle className="w-4 h-4 shrink-0 text-green-500" />
                   <span dir="ltr">{store.whatsapp}</span>
-                </div>
+                </a>
               )}
               {store.email && (
                 <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
@@ -1951,15 +2179,40 @@ export default function CustomerStorefrontPage() {
             </div>
           </div>
           
-          <div className="space-y-4">
-            <h4 className="text-sm font-bold text-slate-900 dark:text-white" style={{ fontFamily }}>روابط هامة</h4>
-            <div className="space-y-2 flex flex-col items-start text-sm">
-              <button onClick={() => { setLegalPageType('privacy'); setIsLegalModalOpen(true); }} className="text-slate-500 hover:text-brand-600 transition-colors text-right">سياسة الخصوصية</button>
-              <button onClick={() => { setLegalPageType('terms'); setIsLegalModalOpen(true); }} className="text-slate-500 hover:text-brand-600 transition-colors text-right">الشروط والأحكام</button>
-              <button onClick={() => { setLegalPageType('returns'); setIsLegalModalOpen(true); }} className="text-slate-500 hover:text-brand-600 transition-colors text-right">سياسة الاسترجاع والتوصيل</button>
-              <button onClick={() => { setLegalPageType('faq'); setIsLegalModalOpen(true); }} className="text-slate-500 hover:text-brand-600 transition-colors text-right">الأسئلة الشائعة</button>
-            </div>
-          </div>
+          {(() => {
+            let lp: any = {};
+            try {
+              const cfg = typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig || '{}') : store.themeConfig;
+              if (cfg?.legalPages) lp = cfg.legalPages;
+            } catch {}
+            const hasPrivacy = Boolean(lp?.privacy && lp.privacy.trim().length > 0);
+            const hasTerms = Boolean(lp?.terms && lp.terms.trim().length > 0);
+            const hasReturns = Boolean(lp?.returns && lp.returns.trim().length > 0);
+            const hasFaq = Boolean(lp?.faq && lp.faq.trim().length > 0);
+            const hasAnyLegal = hasPrivacy || hasTerms || hasReturns || hasFaq;
+
+            if (!hasAnyLegal) return null;
+
+            return (
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white" style={{ fontFamily }}>روابط هامة</h4>
+                <div className="space-y-2 flex flex-col items-start text-sm">
+                  {hasPrivacy && (
+                    <button onClick={() => { setLegalPageType('privacy'); setIsLegalModalOpen(true); }} className="text-slate-500 hover:text-brand-600 transition-colors text-right">سياسة الخصوصية</button>
+                  )}
+                  {hasTerms && (
+                    <button onClick={() => { setLegalPageType('terms'); setIsLegalModalOpen(true); }} className="text-slate-500 hover:text-brand-600 transition-colors text-right">الشروط والأحكام</button>
+                  )}
+                  {hasReturns && (
+                    <button onClick={() => { setLegalPageType('returns'); setIsLegalModalOpen(true); }} className="text-slate-500 hover:text-brand-600 transition-colors text-right">سياسة الاسترجاع والتوصيل</button>
+                  )}
+                  {hasFaq && (
+                    <button onClick={() => { setLegalPageType('faq'); setIsLegalModalOpen(true); }} className="text-slate-500 hover:text-brand-600 transition-colors text-right">الأسئلة الشائعة</button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
         </div>
       </div>
@@ -2072,15 +2325,26 @@ export default function CustomerStorefrontPage() {
             </div>
             
             <div className="space-y-3">
+              {orderSuccess.waUrl && (
+                <a 
+                  href={orderSuccess.waUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-green-500/20 active:scale-95 text-sm"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  <span>إرسال تفاصيل الطلب والإشعار عبر واتساب 💬</span>
+                </a>
+              )}
               <Link 
                 href={`/store/${store.slug}/track/${orderSuccess.id}`}
-                className="w-full py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-brand-600/20"
+                className="w-full py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-brand-600/20 text-sm"
               >
                 تتبع حالة الطلب <ArrowLeft className="w-4 h-4" />
               </Link>
               <button 
                 onClick={() => setOrderSuccess(null)}
-                className="w-full py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all"
+                className="w-full py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all text-sm"
               >
                 الاستمرار في التسوق
               </button>
@@ -2089,7 +2353,11 @@ export default function CustomerStorefrontPage() {
         </div>
       )}
 
+      {/* Floating WhatsApp Support Button */}
+      <WhatsAppSupportButton phone={store.whatsapp || store.phone} storeName={store.name} />
+
     </div>
   );
 }
+
 

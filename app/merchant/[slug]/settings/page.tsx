@@ -8,7 +8,9 @@ import {
   Target, ShieldCheck, Sparkles, X
 } from 'lucide-react';
 import { Store, CurrencyCode, PaymentAccountConfig, ShippingMethod } from '@/lib/types';
-import { getStoreBySlugAction, updateStoreAction } from '@/app/actions/store';
+import { getStoreBySlugAction, updateStoreAction, getPlansAction } from '@/app/actions/store';
+import { getSiteContentAction } from '@/app/actions/content';
+import { isAiAllowedForStore, isAiPlanAllowedForStore } from '@/lib/ai-access';
 import { updateMerchantCredentialsAction, getMerchantUserAction } from '@/app/actions/auth';
 import { generateApiKeyAction, getApiKeysAction, deleteApiKeyAction } from '@/app/actions/apiKey';
 import { generateLegalPageAction } from '@/app/actions/ai';
@@ -22,6 +24,7 @@ export default function MerchantSettingsPage() {
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [isGeneratingKey, setIsGeneratingKey] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isAiEnabled, setIsAiEnabled] = useState(true);
   
   const [legalPages, setLegalPages] = useState({
     privacy: '',
@@ -130,7 +133,11 @@ export default function MerchantSettingsPage() {
       }
 
       if (slug) {
-        const s = await getStoreBySlugAction(slug);
+        const [s, dbPlans, siteContentRes] = await Promise.all([
+          getStoreBySlugAction(slug),
+          getPlansAction(),
+          getSiteContentAction()
+        ]);
         if (s) {
           setStore(s as any);
           setName(s.name || '');
@@ -143,7 +150,7 @@ export default function MerchantSettingsPage() {
           setAddress(s.address || '');
           setLogo(s.logo || '');
           setBaseCurrency(s.baseCurrency as any);
-          setDeliveryCurrency(s.deliveryCurrency as any || 'YER_SANAA');
+          setDeliveryCurrency((s as any).deliveryCurrency as any || 'YER_SANAA');
           setActiveYemeniMarket((s as any).activeYemeniMarket || 'YER_ADEN');
           
           let parsedRates = s.customRates;
@@ -188,6 +195,15 @@ export default function MerchantSettingsPage() {
               // ignore
             }
           }
+
+          // Evaluate AI availability across all platform layers
+          const globalAiEnabled = siteContentRes?.dictionary?.['ai_enabled'];
+          const allowed = isAiAllowedForStore(
+            s as any,
+            dbPlans || [],
+            globalAiEnabled
+          );
+          setIsAiEnabled(allowed);
         }
       }
     }
@@ -505,12 +521,14 @@ export default function MerchantSettingsPage() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  رقم WhatsApp لاستقبال إشعارات الطلبات
+                  رقم WhatsApp (للتواصل المباشر مع العملاء في المتجر والإشعارات)
                 </label>
                 <input
                   type="text"
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(e.target.value)}
+                  placeholder="967770000000"
+                  dir="ltr"
                   className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none font-mono"
                 />
               </div>
@@ -1130,7 +1148,9 @@ export default function MerchantSettingsPage() {
                 الصفحات القانونية والسياسات
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                تظهر هذه الصفحات أسفل المتجر للعملاء في نوافذ منبثقة سريعة. يمكنك كتابتها بنفسك أو استخدام الذكاء الاصطناعي لتوليد سياسات متوافقة مع قوانين اليمن.
+                {isAiEnabled
+                  ? 'تظهر هذه الصفحات أسفل المتجر للعملاء في نوافذ منبثقة سريعة. يمكنك كتابتها بنفسك يدوياً أو استخدام الذكاء الاصطناعي لتوليدها.'
+                  : 'تظهر هذه الصفحات أسفل المتجر للعملاء في نوافذ منبثقة سريعة. يمكنك كتابتها بنفسك يدوياً أو تركها فارغة.'}
               </p>
             </div>
 
@@ -1148,24 +1168,26 @@ export default function MerchantSettingsPage() {
                     </label>
                     <p className="text-[10px] text-slate-500">{pageType.desc}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateLegal(pageType.id as any)}
-                    disabled={isGeneratingLegal !== null}
-                    className="px-3 py-1.5 rounded-lg bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 hover:bg-brand-100 transition-colors text-[11px] font-bold flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    {isGeneratingLegal === pageType.id ? (
-                      <><RefreshCw className="w-3 h-3 animate-spin" /> جاري التوليد...</>
-                    ) : (
-                      <><Sparkles className="w-3 h-3" /> توليد بالذكاء الاصطناعي</>
-                    )}
-                  </button>
+                  {isAiEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateLegal(pageType.id as any)}
+                      disabled={isGeneratingLegal !== null}
+                      className="px-3 py-1.5 rounded-lg bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 hover:bg-brand-100 transition-colors text-[11px] font-bold flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {isGeneratingLegal === pageType.id ? (
+                        <><RefreshCw className="w-3 h-3 animate-spin" /> جاري التوليد...</>
+                      ) : (
+                        <><Sparkles className="w-3 h-3" /> توليد بالذكاء الاصطناعي</>
+                      )}
+                    </button>
+                  )}
                 </div>
                 <textarea
-                  value={(legalPages as any)[pageType.id]}
+                  value={(legalPages as any)[pageType.id] || ''}
                   onChange={(e) => setLegalPages(prev => ({ ...prev, [pageType.id]: e.target.value }))}
                   className="w-full h-32 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-sm font-medium focus:ring-2 focus:ring-brand-500/50 outline-none custom-scrollbar"
-                  placeholder={`اكتب ${pageType.label} هنا...`}
+                  placeholder={`اكتب ${pageType.label} يدوياً هنا (أو اتركها فارغة)...`}
                 />
               </div>
             ))}

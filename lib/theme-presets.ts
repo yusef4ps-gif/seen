@@ -326,4 +326,104 @@ export const THEME_PRESETS: ThemePreset[] = [
       ],
     },
   },
+  {
+    id: 'service-expert',
+    name: 'البروفايل المهني والاستشارات (Executive Profile & Services)',
+    category: 'محاماة، عيادات، استشارات، تصميم وبرمجة',
+    description: 'قالب مهني راقٍ مخصص للمستشارين، مكاتب المحاماة، العيادات، والمستقلين لعرض خبراتهم وحجز خدماتهم مباشرة.',
+    thumbnail: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&auto=format&fit=crop&q=80',
+    config: {
+      presetId: 'service-expert',
+      storeType: 'SERVICE',
+      colors: {
+        primary: '#0d9488',       // Teal executive
+        secondary: '#0f172a',     // Deep Navy
+        background: '#f8fafc',    // Clean slate canvas
+        surface: '#ffffff',       // Pure white cards
+        textMain: '#0f172a',      // Executive dark slate
+        textMuted: '#64748b',     // Slate muted
+      },
+      typography: {
+        fontFamily: 'Tajawal',
+        headingWeight: 'bold',
+      },
+      layout: {
+        borderRadius: 'curved',
+        cardShadow: 'subtle',
+        productCardStyle: 'minimal',
+      },
+      sections: [
+        {
+          id: 'sec-announcement',
+          type: 'announcement_bar',
+          title: 'شريط الترحيب والاعتماد',
+          isVisible: true,
+          order: 1,
+          settings: {
+            bannerTitle: '💼 مرحباً بكم | متاح لحجز الاستشارات والخدمات المهنية مباشرة عبر المنصة والواتساب',
+            backgroundColor: '#0f172a',
+            textColor: '#ffffff',
+          },
+        },
+        {
+          id: 'sec-hero',
+          type: 'hero_slider',
+          title: 'نبذة البروفايل المهني',
+          isVisible: true,
+          order: 2,
+          settings: {
+            bannerTitle: 'حلول واستشارات مهنية احترافية وموثوقة',
+            bannerSubtitle: 'نقدم لك أفضل الخدمات المتخصصة بأعلى معايير الدقة والسرية لضمان نجاح أعمالك',
+            bannerImageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&auto=format&fit=crop&q=80',
+            heroSlides: [
+              {
+                image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&auto=format&fit=crop&q=80',
+                title: 'حلول واستشارات مهنية متخصصة',
+                subtitle: 'خبرة موثوقة في تقديم الاستشارات والخدمات المتميزة',
+                ctaText: 'احجز استشارتك الآن 📅'
+              }
+            ],
+            ctaText: 'حجز استشارة أو خدمة',
+          },
+        },
+        {
+          id: 'sec-features',
+          type: 'features_strip',
+          title: 'مميزات التعامل وثقة العملاء',
+          isVisible: true,
+          order: 3,
+          settings: {
+            bannerTitle: 'لماذا تختار خدماتنا؟',
+            features: [
+              { icon: 'ShieldCheck', title: 'سرية وأمان تام', desc: 'حماية كاملة لخصوصية بياناتك واستشاراتك' },
+              { icon: 'Award', title: 'خبرة وكفاءة معتمدة', desc: 'سنوات من الخبرة العملية والنتائج الملموسة' },
+              { icon: 'Clock', title: 'التزام بالمواعيد', desc: 'جلسات استشارية وتنفيذ دقيق في الوقت المحدد' },
+              { icon: 'Zap', title: 'تواصل مباشر وسريع', desc: 'متابعة دورية عبر الواتساب والاتصال' },
+            ]
+          },
+        },
+        {
+          id: 'sec-products',
+          type: 'products_grid',
+          title: 'الخدمات والاستشارات المتاحة',
+          isVisible: true,
+          order: 4,
+          settings: {
+            bannerTitle: 'باقات الخدمات والاستشارات',
+            bannerSubtitle: 'اختر الخدمة المناسبة واحجز موعدك مباشرة',
+          },
+        },
+        {
+          id: 'sec-testimonials',
+          type: 'testimonials',
+          title: 'آراء وتقييمات المستفيدين',
+          isVisible: true,
+          order: 5,
+          settings: {
+            bannerTitle: 'ماذا يقول عملاؤنا عنا؟',
+          },
+        },
+      ],
+    },
+  },
 ];

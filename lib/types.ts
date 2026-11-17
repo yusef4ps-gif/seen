@@ -185,11 +185,15 @@ export interface ThemeSection {
     backgroundColor?: string;
     textColor?: string;
     itemsCount?: number;
+    features?: any[];
   };
 }
 
 export interface ThemeConfig {
-  presetId: 'fashion-luxury' | 'tech-modern' | 'yemen-roastery' | 'minimal-clean' | 'perfume-beauty' | 'sweets-delights' | string;
+  presetId: 'fashion-luxury' | 'tech-modern' | 'yemen-roastery' | 'minimal-clean' | 'perfume-beauty' | 'sweets-delights' | 'service-expert' | string;
+  storeType?: 'PHYSICAL' | 'SERVICE' | 'DIGITAL';
+  professionalTitle?: string;
+  bio?: string;
   colors: {
     primary: string;       // Primary brand button & active color
     secondary: string;     // Accent & highlight
