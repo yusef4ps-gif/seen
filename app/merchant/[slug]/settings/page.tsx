@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { 
   Settings, Wallet, RefreshCw, Truck, Store as StoreIcon, Database, 
   Save, CheckCircle2, Plus, Trash2, Building2, Phone, MapPin, Image as ImageIcon,
-  Target, ShieldCheck, Sparkles, X
+  Target, ShieldCheck, Sparkles, X, Share2, Globe
 } from 'lucide-react';
 import { Store, CurrencyCode, PaymentAccountConfig, ShippingMethod } from '@/lib/types';
 import { getStoreBySlugAction, updateStoreAction, getPlansAction } from '@/app/actions/store';
@@ -469,7 +469,47 @@ export default function MerchantSettingsPage() {
                 />
               </div>
 
-              
+              {/* Platform Slug Link Section */}
+              <div className="sm:col-span-2 p-5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl mb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-800 dark:text-slate-200">
+                      رابط المنصة السحابي الرسمي (Platform URL)
+                    </label>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      هذا هو الرابط الدائم المعتمد لمشاركة بروفايلك أو متجرك مع العملاء والمستفيدين
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/store/${slug}`;
+                        navigator.clipboard.writeText(url);
+                        alert('تم نسخ الرابط بنجاح: ' + url);
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>نسخ الرابط</span>
+                    </button>
+                    <a
+                      href={`/store/${slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-1.5 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold hover:bg-slate-50 transition-all flex items-center gap-1.5"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>فتح المنصة</span>
+                    </a>
+                  </div>
+                </div>
+
+                <div className="flex items-center px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono text-brand-600 dark:text-brand-400 font-bold" dir="ltr">
+                  <span>/store/{slug}</span>
+                </div>
+              </div>
+
               <div className="sm:col-span-2 p-5 bg-brand-50/50 dark:bg-brand-900/10 border border-brand-200 dark:border-brand-800/50 rounded-2xl mb-4">
                 <label className="block text-sm font-bold text-slate-800 dark:text-slate-200 mb-2">
                   النطاق المخصص (Custom Domain)

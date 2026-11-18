@@ -8,7 +8,12 @@ export async function createProductAction(data: any) {
   try {
     await requireAuth();
     await requireStoreOwner(data.storeId);
-    const store = await prisma.store.findUnique({ where: { id: data.storeId } });
+    
+    // Fast selective query for baseCurrency only
+    const store = await prisma.store.findUnique({
+      where: { id: data.storeId },
+      select: { baseCurrency: true, slug: true }
+    });
     if (!store) throw new Error("Store not found");
 
     const product = await prisma.product.create({
@@ -20,23 +25,32 @@ export async function createProductAction(data: any) {
         description: data.description,
         price: data.price,
         comparePrice: data.comparePrice || data.compareAtPrice,
-        stock: data.stock,
-        lowStockAlert: data.lowStockAlert,
+        stock: data.stock !== undefined ? data.stock : 9999,
+        lowStockAlert: data.lowStockAlert !== undefined ? data.lowStockAlert : 0,
         images: JSON.stringify(data.images || []),
         category: data.category,
         tags: JSON.stringify(data.tags || []),
-        isFeatured: data.isFeatured,
+        isFeatured: data.isFeatured || false,
         variants: {
           create: data.variants ? data.variants.map((v: any) => ({
             name: v.name,
             attributes: typeof v.attributes === 'string' ? v.attributes : JSON.stringify(v.attributes || {}),
             priceOverride: v.priceOverride,
-            stock: v.stock,
+            stock: v.stock !== undefined ? v.stock : 9999,
             sku: v.sku
           })) : []
         }
       }
     });
+
+    try {
+      if (store.slug) {
+        revalidatePath(`/store/${store.slug}`, 'page');
+        revalidatePath(`/merchant/${store.slug}/products`, 'page');
+        revalidatePath(`/merchant/${store.slug}/inventory`, 'page');
+      }
+    } catch (e) {}
+
     return { success: true, product };
   } catch (error: any) {
     console.error('Error creating product:', error);

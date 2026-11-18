@@ -321,6 +321,22 @@ export default function MerchantProductsPage() {
 
     try {
       if (editingProductId) {
+        // Optimistic UI update: instantly update table
+        const updatedOptimistic = products.map(p => p.id === editingProductId ? {
+          ...p,
+          name,
+          description,
+          category,
+          price: Number(price),
+          comparePrice: comparePrice ? Number(comparePrice) : null,
+          images: [imageUrl || p.images?.[0] || ''],
+          isFeatured,
+          tags: JSON.stringify(productTags),
+        } : p);
+        mutate(updatedOptimistic, false);
+        setIsModalOpen(false);
+        toast.success(isServiceStore ? 'تم تعديل الخدمة بنجاح ⚡' : 'تم تعديل المنتج بنجاح ⚡');
+
         const res = await updateProductAction(editingProductId, {
           name,
           description,
@@ -338,7 +354,7 @@ export default function MerchantProductsPage() {
 
         if (!res.success) {
           toast.error(res.error?.message || res.error || 'فشل تحديث البيانات');
-          setIsSaving(false);
+          mutate(); // rollback
           return;
         }
 
@@ -354,10 +370,31 @@ export default function MerchantProductsPage() {
             device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile') ? 'جوال' : 'كمبيوتر/لابتوب'
           }).catch(console.error);
         }
-
-        toast.success(isServiceStore ? 'تم تعديل الخدمة بنجاح ⚡' : 'تم تعديل المنتج بنجاح ⚡');
       } else {
         const newProdId = `prod_${Date.now()}`;
+        // Optimistic UI update: instantly insert service at top of list
+        const newOptimisticItem: any = {
+          id: newProdId,
+          storeId: store.id,
+          name,
+          description,
+          category,
+          price: Number(price),
+          comparePrice: comparePrice ? Number(comparePrice) : null,
+          images: [imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'],
+          stock: isServiceStore ? 9999 : stock,
+          lowStockAlert: isServiceStore ? 0 : lowStockAlert,
+          isFeatured,
+          status: 'active',
+          tags: JSON.stringify(productTags),
+          variants: isServiceStore ? [] : variants,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        mutate([newOptimisticItem, ...products], false);
+        setIsModalOpen(false);
+        toast.success(isServiceStore ? 'تمت إضافة الخدمة بنجاح ⚡' : 'تمت إضافة المنتج بنجاح ⚡');
+
         const res = await createProductAction({
           id: newProdId,
           storeId: store.id,
@@ -377,7 +414,7 @@ export default function MerchantProductsPage() {
 
         if (!res.success) {
           toast.error(res.error?.message || res.error || 'فشل إضافة الخدمة');
-          setIsSaving(false);
+          mutate(); // rollback
           return;
         }
 
@@ -393,36 +430,43 @@ export default function MerchantProductsPage() {
             device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile') ? 'جوال' : 'كمبيوتر/لابتوب'
           }).catch(console.error);
         }
-
-        toast.success(isServiceStore ? 'تمت إضافة الخدمة بنجاح ⚡' : 'تمت إضافة المنتج بنجاح ⚡');
       }
 
-      setIsModalOpen(false);
-      refreshProducts();
+      mutate(); // sync with server
     } catch (err: any) {
       toast.error('حدث خطأ غير متوقع: ' + err.message);
+      mutate();
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDeleteProduct = async (prod: Product) => {
-    if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
-      await deleteProductAction(prod.id);
-      
+    const itemLabel = isServiceStore ? 'هذه الخدمة' : 'هذا المنتج';
+    if (confirm(`هل أنت متأكد من حذف ${itemLabel}؟`)) {
+      // Optimistic delete
+      mutate(products.filter(p => p.id !== prod.id), false);
+      toast.success(isServiceStore ? 'تم حذف الخدمة بنجاح ⚡' : 'تم حذف المنتج بنجاح ⚡');
+
+      const res = await deleteProductAction(prod.id);
+      if (!res.success) {
+        toast.error('حدث خطأ أثناء حذف العنصر من الخادم');
+        mutate();
+        return;
+      }
+
       const user = authEngine.getCurrentUser();
       if (user && store) {
-        await logActivityAction({
+        logActivityAction({
           storeId: store.id,
           userName: user.name,
           action: 'حذف',
-          entity: 'منتج',
-          details: `تم حذف المنتج: ${prod.name}`,
-          device: navigator.userAgent.includes('Mobile') ? 'جوال' : 'كمبيوتر/لابتوب'
-        });
+          entity: isServiceStore ? 'خدمة' : 'منتج',
+          details: `تم حذف ${isServiceStore ? 'الخدمة' : 'المنتج'}: ${prod.name}`,
+          device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile') ? 'جوال' : 'كمبيوتر/لابتوب'
+        }).catch(console.error);
       }
-      
-      await refreshProducts();
+      mutate();
     }
   };
 

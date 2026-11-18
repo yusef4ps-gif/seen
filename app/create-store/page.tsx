@@ -499,9 +499,14 @@ export default function CreateStorePage() {
                 )}
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
-                    رابط المتجر السحابي (Slug URL) <span className="text-red-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                      {storeType === 'SERVICE' ? 'رابط المنصة والبروفايل (Slug URL)' : 'رابط المتجر السحابي (Slug URL)'} <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-brand-600 font-bold bg-brand-50 dark:bg-brand-950 px-2 py-0.5 rounded-full border border-brand-200 dark:border-brand-800">
+                      معرف فريد للرابط
+                    </span>
+                  </div>
                   <div
                     className={`flex items-center rounded-2xl border ${
                       errors.slug
@@ -509,13 +514,15 @@ export default function CreateStorePage() {
                         : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800'
                     } px-3 py-2 text-xs font-mono transition-all`}
                   >
-                    <span className="text-slate-400">seen.store/store/</span>
+                    <span className="text-slate-400 select-none" dir="ltr">seen.store/store/</span>
                     <input
                       type="text"
                       value={slug}
-                      placeholder="my-store"
+                      placeholder={storeType === 'SERVICE' ? 'lawyer-yusef' : 'my-store'}
+                      dir="ltr"
                       onChange={(e) => {
-                        setSlug(e.target.value);
+                        const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+                        setSlug(val);
                         if (errors.slug) setErrors((prev) => ({ ...prev, slug: undefined }));
                       }}
                       className="bg-transparent outline-none flex-1 text-brand-600 font-bold"
@@ -527,6 +534,19 @@ export default function CreateStorePage() {
                       <span>{errors.slug}</span>
                     </p>
                   )}
+
+                  {/* Visual Guidance Box */}
+                  <div className="mt-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-850 border border-slate-200/80 dark:border-slate-800 text-[11px] space-y-1.5 text-slate-600 dark:text-slate-400">
+                    <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-brand-500" />
+                      <span>كيفية كتابة رابط المنصة بشكل صحيح:</span>
+                    </div>
+                    <ul className="list-disc list-inside space-y-0.5 text-[10px] leading-relaxed pr-1 text-slate-500 dark:text-slate-400">
+                      <li>استخدم <strong>أحرفاً إنجليزية صغيرة</strong> (a-z) وأرقاماً (0-9) فقط.</li>
+                      <li>استخدم <strong>الشرطة (-)</strong> للفصل بين الكلمات بدون مسافات أو رموز خاصة.</li>
+                      <li>اختر اسماً مختصراً يعبر عنك لمشاركته بسهولة مع عملائك.</li>
+                    </ul>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

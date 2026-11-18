@@ -2476,7 +2476,7 @@ export default function CustomerStorefrontPage() {
       </div>
 
       {/* Powered By Footer */}
-      <footer className="bg-slate-50 dark:bg-slate-950 border-t border-slate-200/60 dark:border-slate-800 py-6 text-center text-xs px-4">
+      <footer className="bg-slate-50 dark:bg-slate-950 border-t border-slate-200/60 dark:border-slate-800 py-6 text-center text-xs px-4 pb-24 sm:pb-6">
         <p className="opacity-75 mb-4 text-slate-500 font-medium">© {new Date().getFullYear()} {store.name}. جميع الحقوق محفوظة.</p>
         <div className="flex flex-col items-center justify-center gap-3">
           <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
@@ -2575,13 +2575,17 @@ export default function CustomerStorefrontPage() {
               <CheckCircle2 className="w-10 h-10" />
             </div>
             
-            <h2 className="text-2xl font-black mb-2 text-slate-900 dark:text-white" style={{ fontFamily }}>تم استلام طلبك بنجاح! 🎉</h2>
+            <h2 className="text-2xl font-black mb-2 text-slate-900 dark:text-white" style={{ fontFamily }}>
+              {isServiceStore ? 'تم تسجيل حجز الخدمة بنجاح! 📅' : 'تم استلام طلبك بنجاح! 🎉'}
+            </h2>
             <p className="text-slate-500 mb-6 leading-relaxed text-sm">
-              شكراً لتسوقك من {store.name}. تم تسجيل طلبك وهو الآن قيد المراجعة.
+              {isServiceStore
+                ? `شكراً لثقتك في ${store.name}. تم تسجيل طلبك وإشعار الدفع بنجاح وهو قيد المتابعة والتجهيز.`
+                : `شكراً لتسوقك من ${store.name}. تم تسجيل طلبك وهو الآن قيد المراجعة.`}
             </p>
             
             <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 mb-8 border border-slate-100 dark:border-slate-700">
-              <div className="text-xs text-slate-500 mb-1">رقم الطلب</div>
+              <div className="text-xs text-slate-500 mb-1">{isServiceStore ? 'رقم الحجز / الخدمة' : 'رقم الطلب'}</div>
               <div className="text-xl font-bold font-mono tracking-wider text-brand-600 dark:text-brand-400">
                 {orderSuccess.orderNumber}
               </div>
@@ -2596,20 +2600,29 @@ export default function CustomerStorefrontPage() {
                   className="w-full py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-green-500/20 active:scale-95 text-sm"
                 >
                   <MessageCircle className="w-5 h-5" />
-                  <span>إرسال تفاصيل الطلب والإشعار عبر واتساب 💬</span>
+                  <span>{isServiceStore ? 'إرسال تفاصيل الحجز والإشعار عبر واتساب 💬' : 'إرسال تفاصيل الطلب والإشعار عبر واتساب 💬'}</span>
                 </a>
+              )}
+              {isServiceStore && (
+                <Link
+                  href={`/store/${store.slug}/account`}
+                  className="w-full py-3.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-teal-600/20 text-sm"
+                >
+                  <Briefcase className="w-4 h-4" />
+                  <span>عرض خدماتي واشتراكاتي في حسابي 💼</span>
+                </Link>
               )}
               <Link 
                 href={`/store/${store.slug}/track/${orderSuccess.id}`}
                 className="w-full py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-brand-600/20 text-sm"
               >
-                تتبع حالة الطلب <ArrowLeft className="w-4 h-4" />
+                {isServiceStore ? 'تتبع حالة الخدمة' : 'تتبع حالة الطلب'} <ArrowLeft className="w-4 h-4" />
               </Link>
               <button 
                 onClick={() => setOrderSuccess(null)}
                 className="w-full py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all text-sm"
               >
-                الاستمرار في التسوق
+                {isServiceStore ? 'العودة واستعراض المزيد من الخدمات' : 'الاستمرار في التسوق'}
               </button>
             </div>
           </div>
@@ -2639,7 +2652,11 @@ export default function CustomerStorefrontPage() {
       )}
 
       {/* Floating WhatsApp Support Button */}
-      <WhatsAppSupportButton phone={store.whatsapp || store.phone} storeName={store.name} />
+      <WhatsAppSupportButton 
+        phone={store.whatsapp || store.phone} 
+        storeName={store.name} 
+        className={cart.length > 0 ? "!bottom-20 sm:!bottom-6" : ""}
+      />
 
       {/* Share Platform Modal */}
       <ShareStoreModal

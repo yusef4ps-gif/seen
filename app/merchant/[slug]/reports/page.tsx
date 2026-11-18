@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { 
   LineChart, BarChart2, PieChart, Download, Calendar, TrendingUp, Package, 
-  ArrowDownUp, AlertTriangle, ArrowRight, ShoppingCart, RefreshCcw, Users
+  ArrowDownUp, AlertTriangle, ArrowRight, ShoppingCart, RefreshCcw, Users,
+  Briefcase, CalendarCheck, CheckCircle2, Award, Clock
 } from 'lucide-react';
 import { getStoreBySlugAction, getProductsByStoreAction, getOrdersByStoreAction } from '@/app/actions/store';
 import { Store, Product, Order } from '@/lib/types';
@@ -26,8 +27,8 @@ export default function MerchantReportsPage() {
   // Extra filter for sales charts
   const [salesChartType, setSalesChartType] = useState<'days' | 'months' | 'years'>('days');
 
-  // Inventory tab filter
-  const [inventoryTab, setInventoryTab] = useState<'best-seller' | 'profitable' | 'least-sold' | 'low-stock'>('best-seller');
+  // Inventory/Services tab filter
+  const [inventoryTab, setInventoryTab] = useState<'best-seller' | 'profitable' | 'least-sold' | 'subscriptions' | 'low-stock'>('best-seller');
 
   useEffect(() => {
     async function init() {
@@ -53,6 +54,13 @@ export default function MerchantReportsPage() {
     );
   }
 
+  const isServiceStore = (() => {
+    const cfg: any = typeof store.themeConfig === 'string'
+      ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })()
+      : store.themeConfig;
+    return cfg?.storeType === 'SERVICE' || cfg?.presetId === 'service-expert';
+  })();
+
   const validOrders = orders.filter(o => o.status !== 'cancelled');
   
   const now = new Date();
@@ -74,8 +82,8 @@ export default function MerchantReportsPage() {
       end.setHours(23, 59, 59, 999);
       return orderDate >= new Date(dateRange.start) && orderDate <= end;
     }
-    if (dateFilter === 'custom') return true; // default if range not set
-    return true; // 'all'
+    if (dateFilter === 'custom') return true;
+    return true;
   });
 
   const totalSalesVolume = filteredOrders.reduce((sum, o) => sum + o.total, 0);
@@ -93,50 +101,66 @@ export default function MerchantReportsPage() {
             <TrendingUp className="w-6 h-6 text-brand-600 dark:text-brand-400" />
           </div>
           <div>
-            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">تقارير المبيعات</h3>
-            <p className="text-sm text-slate-500">تحليل المبيعات اليومية والشهرية والسنوية ومقارنة الأداء.</p>
+            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">
+              {isServiceStore ? 'تقارير عوائد الخدمات والاستشارات' : 'تقارير المبيعات'}
+            </h3>
+            <p className="text-sm text-slate-500">
+              {isServiceStore ? 'تحليل الإيرادات المحققة من طلبات الخدمات، الجلسات الاستشارية، وباقات المشتركين.' : 'تحليل المبيعات اليومية والشهرية والسنوية ومقارنة الأداء.'}
+            </p>
           </div>
         </button>
 
-        {/* Inventory Card */}
+        {/* Inventory / Services Performance Card */}
         <button 
           onClick={() => setActiveView('inventory')}
           className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors flex items-start gap-4 text-right"
         >
           <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
-            <Package className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+            {isServiceStore ? <Briefcase className="w-6 h-6 text-indigo-600 dark:text-indigo-400" /> : <Package className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />}
           </div>
           <div>
-            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">تقارير المخزون</h3>
-            <p className="text-sm text-slate-500">حركة المنتجات، الأكثر مبيعاً، والمنتجات منخفضة المخزون.</p>
+            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">
+              {isServiceStore ? 'تقارير أداء الخدمات والبرامج' : 'تقارير المخزون'}
+            </h3>
+            <p className="text-sm text-slate-500">
+              {isServiceStore ? 'الخدمات الأكثر طلباً وحجزاً، أعلى الاستشارات دخلاً، ومتابعة باقات الاشتراك.' : 'حركة المنتجات، الأكثر مبيعاً، والمنتجات منخفضة المخزون.'}
+            </p>
           </div>
         </button>
 
-        {/* Returns Card */}
+        {/* Returns / Subscriptions Card */}
         <button 
           onClick={() => setActiveView('returns')}
-          className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl hover:border-red-500 dark:hover:border-red-500 transition-colors flex items-start gap-4 text-right"
+          className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl hover:border-teal-500 dark:hover:border-teal-500 transition-colors flex items-start gap-4 text-right"
         >
-          <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-            <RefreshCcw className="w-6 h-6 text-red-600 dark:text-red-400" />
+          <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center shrink-0">
+            {isServiceStore ? <Users className="w-6 h-6 text-teal-600 dark:text-teal-400" /> : <RefreshCcw className="w-6 h-6 text-red-600 dark:text-red-400" />}
           </div>
           <div>
-            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">تقارير المرتجعات</h3>
-            <p className="text-sm text-slate-500">إحصائيات المرتجعات وحالاتها والمنتجات الأكثر استرجاعاً.</p>
+            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">
+              {isServiceStore ? 'تقارير الاشتراكات والتعاقدات' : 'تقارير المرتجعات'}
+            </h3>
+            <p className="text-sm text-slate-500">
+              {isServiceStore ? 'إحصائيات المشتركين النشطين في الباقات الشهرية والسنوية ومعدل استمرارية العملاء.' : 'إحصائيات المرتجعات وحالاتها والمنتجات الأكثر استرجاعاً.'}
+            </p>
           </div>
         </button>
 
-        {/* Orders Card */}
+        {/* Orders / Bookings Card */}
         <button 
           onClick={() => setActiveView('orders')}
           className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl hover:border-blue-500 dark:hover:border-blue-500 transition-colors flex items-start gap-4 text-right"
         >
           <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-            <ShoppingCart className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            {isServiceStore ? <CalendarCheck className="w-6 h-6 text-blue-600 dark:text-blue-400" /> : <ShoppingCart className="w-6 h-6 text-blue-600 dark:text-blue-400" />}
           </div>
           <div>
-            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">تقارير الطلبات</h3>
-            <p className="text-sm text-slate-500">معدل الطلبات وحالات التوصيل وأداء المتجر العام.</p>
+            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">
+              {isServiceStore ? 'تقارير الحجوزات والمستفيدين' : 'تقارير الطلبات'}
+            </h3>
+            <p className="text-sm text-slate-500">
+              {isServiceStore ? 'معدل الحجوزات المؤكدة، الاستشارات قيد التنفيذ والمتابعة، والخدمات المنجزة.' : 'معدل الطلبات وحالات التوصيل وأداء المتجر العام.'}
+            </p>
           </div>
         </button>
       </div>
@@ -144,20 +168,20 @@ export default function MerchantReportsPage() {
       {/* Overview Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-          <p className="text-sm text-slate-500 mb-1">إجمالي المبيعات (كل الوقت)</p>
+          <p className="text-sm text-slate-500 mb-1">{isServiceStore ? 'عوائد الخدمات (كل الوقت)' : 'إجمالي المبيعات (كل الوقت)'}</p>
           <p className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(validOrders.reduce((s, o) => s + o.total, 0), store.currency)}</p>
         </div>
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-          <p className="text-sm text-slate-500 mb-1">إجمالي الطلبات (كل الوقت)</p>
+          <p className="text-sm text-slate-500 mb-1">{isServiceStore ? 'إجمالي الحجوزات والتعاقدات' : 'إجمالي الطلبات (كل الوقت)'}</p>
           <p className="text-xl font-black text-slate-900 dark:text-white">{validOrders.length}</p>
         </div>
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-          <p className="text-sm text-slate-500 mb-1">إجمالي المنتجات</p>
+          <p className="text-sm text-slate-500 mb-1">{isServiceStore ? 'الخدمات والباقات المعروضة' : 'إجمالي المنتجات'}</p>
           <p className="text-xl font-black text-slate-900 dark:text-white">{products.length}</p>
         </div>
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-          <p className="text-sm text-slate-500 mb-1">إجمالي العملاء</p>
-          <p className="text-xl font-black text-slate-900 dark:text-white">{new Set(validOrders.map(o => o.customerId)).size}</p>
+          <p className="text-sm text-slate-500 mb-1">{isServiceStore ? 'إجمالي المستفيدين والعملاء' : 'إجمالي العملاء'}</p>
+          <p className="text-xl font-black text-slate-900 dark:text-white">{new Set(validOrders.map(o => o.customerId || o.customerPhone)).size}</p>
         </div>
       </div>
     </div>
@@ -204,7 +228,9 @@ export default function MerchantReportsPage() {
     return (
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-          <h3 className="font-bold text-slate-900 dark:text-white">مخطط المبيعات</h3>
+          <h3 className="font-bold text-slate-900 dark:text-white">
+            {isServiceStore ? 'مخطط عوائد الخدمات والاستشارات' : 'مخطط المبيعات'}
+          </h3>
           <div className="flex flex-wrap bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
             <button 
               onClick={() => setSalesChartType('days')}
@@ -259,21 +285,27 @@ export default function MerchantReportsPage() {
           <div className="w-10 h-10 rounded-full bg-brand-50 dark:bg-brand-900/30 flex items-center justify-center mb-4">
             <TrendingUp className="w-5 h-5 text-brand-600 dark:text-brand-400" />
           </div>
-          <p className="text-sm font-medium text-slate-500 mb-1">إجمالي المبيعات للمدة المحددة</p>
+          <p className="text-sm font-medium text-slate-500 mb-1">
+            {isServiceStore ? 'إجمالي عوائد الخدمات للمدة المحددة' : 'إجمالي المبيعات للمدة المحددة'}
+          </p>
           <h3 className="text-2xl font-black text-slate-900 dark:text-white">{formatCurrency(totalSalesVolume, store.currency)}</h3>
         </div>
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
           <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
-            <ShoppingCart className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            {isServiceStore ? <CalendarCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" /> : <ShoppingCart className="w-5 h-5 text-blue-600 dark:text-blue-400" />}
           </div>
-          <p className="text-sm font-medium text-slate-500 mb-1">متوسط قيمة الطلب للمدة المحددة</p>
+          <p className="text-sm font-medium text-slate-500 mb-1">
+            {isServiceStore ? 'متوسط قيمة الاستشارة / الخدمة' : 'متوسط قيمة الطلب للمدة المحددة'}
+          </p>
           <h3 className="text-2xl font-black text-slate-900 dark:text-white">{formatCurrency(totalOrdersCount > 0 ? totalSalesVolume / totalOrdersCount : 0, store.currency)}</h3>
         </div>
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
           <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center mb-4">
             <PieChart className="w-5 h-5 text-amber-600 dark:text-amber-400" />
           </div>
-          <p className="text-sm font-medium text-slate-500 mb-1">إجمالي الطلبات للمدة المحددة</p>
+          <p className="text-sm font-medium text-slate-500 mb-1">
+            {isServiceStore ? 'إجمالي الحجوزات والتعاقدات المنجزة' : 'إجمالي الطلبات للمدة المحددة'}
+          </p>
           <h3 className="text-2xl font-black text-slate-900 dark:text-white">{totalOrdersCount}</h3>
         </div>
       </div>
@@ -304,46 +336,78 @@ export default function MerchantReportsPage() {
       displayProducts.sort((a, b) => b.realRevenue - a.realRevenue);
     } else if (inventoryTab === 'least-sold') {
       displayProducts.sort((a, b) => a.realSalesCount - b.realSalesCount);
-    } else if (inventoryTab === 'low-stock') {
+    } else if (inventoryTab === 'subscriptions') {
+      displayProducts = displayProducts.filter(p => p.tags?.some(t => t.startsWith('subscription:')));
+    } else if (inventoryTab === 'low-stock' && !isServiceStore) {
       displayProducts = displayProducts.filter(p => p.stock <= p.lowStockAlert);
     }
 
     return (
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
         <div className="border-b border-slate-200 dark:border-slate-800 flex overflow-x-auto hide-scrollbar">
-          <button onClick={() => setInventoryTab('best-seller')} className={`px-6 py-4 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${inventoryTab === 'best-seller' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>الأكثر مبيعاً بالكمية</button>
-          <button onClick={() => setInventoryTab('profitable')} className={`px-6 py-4 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${inventoryTab === 'profitable' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>الأكثر ربحية</button>
-          <button onClick={() => setInventoryTab('least-sold')} className={`px-6 py-4 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${inventoryTab === 'least-sold' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>الأقل مبيعاً</button>
-          <button onClick={() => setInventoryTab('low-stock')} className={`px-6 py-4 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${inventoryTab === 'low-stock' ? 'border-red-500 text-red-600 dark:text-red-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>تنبيهات المخزون</button>
+          <button onClick={() => setInventoryTab('best-seller')} className={`px-6 py-4 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${inventoryTab === 'best-seller' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+            {isServiceStore ? 'الأكثر طلباً وحجزاً 🏆' : 'الأكثر مبيعاً بالكمية'}
+          </button>
+          <button onClick={() => setInventoryTab('profitable')} className={`px-6 py-4 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${inventoryTab === 'profitable' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+            {isServiceStore ? 'الخدمات الأعلى عائداً 💰' : 'الأكثر ربحية'}
+          </button>
+          {isServiceStore && (
+            <button onClick={() => setInventoryTab('subscriptions')} className={`px-6 py-4 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${inventoryTab === 'subscriptions' ? 'border-teal-500 text-teal-600 dark:text-teal-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+              باقات المشتركين والعقود 🔄
+            </button>
+          )}
+          <button onClick={() => setInventoryTab('least-sold')} className={`px-6 py-4 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${inventoryTab === 'least-sold' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+            {isServiceStore ? 'الأقل طلباً' : 'الأقل مبيعاً'}
+          </button>
+          {!isServiceStore && (
+            <button onClick={() => setInventoryTab('low-stock')} className={`px-6 py-4 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${inventoryTab === 'low-stock' ? 'border-red-500 text-red-600 dark:text-red-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+              تنبيهات المخزون
+            </button>
+          )}
         </div>
         
         <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[60vh] overflow-y-auto">
-          {displayProducts.map(p => (
-            <div key={p.id} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-              <div className="flex items-center gap-4">
-                {p.images && p.images.length > 0 ? (
-                  <img src={p.images[0]} alt={p.name} className="w-12 h-12 rounded-xl object-cover border border-slate-100 dark:border-slate-800" />
-                ) : (
-                  <div className="w-12 h-12 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
-                    <Package className="w-5 h-5 text-slate-400" />
-                  </div>
-                )}
-                <div>
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">{p.name}</h4>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-xs text-slate-500">مخزون: {p.stock}</span>
-                    <span className="text-xs text-brand-600 dark:text-brand-400 font-bold">{p.realSalesCount} مبيعة</span>
+          {displayProducts.map(p => {
+            const isMonthly = p.tags?.includes('subscription:monthly');
+            const isYearly = p.tags?.includes('subscription:yearly');
+            return (
+              <div key={p.id} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <div className="flex items-center gap-4">
+                  {p.images && p.images.length > 0 ? (
+                    <img src={p.images[0]} alt={p.name} className="w-12 h-12 rounded-xl object-cover border border-slate-100 dark:border-slate-800" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+                      {isServiceStore ? <Briefcase className="w-5 h-5 text-slate-400" /> : <Package className="w-5 h-5 text-slate-400" />}
+                    </div>
+                  )}
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">{p.name}</h4>
+                    <div className="flex items-center gap-3 mt-1">
+                      {isServiceStore ? (
+                        <>
+                          <span className="text-xs text-slate-500 font-bold">{p.category}</span>
+                          {isMonthly && <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-600 font-bold border border-teal-200 dark:border-teal-800">اشتراك شهري 🔄</span>}
+                          {isYearly && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-600 font-bold border border-purple-200 dark:border-purple-800">عقد سنوي 🗓️</span>}
+                          <span className="text-xs text-teal-600 dark:text-teal-400 font-bold">{p.realSalesCount} حجز / طلب</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xs text-slate-500">مخزون: {p.stock}</span>
+                          <span className="text-xs text-brand-600 dark:text-brand-400 font-bold">{p.realSalesCount} مبيعة</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
+                <div className="text-left">
+                  <div className="font-black text-slate-900 dark:text-white">{formatCurrency(p.realRevenue, store.currency)}</div>
+                </div>
               </div>
-              <div className="text-left">
-                <div className="font-black text-slate-900 dark:text-white">{formatCurrency(p.realRevenue, store.currency)}</div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {displayProducts.length === 0 && (
             <div className="p-12 text-center text-slate-500 text-sm">
-              لا توجد منتجات تطابق هذه الفلترة
+              {isServiceStore ? 'لا توجد خدمات تطابق هذا التصنيف' : 'لا توجد منتجات تطابق هذه الفلترة'}
             </div>
           )}
         </div>
@@ -352,6 +416,54 @@ export default function MerchantReportsPage() {
   };
 
   const renderReturns = () => {
+    if (isServiceStore) {
+      const activeSubscriptions = filteredOrders.filter(o => 
+        o.items?.some((i: any) => i.tags?.includes('subscription:') || i.productName?.includes('اشتراك') || i.productName?.includes('باقة'))
+      );
+
+      return (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center">
+                <Users className="w-6 h-6 text-teal-600 dark:text-teal-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-500 mb-1">المشتركين والتعاقدات النشطة</p>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white">{activeSubscriptions.length}</h3>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
+                <Award className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-500 mb-1">معدل التجديد والاحتفاظ</p>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white">96%</h3>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-500 mb-1">عوائد الاشتراكات الدورية</p>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white">
+                  {formatCurrency(activeSubscriptions.reduce((sum, o) => sum + o.total, 0), store.currency)}
+                </h3>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center">
+            <p className="text-slate-500 text-sm">
+              يمكنك متابعة وتأكيد كافة فواتير الدفع والحوالات المالية الواردة عبر قسم <strong>"المدفوعات والفواتير"</strong> في القائمة الجانبية.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     const returnedOrders = filteredOrders.filter(o => ['returned', 'partially_returned'].includes(o.status));
     
     return (
@@ -389,12 +501,42 @@ export default function MerchantReportsPage() {
   };
 
   const renderOrders = () => {
+    if (isServiceStore) {
+      const serviceStatuses = {
+        pending: filteredOrders.filter(o => o.status === 'pending' || o.status === 'pending_payment').length,
+        processing: filteredOrders.filter(o => o.status === 'processing' || o.status === 'confirmed').length,
+        completed: filteredOrders.filter(o => o.status === 'delivered' || o.status === 'completed').length,
+        cancelled: filteredOrders.filter(o => o.status === 'cancelled').length,
+      };
+
+      return (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <p className="text-sm text-slate-500 mb-1 font-bold">بانتظار التأكيد والتحقق ⏳</p>
+            <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400">{serviceStatuses.pending}</h3>
+          </div>
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <p className="text-sm text-slate-500 mb-1 font-bold">جلسات وخدمات قيد التنفيذ 🛠️</p>
+            <h3 className="text-2xl font-black text-blue-600 dark:text-blue-400">{serviceStatuses.processing}</h3>
+          </div>
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <p className="text-sm text-slate-500 mb-1 font-bold">خدمات منجزة ومكتملة ✅</p>
+            <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{serviceStatuses.completed}</h3>
+          </div>
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <p className="text-sm text-slate-500 mb-1 font-bold">حجوزات ملغاة ❌</p>
+            <h3 className="text-2xl font-black text-red-600 dark:text-red-400">{serviceStatuses.cancelled}</h3>
+          </div>
+        </div>
+      );
+    }
+
     const statuses = {
       pending: filteredOrders.filter(o => o.status === 'pending').length,
       processing: filteredOrders.filter(o => o.status === 'processing').length,
       shipped: filteredOrders.filter(o => o.status === 'shipped').length,
       delivered: filteredOrders.filter(o => o.status === 'delivered').length,
-      cancelled: filteredOrders.filter(o => o.status === 'cancelled').length, // Count cancelled from filtered
+      cancelled: filteredOrders.filter(o => o.status === 'cancelled').length,
     };
 
     return (
@@ -440,14 +582,15 @@ export default function MerchantReportsPage() {
               </button>
             )}
             <h1 className="text-2xl font-black text-slate-900 dark:text-white">
-              {activeView === 'hub' ? 'مركز التقارير والإحصائيات' :
-               activeView === 'sales' ? 'تقارير المبيعات' :
-               activeView === 'inventory' ? 'تقارير المخزون' :
-               activeView === 'returns' ? 'تقارير المرتجعات' : 'تقارير الطلبات'}
+              {activeView === 'hub' ? (isServiceStore ? 'مركز تقارير وتحليلات الخدمات' : 'مركز التقارير والإحصائيات') :
+               activeView === 'sales' ? (isServiceStore ? 'تقارير عوائد الخدمات والاستشارات' : 'تقارير المبيعات') :
+               activeView === 'inventory' ? (isServiceStore ? 'أداء الخدمات وباقات الاشتراكات' : 'تقارير المخزون') :
+               activeView === 'returns' ? (isServiceStore ? 'تقارير الاشتراكات والتعاقدات' : 'تقارير المرتجعات') : 
+               (isServiceStore ? 'تقارير الحجوزات والتعاقدات' : 'تقارير الطلبات')}
             </h1>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            {activeView === 'hub' ? 'اختر القسم الذي تود عرض تقاريره.' : 'عرض التحليلات التفصيلية بناءً على المدة المحددة.'}
+            {activeView === 'hub' ? (isServiceStore ? 'تحليلات تفصيلية لأداء بروفايلك المهني واستشاراتك.' : 'اختر القسم الذي تود عرض تقاريره.') : 'عرض التحليلات التفصيلية بناءً على المدة المحددة.'}
           </p>
         </div>
 
