@@ -23,6 +23,14 @@ export default function MerchantOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
+  const isServiceStore = (() => {
+    if (!store) return false;
+    const cfg: any = typeof store.themeConfig === 'string'
+      ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })()
+      : store.themeConfig;
+    return cfg?.storeType === 'SERVICE' || cfg?.presetId === 'service-expert';
+  })();
+
   // Selected Order for detail / receipt inspection / printing
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
@@ -115,10 +123,12 @@ export default function MerchantOrdersPage() {
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
             <ShoppingBag className="w-6 h-6 text-brand-600" />
-            <span>إدارة ومعالجة الطلبات</span>
+            <span>{isServiceStore ? 'إدارة ومعالجة الحجوزات والطلبات' : 'إدارة ومعالجة الطلبات'}</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            متابعة دورة حياة الطلبات، تدقيق إشعارات التحويل، وطباعة الفواتير الحرارية
+            {isServiceStore
+              ? 'متابعة الحجوزات والاستشارات، تدقيق إشعارات التحويل، وتأكيد التعاقدات'
+              : 'متابعة دورة حياة الطلبات، تدقيق إشعارات التحويل، وطباعة الفواتير الحرارية'}
           </p>
         </div>
       </div>
@@ -129,13 +139,13 @@ export default function MerchantOrdersPage() {
         {/* Status Pills */}
         <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 pb-3">
           {[
-            { id: 'all', label: 'كافة الطلبات', count: orders.length },
-            { id: 'pending_payment', label: 'بانتظار التحويل', count: orders.filter(o => o.status === 'pending_payment').length },
-            { id: 'new', label: 'جديدة', count: orders.filter(o => o.status === 'new').length },
-            { id: 'processing', label: 'قيد التجهيز', count: orders.filter(o => o.status === 'processing').length },
-            { id: 'shipped', label: 'تم الشحن', count: orders.filter(o => o.status === 'shipped').length },
-            { id: 'delivered', label: 'مكتملة', count: orders.filter(o => o.status === 'delivered').length },
-            { id: 'cancelled', label: 'ملغي', count: orders.filter(o => o.status === 'cancelled').length },
+            { id: 'all', label: isServiceStore ? 'كافة الحجوزات والطلبات' : 'كافة الطلبات', count: orders.length },
+            { id: 'pending_payment', label: isServiceStore ? 'بانتظار التحويل' : 'بانتظار التحويل', count: orders.filter(o => o.status === 'pending_payment').length },
+            { id: 'new', label: isServiceStore ? 'حجوزات جديدة' : 'جديدة', count: orders.filter(o => o.status === 'new').length },
+            { id: 'processing', label: isServiceStore ? 'قيد المراجعة والتنسيق' : 'قيد التجهيز', count: orders.filter(o => o.status === 'processing').length },
+            { id: 'shipped', label: isServiceStore ? 'جلسات قيد التنفيذ' : 'تم الشحن', count: orders.filter(o => o.status === 'shipped').length },
+            { id: 'delivered', label: isServiceStore ? 'مكتملة ومنجزة' : 'مكتملة', count: orders.filter(o => o.status === 'delivered').length },
+            { id: 'cancelled', label: isServiceStore ? 'حجوزات ملغاة' : 'ملغي', count: orders.filter(o => o.status === 'cancelled').length },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -249,12 +259,12 @@ export default function MerchantOrdersPage() {
                         'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300'
                       }`}
                     >
-                      <option value="pending_payment">بانتظار التحويل</option>
-                      <option value="new">طلب جديد</option>
-                      <option value="processing">قيد التجهيز</option>
-                      <option value="shipped">تم الشحن</option>
-                      <option value="delivered">تم التسليم بنجاح</option>
-                      <option value="cancelled">ملغي</option>
+                      <option value="pending_payment">{isServiceStore ? 'بانتظار التحويل المالي' : 'بانتظار التحويل'}</option>
+                      <option value="new">{isServiceStore ? 'حجز جديد' : 'طلب جديد'}</option>
+                      <option value="processing">{isServiceStore ? 'قيد المراجعة والتنسيق' : 'قيد التجهيز'}</option>
+                      <option value="shipped">{isServiceStore ? 'جلسة / خدمة قيد التنفيذ' : 'تم الشحن'}</option>
+                      <option value="delivered">{isServiceStore ? 'خدمة مكتملة ومنجزة' : 'تم التسليم بنجاح'}</option>
+                      <option value="cancelled">{isServiceStore ? 'حجز ملغي' : 'ملغي'}</option>
                     </select>
                   </td>
 
@@ -330,18 +340,26 @@ export default function MerchantOrdersPage() {
               
               {/* Customer Box */}
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 space-y-1.5 border border-slate-200 dark:border-slate-700">
-                <div className="font-bold text-slate-900 dark:text-white">بيانات العميل والتوصيل:</div>
+                <div className="font-bold text-slate-900 dark:text-white">
+                  {isServiceStore ? 'بيانات العميل والمستفيد:' : 'بيانات العميل والتوصيل:'}
+                </div>
                 <div className="text-slate-600 dark:text-slate-300">👤 <strong>الاسم:</strong> {selectedOrder.customerName}</div>
                 <div className="text-slate-600 dark:text-slate-300 font-mono" dir="ltr">📞 <strong>الهاتف:</strong> {selectedOrder.customerPhone}</div>
-                <div className="text-slate-600 dark:text-slate-300">📍 <strong>العنوان:</strong> {selectedOrder.city} - {selectedOrder.address}</div>
+                {!isServiceStore ? (
+                  <div className="text-slate-600 dark:text-slate-300">📍 <strong>العنوان:</strong> {selectedOrder.city} - {selectedOrder.address}</div>
+                ) : (
+                  <div className="text-slate-600 dark:text-slate-300">📍 <strong>طريقة التنفيذ:</strong> تقديم واستلام الخدمة مباشرة / أونلاين</div>
+                )}
                 {selectedOrder.notes && (
-                  <div className="text-amber-600 dark:text-amber-400 pt-1">📝 <strong>ملاحظة:</strong> {selectedOrder.notes}</div>
+                  <div className="text-amber-600 dark:text-amber-400 pt-1">📝 <strong>{isServiceStore ? 'تفاصيل الاستشارة / الملاحظة:' : 'ملاحظة:'}</strong> {selectedOrder.notes}</div>
                 )}
               </div>
 
               {/* Items List */}
               <div className="space-y-2">
-                <div className="font-bold text-slate-900 dark:text-white">المنتجات المطلوبة:</div>
+                <div className="font-bold text-slate-900 dark:text-white">
+                  {isServiceStore ? 'الخدمات والاستشارات المطلوبة:' : 'المنتجات المطلوبة:'}
+                </div>
                 {selectedOrder.items.map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-2">
