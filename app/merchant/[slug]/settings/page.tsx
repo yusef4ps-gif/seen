@@ -76,6 +76,8 @@ export default function MerchantSettingsPage() {
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
   const [logo, setLogo] = useState('');
+  const [banner, setBanner] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('#0d9488');
   const [baseCurrency, setBaseCurrency] = useState<CurrencyCode>('SAR');
   const [storeType, setStoreType] = useState('PHYSICAL');
   const [deliveryCurrency, setDeliveryCurrency] = useState<CurrencyCode>('YER_SANAA');
@@ -149,6 +151,8 @@ export default function MerchantSettingsPage() {
           setCity(s.city || '');
           setAddress(s.address || '');
           setLogo(s.logo || '');
+          setBanner(s.banner || '');
+          setPrimaryColor(s.primaryColor || '#0d9488');
           setBaseCurrency(s.baseCurrency as any);
           setDeliveryCurrency((s as any).deliveryCurrency as any || 'YER_SANAA');
           setActiveYemeniMarket((s as any).activeYemeniMarket || 'YER_ADEN');
@@ -231,6 +235,8 @@ export default function MerchantSettingsPage() {
       city,
       address,
       logo,
+      banner,
+      primaryColor,
       baseCurrency,
       customRates: JSON.stringify(ratesByBase),
       paymentAccounts: JSON.stringify(paymentAccounts),
@@ -621,6 +627,59 @@ export default function MerchantSettingsPage() {
                       }}
                     />
                   </label>
+                </div>
+              </div>
+
+              {/* Store Cover / Banner */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  غلاف وبنر المتجر / البروفايل (Cover Banner)
+                </label>
+                <div className="flex items-center gap-3">
+                  {banner && banner.trim() !== '' && (
+                    <img src={banner} className="w-16 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0" alt="Banner" />
+                  )}
+                  <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-all bg-slate-50 dark:bg-slate-800 text-slate-500">
+                    <ImageIcon className="w-4 h-4" />
+                    <span className="text-xs font-bold">رفع صورة الغلاف...</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => setBanner(reader.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Primary Color */}
+              <div className="sm:col-span-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                    لون الهوية الأساسي (Primary Brand Color)
+                  </label>
+                  <p className="text-[11px] text-slate-500">يتحكم في لون الأزرار، العناوين، وشارات المتجر</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    className="w-9 h-9 rounded-xl cursor-pointer border-0 bg-transparent p-0"
+                  />
+                  <input
+                    type="text"
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    className="w-24 px-2 py-1.5 text-xs font-mono font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-center"
+                  />
                 </div>
               </div>
             </div>

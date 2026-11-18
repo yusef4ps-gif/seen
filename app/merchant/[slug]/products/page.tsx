@@ -204,6 +204,8 @@ export default function MerchantProductsPage() {
   const [stock, setStock] = useState<number>(20);
   const [lowStockAlert, setLowStockAlert] = useState<number>(5);
   const [isFeatured, setIsFeatured] = useState(false);
+  const [pricingModel, setPricingModel] = useState<'one_time' | 'subscription'>('one_time');
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [variants, setVariants] = useState<ProductVariant[]>([]);
 
   // AI loading state
@@ -240,6 +242,8 @@ export default function MerchantProductsPage() {
     setStock(isServiceStore ? 9999 : 20);
     setLowStockAlert(isServiceStore ? 0 : 5);
     setIsFeatured(false);
+    setPricingModel('one_time');
+    setBillingCycle('monthly');
     setVariants([]);
     setIsModalOpen(true);
   };
@@ -257,6 +261,16 @@ export default function MerchantProductsPage() {
     setStock(prod.stock);
     setLowStockAlert(prod.lowStockAlert);
     setIsFeatured(!!prod.isFeatured);
+    if (prod.tags && prod.tags.includes('subscription:yearly')) {
+      setPricingModel('subscription');
+      setBillingCycle('yearly');
+    } else if (prod.tags && prod.tags.includes('subscription:monthly')) {
+      setPricingModel('subscription');
+      setBillingCycle('monthly');
+    } else {
+      setPricingModel('one_time');
+      setBillingCycle('monthly');
+    }
     setVariants(prod.variants || []);
     setIsModalOpen(true);
   };
@@ -300,6 +314,11 @@ export default function MerchantProductsPage() {
 
     setIsSaving(true);
 
+    const productTags = [category];
+    if (isServiceStore && pricingModel === 'subscription') {
+      productTags.push(`subscription:${billingCycle}`);
+    }
+
     try {
       if (editingProductId) {
         const res = await updateProductAction(editingProductId, {
@@ -313,7 +332,7 @@ export default function MerchantProductsPage() {
           lowStockAlert: isServiceStore ? 0 : lowStockAlert,
           isFeatured,
           status: 'active',
-          tags: [category],
+          tags: productTags,
           variants: isServiceStore ? [] : variants,
         });
 
@@ -352,7 +371,7 @@ export default function MerchantProductsPage() {
           lowStockAlert: isServiceStore ? 0 : lowStockAlert,
           isFeatured,
           status: 'active',
-          tags: [category],
+          tags: productTags,
           variants: isServiceStore ? [] : variants,
         });
 
@@ -546,7 +565,19 @@ export default function MerchantProductsPage() {
 
                     {/* Price */}
                     <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
-                      {formatCurrency(prod.price, prod.baseCurrency)}
+                      <div className="flex items-center gap-1.5">
+                        <span>{formatCurrency(prod.price, prod.baseCurrency)}</span>
+                        {prod.tags && prod.tags.includes('subscription:monthly') && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 font-bold">
+                            / شهرياً 🔄
+                          </span>
+                        )}
+                        {prod.tags && prod.tags.includes('subscription:yearly') && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-bold">
+                            / سنوياً 🗓️
+                          </span>
+                        )}
+                      </div>
                       {prod.comparePrice && (
                         <span className="block text-[10px] line-through text-slate-400 font-normal">
                           {formatCurrency(prod.comparePrice, prod.baseCurrency)}
@@ -670,6 +701,69 @@ export default function MerchantProductsPage() {
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-brand-500"
                 />
               </div>
+
+              {/* Service Pricing Model Choice: Fixed Price vs Subscription */}
+              {isServiceStore && (
+                <div className="p-4 rounded-2xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/40 space-y-3">
+                  <label className="block text-xs font-bold text-teal-900 dark:text-teal-200">
+                    نموذج تسعير الخدمة:
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className={`cursor-pointer p-3 rounded-xl border flex items-center justify-between transition-all ${
+                      pricingModel === 'one_time'
+                        ? 'border-teal-500 bg-white dark:bg-slate-900 shadow-sm ring-2 ring-teal-500/20 text-teal-900 dark:text-white'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-white/60 text-slate-600 dark:text-slate-400'
+                    }`}>
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="radio"
+                          name="pricingModel"
+                          value="one_time"
+                          checked={pricingModel === 'one_time'}
+                          onChange={() => setPricingModel('one_time')}
+                          className="w-4 h-4 text-teal-600"
+                        />
+                        <div>
+                          <div className="text-xs font-bold">سعر محدد لمرة واحدة</div>
+                          <div className="text-[10px] text-slate-500">دفع المبلغ مرة واحدة عند طلب الخدمة</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 font-bold">دفع مباشر</span>
+                    </label>
+
+                    <label className={`cursor-pointer p-3 rounded-xl border flex items-center justify-between transition-all ${
+                      pricingModel === 'subscription'
+                        ? 'border-teal-500 bg-white dark:bg-slate-900 shadow-sm ring-2 ring-teal-500/20 text-teal-900 dark:text-white'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-white/60 text-slate-600 dark:text-slate-400'
+                    }`}>
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="radio"
+                          name="pricingModel"
+                          value="subscription"
+                          checked={pricingModel === 'subscription'}
+                          onChange={() => setPricingModel('subscription')}
+                          className="w-4 h-4 text-teal-600"
+                        />
+                        <div>
+                          <div className="text-xs font-bold">اشتراك دوري متجدد 🔄</div>
+                          <div className="text-[10px] text-slate-500">تجديد الفوترة تلقائياً كل فترة</div>
+                        </div>
+                      </div>
+                      {pricingModel === 'subscription' && (
+                        <select
+                          value={billingCycle}
+                          onChange={(e) => setBillingCycle(e.target.value as any)}
+                          className="text-[10px] font-bold px-2 py-1 rounded-lg bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 border-0 outline-none"
+                        >
+                          <option value="monthly">شهرياً 📅</option>
+                          <option value="yearly">سنوياً 🗓️</option>
+                        </select>
+                      )}
+                    </label>
+                  </div>
+                </div>
+              )}
 
               {/* Category, Base Price, Compare Price */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

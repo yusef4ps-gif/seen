@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Ticket, Plus, Tag, Trash2, Clock, X } from 'lucide-react';
-import { getStoreBySlugAction } from '@/app/actions/store';
+import { Ticket, Plus, Tag, Trash2, Clock, X, CheckSquare, Square, Layers, Check } from 'lucide-react';
+import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
 import { getCouponsAction, createCouponAction, deleteCouponAction } from '@/app/actions/coupon';
 import { logActivityAction } from '@/app/actions/activity';
 import { Store } from '@/lib/types';
@@ -18,6 +18,7 @@ export default function MerchantCouponsPage() {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [storeProducts, setStoreProducts] = useState<any[]>([]);
 
   // Form State
   const [code, setCode] = useState('');
@@ -25,6 +26,9 @@ export default function MerchantCouponsPage() {
   const [discount, setDiscount] = useState('');
   const [maxUses, setMaxUses] = useState('');
   const [expiry, setExpiry] = useState('');
+  const [scopeType, setScopeType] = useState<'all' | 'specific'>('all');
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [productSearch, setProductSearch] = useState('');
 
   useEffect(() => {
     async function init() {
@@ -32,8 +36,12 @@ export default function MerchantCouponsPage() {
         const s = await getStoreBySlugAction(slug);
         if (s) {
           setStore(s as any);
-          const cpns = await getCouponsAction(s.id);
+          const [cpns, prods] = await Promise.all([
+            getCouponsAction(s.id),
+            getProductsByStoreAction(s.id)
+          ]);
           setCoupons(cpns);
+          setStoreProducts(prods);
         }
       }
     }
@@ -45,6 +53,10 @@ export default function MerchantCouponsPage() {
     if (!store) return;
     setIsSubmitting(true);
     
+    const appliesTo = scopeType === 'all' || selectedProductIds.length === 0
+      ? 'all'
+      : JSON.stringify(selectedProductIds);
+
     const res = await createCouponAction({
       storeId: store.id,
       code,
@@ -52,7 +64,7 @@ export default function MerchantCouponsPage() {
       discount: Number(discount) || 0,
       maxUses: maxUses ? parseInt(maxUses) : 0,
       expiry: expiry || null,
-      appliesTo: 'all'
+      appliesTo
     });
 
     if (res.success) {
@@ -73,6 +85,8 @@ export default function MerchantCouponsPage() {
       setDiscount('');
       setMaxUses('');
       setExpiry('');
+      setScopeType('all');
+      setSelectedProductIds([]);
     } else {
       alert(res.error);
     }
@@ -141,6 +155,16 @@ export default function MerchantCouponsPage() {
             
             <div className="space-y-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 font-medium">
               <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1"><Layers className="w-3.5 h-3.5" /> نطاق الخصم:</span>
+                <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                  c.appliesTo === 'all' || !c.appliesTo 
+                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300' 
+                    : 'bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300'
+                }`}>
+                  {c.appliesTo === 'all' || !c.appliesTo ? 'الجميع (كافة الخدمات)' : `${(() => { try { return JSON.parse(c.appliesTo).length; } catch { return 1; } })()} خدمات محددة`}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1"><Tag className="w-3.5 h-3.5" /> الاستخدامات:</span>
                 <span className="font-bold text-slate-900 dark:text-white">{c.usageCount} / {c.maxUses === 0 ? 'مفتوح' : c.maxUses}</span>
               </div>
@@ -157,14 +181,14 @@ export default function MerchantCouponsPage() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-slateDark-900 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+          <div className="bg-white dark:bg-slateDark-900 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 shrink-0">
               <h3 className="font-bold text-slate-900 dark:text-white">إضافة كوبون خصم جديد</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleCreateCoupon} className="p-5 space-y-4">
+            <form onSubmit={handleCreateCoupon} className="p-5 space-y-4 overflow-y-auto flex-1 text-right">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">كود الخصم</label>
                 <input required type="text" value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="مثال: WEEKEND20" className="w-full px-3 py-2 text-xs rounded-xl border outline-none dark:bg-slate-900 dark:border-slate-700 dark:text-white uppercase font-black tracking-wider" />
@@ -185,6 +209,85 @@ export default function MerchantCouponsPage() {
                   </div>
                 )}
               </div>
+
+              {/* Scope Selection: All vs Specific Services/Products */}
+              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                  نطاق تطبيق الخصم:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className={`cursor-pointer p-2.5 rounded-xl border flex items-center justify-between transition-all ${
+                    scopeType === 'all'
+                      ? 'border-brand-600 bg-brand-50/50 dark:bg-brand-950/20 text-brand-700 dark:text-brand-300 font-bold'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-600'
+                  }`}>
+                    <span className="text-xs">الجميع (كافة الخدمات)</span>
+                    <input
+                      type="radio"
+                      name="scopeType"
+                      checked={scopeType === 'all'}
+                      onChange={() => { setScopeType('all'); setSelectedProductIds([]); }}
+                      className="accent-brand-600"
+                    />
+                  </label>
+
+                  <label className={`cursor-pointer p-2.5 rounded-xl border flex items-center justify-between transition-all ${
+                    scopeType === 'specific'
+                      ? 'border-brand-600 bg-brand-50/50 dark:bg-brand-950/20 text-brand-700 dark:text-brand-300 font-bold'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-600'
+                  }`}>
+                    <span className="text-xs">خدمات / منتجات محددة</span>
+                    <input
+                      type="radio"
+                      name="scopeType"
+                      checked={scopeType === 'specific'}
+                      onChange={() => setScopeType('specific')}
+                      className="accent-brand-600"
+                    />
+                  </label>
+                </div>
+
+                {scopeType === 'specific' && (
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2.5 max-h-48 overflow-y-auto">
+                    <div className="text-[11px] text-slate-500 font-bold">اختر الخدمات أو المنتجات المشمولة بالخصم:</div>
+                    {storeProducts.length === 0 ? (
+                      <div className="text-xs text-slate-400 text-center py-2">لا توجد خدمات متاحة حالياً</div>
+                    ) : (
+                      storeProducts.map((p) => {
+                        const isChecked = selectedProductIds.includes(p.id);
+                        return (
+                          <label
+                            key={p.id}
+                            className={`flex items-center justify-between p-2 rounded-xl cursor-pointer text-xs transition-colors ${
+                              isChecked ? 'bg-white dark:bg-slate-800 border border-brand-300 shadow-xs' : 'hover:bg-white/50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedProductIds([...selectedProductIds, p.id]);
+                                  } else {
+                                    setSelectedProductIds(selectedProductIds.filter(id => id !== p.id));
+                                  }
+                                }}
+                                className="accent-brand-600 rounded"
+                              />
+                              <span className="font-bold truncate max-w-[200px]">{p.name}</span>
+                            </div>
+                            <span className="text-[11px] font-mono font-bold text-slate-500">
+                              {formatCurrency(p.price, store.baseCurrency)}
+                            </span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">الحد الأقصى للاستخدام</label>
@@ -195,8 +298,8 @@ export default function MerchantCouponsPage() {
                   <input type="date" value={expiry} onChange={e => setExpiry(e.target.value)} className="w-full px-3 py-2 text-xs rounded-xl border outline-none dark:bg-slate-900 dark:border-slate-700 dark:text-white" />
                 </div>
               </div>
-              <button disabled={isSubmitting} type="submit" className="w-full py-3 mt-2 rounded-xl font-bold text-xs bg-brand-600 hover:bg-brand-500 text-white disabled:opacity-50">
-                {isSubmitting ? 'جاري الحفظ...' : 'إنشاء الكوبون'}
+              <button disabled={isSubmitting} type="submit" className="w-full py-3 mt-2 rounded-xl font-bold text-xs bg-brand-600 hover:bg-brand-500 text-white disabled:opacity-50 shadow-md transition-all">
+                {isSubmitting ? 'جاري الحفظ...' : 'إنشاء الكوبون 🏷️'}
               </button>
             </form>
           </div>

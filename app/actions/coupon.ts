@@ -91,7 +91,7 @@ export async function deleteCouponAction(id: string, storeId: string, slug: stri
   }
 }
 
-export async function validateCouponAction(code: string, storeId: string) {
+export async function validateCouponAction(code: string, storeId: string, cartProductIds?: string[]) {
   try {
     const coupon = await prisma.coupon.findUnique({
       where: {
@@ -106,6 +106,21 @@ export async function validateCouponAction(code: string, storeId: string) {
     if (!coupon.isActive) return { valid: false, error: 'كود الخصم موقوف مؤقتاً' };
     if (coupon.maxUses > 0 && coupon.usageCount >= coupon.maxUses) return { valid: false, error: 'تم استنفاد الحد الأقصى لاستخدام الكوبون' };
     if (coupon.expiry && new Date() > coupon.expiry) return { valid: false, error: 'عذراً، كود الخصم منتهي الصلاحية' };
+
+    // Check if coupon is scoped to specific products/services
+    if (coupon.appliesTo && coupon.appliesTo !== 'all') {
+      try {
+        const allowedIds: string[] = JSON.parse(coupon.appliesTo);
+        if (Array.isArray(allowedIds) && allowedIds.length > 0 && cartProductIds && cartProductIds.length > 0) {
+          const hasEligible = cartProductIds.some(id => allowedIds.includes(id));
+          if (!hasEligible) {
+            return { valid: false, error: 'هذا الكوبون مخصص لخدمات/منتجات محددة غير مشمولة في طلبك الحالي' };
+          }
+        }
+      } catch (e) {
+        console.warn('Error parsing coupon appliesTo:', e);
+      }
+    }
 
     return { valid: true, coupon };
   } catch (error) {

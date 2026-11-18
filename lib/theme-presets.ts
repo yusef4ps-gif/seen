@@ -426,4 +426,62 @@ export const THEME_PRESETS: ThemePreset[] = [
       ],
     },
   },
+  {
+    id: 'service-legal-consulting',
+    name: 'المستشار القانوني واستشارات الأعمال (Legal & Consulting Prestige)',
+    category: 'محاماة، استشارات قانونية، إدارة أعمال، ضرائب',
+    description: 'قالب كلاسيكي فاخر يوحي بالهيبة والوقار مع ألوان الكحلي الداكن والذهبي، مخصص لمكاتب المحاماة والمستشارين الماليين.',
+    thumbnail: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop&q=80',
+    config: {
+      presetId: 'service-legal-consulting',
+      storeType: 'SERVICE',
+      colors: {
+        primary: '#1e293b',       // Prestige Dark Slate
+        secondary: '#d97706',     // Amber Gold
+        background: '#f8fafc',
+        surface: '#ffffff',
+        textMain: '#0f172a',
+        textMuted: '#64748b',
+      },
+      typography: {
+        fontFamily: 'Cairo',
+        headingWeight: 'bold',
+      },
+      layout: {
+        borderRadius: 'curved',
+        cardShadow: 'elevated',
+        productCardStyle: 'bordered',
+      },
+      sections: DEFAULT_THEME_SECTIONS,
+    },
+  },
+  {
+    id: 'service-digital-freelancer',
+    name: 'المصمم والمطور الرقمي (Creative & Tech Portfolio)',
+    category: 'برمجة، تصميم، تسويق، كتابة محتوى',
+    description: 'قالب تقني وإبداعي حديث بألوان أرجوانية ونيون مخصص للمستقلين (Freelancers)، المصممين، والمبرمجين لعرض باقاتهم وحجز خدماتهم.',
+    thumbnail: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=600&auto=format&fit=crop&q=80',
+    config: {
+      presetId: 'service-digital-freelancer',
+      storeType: 'SERVICE',
+      colors: {
+        primary: '#6366f1',       // Tech Indigo
+        secondary: '#a855f7',     // Purple Accent
+        background: '#0b0f19',    // Modern Dark Slate
+        surface: '#111827',
+        textMain: '#f9fafb',
+        textMuted: '#9ca3af',
+      },
+      typography: {
+        fontFamily: 'Readex Pro',
+        headingWeight: 'black',
+      },
+      layout: {
+        borderRadius: 'pill',
+        cardShadow: 'elevated',
+        productCardStyle: 'classic',
+      },
+      sections: DEFAULT_THEME_SECTIONS,
+    },
+  },
 ];

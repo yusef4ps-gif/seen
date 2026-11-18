@@ -14,6 +14,7 @@ import { Store, ThemeConfig, ThemeSection, ThemePreset } from '@/lib/types';
 import { THEME_PRESETS, DEFAULT_THEME_SECTIONS } from '@/lib/theme-presets';
 import { formatCurrency } from '@/lib/currency-engine';
 import { getStoreBySlugAction, updateStoreAction } from '@/app/actions/store';
+import ImageUploader from '@/components/ImageUploader';
 
 export default function ThemeBuilderPage() {
   const params = useParams();
@@ -94,12 +95,15 @@ export default function ThemeBuilderPage() {
 
   // Save and publish theme
   const handleSaveTheme = async () => {
-    if (isSaving) return;
-    setIsSaving(true);
-    if (!store || isSaving) return;
+    if (isSaving || !store) return;
     setIsSaving(true);
     try {
-      await updateStoreAction(store.id, { themeConfig: JSON.stringify(themeConfig) });
+      const bannerUrl = (themeConfig as any).bannerUrl || store.banner;
+      await updateStoreAction(store.id, { 
+        primaryColor: themeConfig.colors.primary,
+        banner: bannerUrl,
+        themeConfig: JSON.stringify({ ...themeConfig, bannerUrl }) 
+      });
       setIsSavedSuccessfully(true);
       setTimeout(() => setIsSavedSuccessfully(false), 3000);
     } catch (e) {
@@ -108,6 +112,22 @@ export default function ThemeBuilderPage() {
       setIsSaving(false);
     }
   };
+
+  const isServiceStore = React.useMemo(() => {
+    if (!store) return false;
+    const cfg = typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig || '{}') : store.themeConfig;
+    return cfg?.storeType === 'SERVICE' || themeConfig?.storeType === 'SERVICE' || themeConfig?.presetId?.startsWith('service-');
+  }, [store, themeConfig]);
+
+  const availablePresets = React.useMemo(() => {
+    return THEME_PRESETS.filter(p => {
+      if (isServiceStore) {
+        return p.config.storeType === 'SERVICE' || p.id.startsWith('service-');
+      } else {
+        return p.config.storeType !== 'SERVICE' && !p.id.startsWith('service-');
+      }
+    });
+  }, [isServiceStore]);
 
   const presetId = themeConfig.presetId || 'fashion-luxury';
   const primaryColor = themeConfig.colors.primary;
@@ -196,7 +216,7 @@ export default function ThemeBuilderPage() {
           </Link>
 
           <button
-            onClick={handleSaveTheme} disabled={isSaving}
+            onClick={handleSaveTheme}
             disabled={isSaving}
             className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-brand-600 to-teal-500 hover:from-brand-700 hover:to-teal-600 shadow-md shadow-brand-600/25 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-wait ${isSaving ? 'opacity-60 cursor-not-allowed' : ''}"
           >
@@ -267,16 +287,21 @@ export default function ThemeBuilderPage() {
             {activeTab === 'presets' && (
               <div className="space-y-4 animate-fadeIn text-right">
                 <div className="space-y-1">
-                  <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                    اختر قالباً هندسياً متكاملاً:
+                  <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center justify-between">
+                    <span>{isServiceStore ? 'قوالب البروفايل المهني والخدمات:' : 'اختر قالباً هندسياً متكاملاً:'}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/40 text-teal-600 font-bold">
+                      {isServiceStore ? 'مقدم خدمة وفريلانسر 💼' : 'متاجر تجزئة 🛍️'}
+                    </span>
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    كل قالب يغير شكل وهندسة وعناصر العرض كلياً ليناسب تخصص تجارتك.
+                    {isServiceStore 
+                      ? 'قوالب مخصصة حصرياً للمستشارين والمكاتب المهنية والمدربين لحجز الخدمات والمواعيد.' 
+                      : 'كل قالب يغير شكل وهندسة وعناصر العرض كلياً ليناسب تخصص تجارتك.'}
                   </p>
                 </div>
 
                 <div className="space-y-3">
-                  {THEME_PRESETS.map((preset) => {
+                  {availablePresets.map((preset) => {
                     const isSelected = themeConfig.presetId === preset.id;
                     return (
                       <div
@@ -418,6 +443,21 @@ export default function ThemeBuilderPage() {
                   </div>
                 </div>
 
+
+                {/* Store Cover / Banner */}
+                <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                    غلاف وبنر المتجر / البروفايل (Cover Banner):
+                  </label>
+                  <ImageUploader
+                    value={(themeConfig as any).bannerUrl || store.banner || ''}
+                    onChange={(url) => {
+                      setThemeConfig({ ...themeConfig, bannerUrl: url } as any);
+                      setStore({ ...store, banner: url });
+                    }}
+                    label="تغيير صورة الغلاف الرئيسية"
+                  />
+                </div>
 
                 {/* Font Selector */}
                 <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800">

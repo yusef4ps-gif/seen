@@ -8,12 +8,13 @@ import {
   ShoppingCart, Bot, Settings, ExternalLink, ShieldCheck, Bell, 
   Menu, X, Sparkles, RefreshCw, Users, ArrowUpRight, Palette,
   Ticket, Tag, BarChart, History, LogOut, Star, Crown, Lock, ShieldAlert,
-  CheckCircle2, Briefcase, CalendarCheck
+  CheckCircle2, Briefcase, CalendarCheck, Share2
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
 import { Store, SystemBroadcast, SubscriptionPlan } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
 import BrandLogo from '@/components/BrandLogo';
+import ShareStoreModal from '@/components/ShareStoreModal';
 import { getStoreBySlugAction, getPlansAction } from '@/app/actions/store';
 import { getStoreNotificationsAction } from '@/app/actions/notifications';
 import LiveVisitorPill from '@/components/LiveVisitorPill';
@@ -112,6 +113,7 @@ export default function MerchantLayout({
   const [broadcasts, setBroadcasts] = useState<SystemBroadcast[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -933,6 +935,16 @@ export default function MerchantLayout({
               <span className="sm:hidden">{isServiceStore ? 'البروفايل' : 'المتجر'}</span>
             </Link>
 
+            {/* Share Platform Link Button */}
+            <button
+              onClick={() => setIsShareModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+              title="مشاركة رابط المنصة"
+            >
+              <Share2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+              <span className="hidden sm:inline">مشاركة الرابط</span>
+            </button>
+
           </div>
 
         </header>
@@ -1055,6 +1067,17 @@ export default function MerchantLayout({
         </footer>
 
       </div>
+
+      {/* Share Platform Modal */}
+      {store && (
+        <ShareStoreModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          storeSlug={store.slug}
+          storeName={store.name}
+          isService={isServiceStore}
+        />
+      )}
 
     </div>
   );

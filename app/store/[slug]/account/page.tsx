@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Package, User, LogOut, CheckCircle2, ShoppingBag, Settings, Lock, Trash2, Eye } from 'lucide-react';
+import { ArrowLeft, Package, User, LogOut, CheckCircle2, ShoppingBag, Settings, Lock, Trash2, Eye, Briefcase, CalendarCheck, Sparkles } from 'lucide-react';
 import { getCurrentCustomerAction, logoutCustomerAction, changeCustomerPasswordAction, deleteCustomerAccountAction } from '@/app/actions/customer-auth';
 import { getStoreBySlugAction } from '@/app/actions/store';
 import { getCustomerOrdersAction } from '@/app/actions/order';
@@ -116,6 +116,16 @@ export default function CustomerAccountPage() {
 
   const activeCurrency = typeof window !== 'undefined' ? (localStorage.getItem('preferred_currency') || store.baseCurrency) : store.baseCurrency;
 
+  const isServiceStore = (() => {
+    if (!store?.themeConfig) return false;
+    try {
+      const cfg = typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig) : store.themeConfig;
+      return cfg?.storeType === 'SERVICE' || cfg?.presetId === 'service-expert';
+    } catch {
+      return false;
+    }
+  })();
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slateDark-950 font-sans text-slate-900 dark:text-slate-100 pb-20">
       
@@ -133,7 +143,7 @@ export default function CustomerAccountPage() {
           </div>
 
           <Link href={`/store/${slug}`} className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
-            <span>العودة للمتجر</span>
+            <span>العودة {isServiceStore ? 'للبروفايل' : 'للمتجر'}</span>
             <ArrowLeft className="w-4 h-4" />
           </Link>
         </div>
@@ -169,8 +179,8 @@ export default function CustomerAccountPage() {
               activeTab === 'purchases' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <ShoppingBag className="w-4 h-4" />
-            مشترياتي
+            {isServiceStore ? <Briefcase className="w-4 h-4 text-teal-600" /> : <ShoppingBag className="w-4 h-4" />}
+            <span>{isServiceStore ? 'خدماتي واشتراكاتي 💼' : 'مشترياتي'}</span>
           </button>
           <button
             onClick={() => setActiveTab('settings')}
@@ -179,7 +189,7 @@ export default function CustomerAccountPage() {
             }`}
           >
             <Settings className="w-4 h-4" />
-            إعدادات الحساب
+            <span>إعدادات الحساب</span>
           </button>
         </div>
 
@@ -188,34 +198,75 @@ export default function CustomerAccountPage() {
           
           {activeTab === 'purchases' && (
             <div className="space-y-4">
-              <h3 className="font-black text-lg mb-6">سجل طلباتي</h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-black text-lg">
+                  {isServiceStore ? 'سجل الخدمات والاستشارات المحجوزة 📅' : 'سجل طلباتي'}
+                </h3>
+                <span className="text-xs text-slate-400 font-bold">
+                  {orders.length} {isServiceStore ? 'خدمة مسجلة' : 'طلب'}
+                </span>
+              </div>
+
               {orders.length === 0 ? (
                 <div className="text-center py-12 text-slate-500 bg-slate-50 dark:bg-slate-900/50 rounded-2xl">
-                  <Package className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                  <p className="font-bold">لا توجد طلبات سابقة</p>
-                  <p className="text-xs mt-1">لم تقم بإجراء أي طلب من هذا المتجر بعد.</p>
-                  <Link href={`/store/${slug}`} className="inline-block mt-4 text-brand-600 font-bold text-sm">تصفح المنتجات</Link>
+                  {isServiceStore ? (
+                    <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-20 text-teal-600" />
+                  ) : (
+                    <Package className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                  )}
+                  <p className="font-bold">
+                    {isServiceStore ? 'لا توجد خدمات أو اشتراكات محجوزة' : 'لا توجد طلبات سابقة'}
+                  </p>
+                  <p className="text-xs mt-1">
+                    {isServiceStore ? 'لم تقم بحجز أو طلب أي خدمة مهنية من هذه المنصة بعد.' : 'لم تقم بإجراء أي طلب من هذا المتجر بعد.'}
+                  </p>
+                  <Link 
+                    href={`/store/${slug}`} 
+                    className="inline-block mt-4 text-brand-600 font-bold text-sm hover:underline"
+                  >
+                    {isServiceStore ? 'استعراض الخدمات المتاحة ←' : 'تصفح المنتجات ←'}
+                  </Link>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {orders.map((o) => {
                     const tConverted = convertCurrency(o.total, store.baseCurrency, activeCurrency);
+                    
+                    const statusLabel = (() => {
+                      if (o.status === 'delivered') return isServiceStore ? 'مكتملة ومسلّمة ✅' : 'مكتمل';
+                      if (o.status === 'shipped') return isServiceStore ? 'قيد التنفيذ والمتابعة ⚡' : 'مشحون';
+                      if (o.status === 'processing') return isServiceStore ? 'قيد المراجعة والتأكيد ⏳' : 'قيد المعالجة';
+                      return isServiceStore ? 'طلب جديد قيد التدقيق 📋' : 'قيد الانتظار';
+                    })();
+
+                    const statusColor = (() => {
+                      if (o.status === 'delivered') return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800';
+                      if (o.status === 'shipped') return 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400 border border-blue-200 dark:border-blue-800';
+                      return 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 dark:border-amber-800';
+                    })();
+
                     return (
-                      <div key={o.id} className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-4">
+                      <div key={o.id} className="border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-4 bg-white dark:bg-slate-850 shadow-xs">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-bold text-sm">طلب رقم {o.orderNumber}</p>
+                            <p className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                              {isServiceStore && <Briefcase className="w-3.5 h-3.5 text-teal-600" />}
+                              <span>{isServiceStore ? 'حجز خدمة رقم' : 'طلب رقم'} #{o.orderNumber}</span>
+                            </p>
                             <p className="text-xs text-slate-500 mt-1">{new Date(o.createdAt).toLocaleDateString('ar-EG')}</p>
                           </div>
-                          <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-bold">
-                            {o.status === 'delivered' ? 'مكتمل' : o.status === 'shipped' ? 'مشحون' : 'قيد المعالجة'}
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${statusColor}`}>
+                            {statusLabel}
                           </span>
                         </div>
                         <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3">
-                          <p className="font-black text-brand-600">{formatCurrency(tConverted, activeCurrency)}</p>
-                          <Link href={`/store/${slug}/track/${o.id}`} className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5">
+                          <div>
+                            <span className="text-[10px] text-slate-400 block">إجمالي الرسوم:</span>
+                            <p className="font-black text-brand-600 text-sm">{formatCurrency(tConverted, activeCurrency)}</p>
+                          </div>
+                          <Link href={`/store/${slug}/track/${o.id}`} className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs">
                             <Eye className="w-3.5 h-3.5" />
-                            عرض الفاتورة
+                            <span>{isServiceStore ? 'تفاصيل الخدمة' : 'عرض الفاتورة'}</span>
                           </Link>
                         </div>
                       </div>

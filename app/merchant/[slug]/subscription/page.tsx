@@ -50,6 +50,7 @@ export default function SubscriptionPage() {
   }
   const diffTime = endDate.getTime() - now.getTime();
   const remaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  const maxTrialDays = 14;
   
   const isExpired = store.planStatus === 'expired' || (remaining <= 0 && store.planStatus !== 'active' && store.planStatus !== 'trial' && store.planStatus !== 'pending_approval');
 

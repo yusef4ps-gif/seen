@@ -10,8 +10,10 @@ import {
   Wallet, Image as ImageIcon, QrCode, ExternalLink, Flame, 
   Truck, RefreshCw, Star, Tag, Ticket, Cpu, Zap, Award, Coffee, Heart,
   Facebook, Instagram, Twitter, Youtube, Linkedin, MessageCircle, Mail, User, Settings, Lock,
-  Briefcase, CalendarCheck
+  Briefcase, CalendarCheck, Share2, Trash2
 } from 'lucide-react';
+import ShareStoreModal from '@/components/ShareStoreModal';
+import CustomServiceRequestModal from '@/components/CustomServiceRequestModal';
 import { Store, Product, ProductVariant, OrderItem, CurrencyCode, PaymentMethodType, ThemeConfig } from '@/lib/types';
 import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
 import { createOrderAction, captureAbandonedCartAction, getCustomerOrdersAction } from '@/app/actions/order';
@@ -28,7 +30,7 @@ import toast from 'react-hot-toast';
 import WhatsAppSupportButton, { formatWhatsAppUrl } from '@/components/WhatsAppSupportButton';
 import ImageUploader from '@/components/ImageUploader';
 
-function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, legacyBannerInterval, secondaryColor }: any) {
+function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, legacyBannerInterval, secondaryColor, onOpenCustomRequest }: any) {
   const slides = (section.settings.heroSlides && section.settings.heroSlides.length > 0)
     ? section.settings.heroSlides
     : ((section.settings.bannerImages && section.settings.bannerImages.length > 0)
@@ -209,8 +211,18 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
                 className="px-6 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-teal-600/30 transition-all flex items-center gap-2 active:scale-95"
               >
                 <CalendarCheck className="w-4 h-4" />
-                <span>طلب خدمة / حجز موعد 📅</span>
+                <span>طلب خدمة / استعراض الباقات 📅</span>
               </a>
+
+              {onOpenCustomRequest && (
+                <button
+                  onClick={onOpenCustomRequest}
+                  className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs sm:text-sm transition-all flex items-center gap-2 shadow-xs active:scale-95"
+                >
+                  <Briefcase className="w-4 h-4 text-teal-400" />
+                  <span>طلب مخصص أو استشارة ✍️</span>
+                </button>
+              )}
 
               {store.whatsapp && (
                 <a
@@ -306,6 +318,8 @@ export default function CustomerStorefrontPage() {
   // Customer Auth State
   const [currentCustomer, setCurrentCustomer] = useState<any>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isCustomRequestModalOpen, setIsCustomRequestModalOpen] = useState(false);
 
   // Legal Pages State
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
@@ -709,7 +723,8 @@ export default function CustomerStorefrontPage() {
     if (!couponCode) return;
     setIsValidatingCoupon(true);
     setCouponError('');
-    const res = await validateCouponAction(couponCode, store.id);
+    const cartProductIds = cart.map(i => i.productId);
+    const res = await validateCouponAction(couponCode, store.id, cartProductIds);
     if (res.valid) {
       setAppliedCoupon(res.coupon);
       setCouponError('');
@@ -881,7 +896,10 @@ export default function CustomerStorefrontPage() {
   };
 
   const filteredProducts = products.filter((p) => {
-    const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory || p.category.startsWith(selectedCategory + ' > ');
+    let matchesCategory = selectedCategory === 'all' || p.category === selectedCategory || p.category.startsWith(selectedCategory + ' > ');
+    if (selectedCategory === 'subscriptions_only') {
+      matchesCategory = Boolean(p.tags?.some(t => t.startsWith('subscription:')));
+    }
     const matchesSearch = p.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
                           p.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
@@ -1010,6 +1028,28 @@ export default function CustomerStorefrontPage() {
                 </button>
               )}
 
+              {/* Share Platform Link Button */}
+              <button
+                onClick={() => setIsShareModalOpen(true)}
+                className="px-2.5 py-1.5 sm:px-3 sm:py-2 text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full transition-colors flex items-center gap-1.5 shadow-xs"
+                title="مشاركة رابط المنصة"
+              >
+                <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-600 dark:text-brand-400" />
+                <span className="hidden md:inline">مشاركة</span>
+              </button>
+
+              {/* Service Platform Direct Custom Request Button */}
+              {isServiceStore && (
+                <button
+                  onClick={() => setIsCustomRequestModalOpen(true)}
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 rounded-full hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors shadow-xs"
+                  title="طلب خدمة مخصصة أو استشارة خاصة"
+                >
+                  <Briefcase className="w-3.5 h-3.5 text-teal-600" />
+                  <span>طلب مخصص ✍️</span>
+                </button>
+              )}
+
               {/* Cart / Booking Drawer Trigger Button */}
               {isServiceStore ? (
                 <button
@@ -1068,84 +1108,140 @@ export default function CustomerStorefrontPage() {
                   legacyBannerImages={legacyBannerImages} 
                   legacyBannerInterval={legacyBannerInterval} 
                   secondaryColor={secondaryColor} 
+                  onOpenCustomRequest={() => setIsCustomRequestModalOpen(true)}
                 />
               );
             }
 
-            // --- SECTION: FEATURES STRIP (Replaced by Dynamic Categories Navigation) ---
+            // --- SECTION: FEATURES STRIP (Modern Dynamic Platform Categories Navigation) ---
             if (section.type === 'features_strip') {
+              const getCategoryIcon = (catName: string) => {
+                if (catName.includes('محاماة') || catName.includes('قانون') || catName.includes('عقود')) return '⚖️';
+                if (catName.includes('استشارات') || catName.includes('أعمال') || catName.includes('إدارة')) return '💼';
+                if (catName.includes('طب') || catName.includes('عياد') || catName.includes('صحة')) return '🩺';
+                if (catName.includes('برمج') || catName.includes('تقني') || catName.includes('ويب') || catName.includes('موقع')) return '💻';
+                if (catName.includes('تصميم') || catName.includes('جرافيك') || catName.includes('شعار')) return '🎨';
+                if (catName.includes('تدريب') || catName.includes('تعليم') || catName.includes('كورس') || catName.includes('أكاديم')) return '📚';
+                if (catName.includes('تسويق') || catName.includes('إعلان')) return '📈';
+                if (catName.includes('بن') || catName.includes('مقه') || catName.includes('قهوة')) return '☕';
+                if (catName.includes('أزياء') || catName.includes('ملابس') || catName.includes('عباي')) return '👗';
+                if (catName.includes('إلكترون') || catName.includes('هاتف') || catName.includes('جوال')) return '📱';
+                if (catName.includes('عطور') || catName.includes('تجميل')) return '🌸';
+                if (catName.includes('هدايا') || catName.includes('تحف')) return '🎁';
+                return '🏷️';
+              };
+
+              const getCategoryCount = (mainCat: string) => {
+                if (mainCat === 'all') return products.length;
+                return products.filter(p => p.category === mainCat || p.category.startsWith(mainCat + ' > ')).length;
+              };
+
               return (
-                <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 mt-4 sm:mt-6 sticky top-14 sm:top-20 z-30 pt-2 pb-2">
-                  <div className={`p-2 sm:p-4 rounded-2xl flex flex-wrap items-center gap-4 shadow-sm ${
+                <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 mt-3 sm:mt-5 sticky top-14 sm:top-20 z-30 pt-1 pb-2">
+                  <div className={`p-2 rounded-2xl sm:rounded-3xl flex items-center gap-2 overflow-x-auto no-scrollbar shadow-sm backdrop-blur-md transition-all ${
                     presetId === 'tech-modern'
-                      ? 'bg-slate-900 border border-slate-800 text-slate-200'
+                      ? 'bg-slate-900/95 border border-slate-800 text-slate-200'
                       : presetId === 'yemen-roastery'
-                      ? 'bg-[#f8f4eb] border border-amber-900/10 text-[#451a03]'
+                      ? 'bg-[#f8f4eb]/95 border border-amber-900/10 text-[#451a03]'
                       : presetId === 'minimal-clean'
                       ? 'border-2 border-black bg-white rounded-none text-black'
-                      : 'bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800'
+                      : 'bg-white/95 dark:bg-slateDark-900/95 border border-slate-200 dark:border-slate-800'
                   }`}>
+                    {/* "All" Pill */}
                     <button
-                        onClick={() => setSelectedCategory('all')}
-                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-                          selectedCategory === 'all'
-                            ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400' 
-                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300'
-                        }`}
-                        style={{
-                          backgroundColor: selectedCategory === 'all' ? (presetId === 'minimal-clean' ? '#000' : `${primaryColor}15`) : undefined,
-                          color: selectedCategory === 'all' ? (presetId === 'minimal-clean' ? '#fff' : primaryColor) : undefined,
-                          borderRadius: presetId === 'minimal-clean' ? '0px' : '12px'
-                        }}
-                      >
-                        الكل
-                      </button>
-                    {parsedCategories.length === 0 && <div className="text-xs opacity-50 p-2">لا توجد أقسام مضافة بعد</div>}
-                    {parsedCategories.map((cat, idx) => (
-                      <div key={idx} className="relative group shrink-0">
-                        <button
-                          onClick={() => setSelectedCategory(cat.main)}
-                          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-                            selectedCategory === cat.main || selectedCategory.startsWith(cat.main + ' > ')
-                              ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400' 
-                              : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300'
-                          }`}
-                          style={{
-                            backgroundColor: selectedCategory === cat.main || selectedCategory.startsWith(cat.main + ' > ') ? (presetId === 'minimal-clean' ? '#000' : `${primaryColor}15`) : undefined,
-                            color: selectedCategory === cat.main || selectedCategory.startsWith(cat.main + ' > ') ? (presetId === 'minimal-clean' ? '#fff' : primaryColor) : undefined,
-                            borderRadius: presetId === 'minimal-clean' ? '0px' : '12px'
-                          }}
-                        >
-                          <span>{cat.main}</span>
-                          {cat.subs.length > 0 && <ChevronDown className="w-3 h-3 opacity-50" />}
-                        </button>
+                      onClick={() => setSelectedCategory('all')}
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shrink-0 transition-all ${
+                        selectedCategory === 'all'
+                          ? 'shadow-sm text-white' 
+                          : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      }`}
+                      style={{
+                        backgroundColor: selectedCategory === 'all' ? (presetId === 'minimal-clean' ? '#000' : primaryColor) : undefined,
+                        borderRadius: presetId === 'minimal-clean' ? '0px' : '14px'
+                      }}
+                    >
+                      <span>⚡</span>
+                      <span>كافة {isServiceStore ? 'الخدمات' : 'الأقسام'}</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                      }`}>
+                        {products.length}
+                      </span>
+                    </button>
 
-                        {/* Dropdown for Subcategories */}
-                        {cat.subs.length > 0 && (
-                          <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden translate-y-2 group-hover:translate-y-0"
-                            style={{ borderRadius: presetId === 'minimal-clean' ? '0px' : '16px' }}
+                    {/* Service Subscriptions Quick Filter if service store */}
+                    {isServiceStore && products.some(p => p.tags?.some(t => t.startsWith('subscription:'))) && (
+                      <button
+                        onClick={() => setSelectedCategory('subscriptions_only')}
+                        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shrink-0 transition-all ${
+                          selectedCategory === 'subscriptions_only'
+                            ? 'shadow-sm text-white bg-teal-600'
+                            : 'hover:bg-teal-50 dark:hover:bg-teal-950/30 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800/40'
+                        }`}
+                        style={{ borderRadius: '14px' }}
+                      >
+                        <span>🔄</span>
+                        <span>باقات واشتراكات</span>
+                      </button>
+                    )}
+
+                    {/* Category Pills */}
+                    {parsedCategories.map((cat, idx) => {
+                      const isSelected = selectedCategory === cat.main || selectedCategory.startsWith(cat.main + ' > ');
+                      const count = getCategoryCount(cat.main);
+                      return (
+                        <div key={idx} className="relative group shrink-0">
+                          <button
+                            onClick={() => setSelectedCategory(cat.main)}
+                            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shrink-0 transition-all ${
+                              isSelected
+                                ? 'shadow-sm text-white' 
+                                : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                            }`}
+                            style={{
+                              backgroundColor: isSelected ? (presetId === 'minimal-clean' ? '#000' : primaryColor) : undefined,
+                              borderRadius: presetId === 'minimal-clean' ? '0px' : '14px'
+                            }}
                           >
-                            <div className="py-2">
-                              {cat.subs.map(sub => {
-                                const fullCat = `${cat.main} > ${sub}`;
-                                const isSelected = selectedCategory === fullCat;
-                                return (
-                                  <button
-                                    key={sub}
-                                    onClick={() => setSelectedCategory(fullCat)}
-                                    className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
-                                      isSelected ? 'text-brand-600 bg-brand-50/50 dark:bg-brand-900/10' : 'text-slate-600 dark:text-slate-300'
-                                    }`}
-                                  >
-                                    <span>{sub}</span>
-                                  </button>
-                                );
-                              })}
+                            <span>{getCategoryIcon(cat.main)}</span>
+                            <span>{cat.main}</span>
+                            {count > 0 && (
+                              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                                isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                              }`}>
+                                {count}
+                              </span>
+                            )}
+                            {cat.subs.length > 0 && <ChevronDown className="w-3 h-3 opacity-60" />}
+                          </button>
+
+                          {/* Dropdown for Subcategories */}
+                          {cat.subs.length > 0 && (
+                            <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden translate-y-2 group-hover:translate-y-0"
+                              style={{ borderRadius: presetId === 'minimal-clean' ? '0px' : '16px' }}
+                            >
+                              <div className="py-2">
+                                {cat.subs.map(sub => {
+                                  const fullCat = `${cat.main} > ${sub}`;
+                                  const isSubSelected = selectedCategory === fullCat;
+                                  return (
+                                    <button
+                                      key={sub}
+                                      onClick={() => setSelectedCategory(fullCat)}
+                                      className={`w-full flex items-center justify-between px-4 py-2 text-xs font-bold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
+                                        isSubSelected ? 'text-brand-600 bg-brand-50/50 dark:bg-brand-900/10' : 'text-slate-600 dark:text-slate-300'
+                                      }`}
+                                    >
+                                      <span>{sub}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </section>
               );
@@ -1332,7 +1428,21 @@ export default function CustomerStorefrontPage() {
 
                                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-3">
                                   <div className="flex items-center justify-between">
-                                    <span className="text-[11px] font-bold text-slate-400">أتعاب الخدمة:</span>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[11px] font-bold text-slate-400">
+                                        {prod.tags?.includes('subscription:monthly') || prod.tags?.includes('subscription:yearly') ? 'قيمة الاشتراك:' : 'أتعاب الخدمة:'}
+                                      </span>
+                                      {prod.tags?.includes('subscription:monthly') && (
+                                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 font-black border border-teal-200 dark:border-teal-800">
+                                          شهرياً 🔄
+                                        </span>
+                                      )}
+                                      {prod.tags?.includes('subscription:yearly') && (
+                                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 font-black border border-purple-200 dark:border-purple-800">
+                                          سنوياً 🗓️
+                                        </span>
+                                      )}
+                                    </div>
                                     <span className="text-sm sm:text-base font-black text-teal-600 dark:text-teal-400 font-mono">
                                       {getFormattedPrice(prod.price)}
                                     </span>
@@ -1346,7 +1456,11 @@ export default function CustomerStorefrontPage() {
                                     className="w-full py-2.5 sm:py-3 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-teal-600/20 active:scale-95 transition-all"
                                   >
                                     <CalendarCheck className="w-4 h-4" />
-                                    <span>طلب الخدمة / حجز موعد 📅</span>
+                                    <span>
+                                      {prod.tags?.includes('subscription:monthly') || prod.tags?.includes('subscription:yearly')
+                                        ? 'الاشتراك وتفعيل الباقة 🔄'
+                                        : 'طلب الخدمة / حجز موعد 📅'}
+                                    </span>
                                   </button>
                                 </div>
                               </div>
@@ -2430,6 +2544,24 @@ export default function CustomerStorefrontPage() {
 
       {/* Floating WhatsApp Support Button */}
       <WhatsAppSupportButton phone={store.whatsapp || store.phone} storeName={store.name} />
+
+      {/* Share Platform Modal */}
+      <ShareStoreModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        storeSlug={store.slug}
+        storeName={store.name}
+        isService={isServiceStore}
+      />
+
+      {/* Custom Service Request Modal */}
+      <CustomServiceRequestModal
+        isOpen={isCustomRequestModalOpen}
+        onClose={() => setIsCustomRequestModalOpen(false)}
+        storeName={store.name}
+        merchantPhone={store.whatsapp || store.phone}
+        baseCurrency={activeCurrency}
+      />
 
     </div>
   );
