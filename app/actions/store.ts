@@ -137,7 +137,7 @@ export async function createStoreAction(data: any) {
         paymentAccounts: DEFAULT_PAYMENT_ACCOUNTS,
         shippingMethods: DEFAULT_SHIPPING_METHODS,
         planTier: 'free',
-        planStatus: 'pending_approval',
+        planStatus: 'trial',
         planStartDate: new Date(),
         planEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         activeVisitorsNow: 1,

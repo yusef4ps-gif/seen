@@ -300,71 +300,91 @@ export default function MerchantProductsPage() {
 
     setIsSaving(true);
 
-    if (editingProductId) {
-      const res = await updateProductAction(editingProductId, {
-        name,
-        description,
-        category,
-        price,
-        compareAtPrice: comparePrice || undefined,
-        images: [imageUrl],
-        stock,
-        lowStockAlert,
-        isFeatured,
-        status: 'active',
-        tags: [category],
-        variants, // Ensure variants are passed
-      });
+    try {
+      if (editingProductId) {
+        const res = await updateProductAction(editingProductId, {
+          name,
+          description,
+          category,
+          price,
+          compareAtPrice: comparePrice || undefined,
+          images: [imageUrl],
+          stock: isServiceStore ? 9999 : stock,
+          lowStockAlert: isServiceStore ? 0 : lowStockAlert,
+          isFeatured,
+          status: 'active',
+          tags: [category],
+          variants: isServiceStore ? [] : variants,
+        });
 
-      if (!res.success) {
-        alert(res.error?.message || res.error || 'فشل تحديث المنتج');
-        setIsSaving(false);
-        return;
-      }
-      const user = authEngine.getCurrentUser();
-      if (user) {
-        await logActivityAction({
+        if (!res.success) {
+          toast.error(res.error?.message || res.error || 'فشل تحديث البيانات');
+          setIsSaving(false);
+          return;
+        }
+
+        // Fire-and-forget activity logging without blocking the UI
+        const user = authEngine.getCurrentUser();
+        if (user) {
+          logActivityAction({
+            storeId: store.id,
+            userName: user.name,
+            action: 'تعديل',
+            entity: isServiceStore ? 'خدمة' : 'منتج',
+            details: `تم تعديل ${isServiceStore ? 'الخدمة' : 'المنتج'}: ${name}`,
+            device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile') ? 'جوال' : 'كمبيوتر/لابتوب'
+          }).catch(console.error);
+        }
+
+        toast.success(isServiceStore ? 'تم تعديل الخدمة بنجاح ⚡' : 'تم تعديل المنتج بنجاح ⚡');
+      } else {
+        const newProdId = `prod_${Date.now()}`;
+        const res = await createProductAction({
+          id: newProdId,
           storeId: store.id,
-          userName: user.name,
-          action: 'تعديل',
-          entity: 'منتج',
-          details: `تم تعديل المنتج: ${name}`,
-          device: navigator.userAgent.includes('Mobile') ? 'جوال' : 'كمبيوتر/لابتوب'
+          name,
+          description,
+          category,
+          price,
+          compareAtPrice: comparePrice || undefined,
+          images: [imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'],
+          stock: isServiceStore ? 9999 : stock,
+          lowStockAlert: isServiceStore ? 0 : lowStockAlert,
+          isFeatured,
+          status: 'active',
+          tags: [category],
+          variants: isServiceStore ? [] : variants,
         });
+
+        if (!res.success) {
+          toast.error(res.error?.message || res.error || 'فشل إضافة الخدمة');
+          setIsSaving(false);
+          return;
+        }
+
+        // Fire-and-forget activity logging without blocking the UI
+        const user = authEngine.getCurrentUser();
+        if (user) {
+          logActivityAction({
+            storeId: store.id,
+            userName: user.name,
+            action: 'إضافة',
+            entity: isServiceStore ? 'خدمة' : 'منتج',
+            details: `تمت إضافة ${isServiceStore ? 'خدمة جديدة' : 'منتج جديد'}: ${name}`,
+            device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile') ? 'جوال' : 'كمبيوتر/لابتوب'
+          }).catch(console.error);
+        }
+
+        toast.success(isServiceStore ? 'تمت إضافة الخدمة بنجاح ⚡' : 'تمت إضافة المنتج بنجاح ⚡');
       }
-    } else {
-      await createProductAction({
-        id: `prod_${Date.now()}`,
-        storeId: store.id,
-        name,
-        description,
-        category,
-        price,
-        compareAtPrice: comparePrice || undefined,
-        images: [imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'],
-        stock,
-        lowStockAlert,
-        isFeatured,
-        status: 'active',
-        tags: [category],
-        variants, // Ensure variants are passed
-      });
-      const user = authEngine.getCurrentUser();
-      if (user) {
-        await logActivityAction({
-          storeId: store.id,
-          userName: user.name,
-          action: 'إضافة',
-          entity: 'منتج',
-          details: `تمت إضافة منتج جديد: ${name}`,
-          device: navigator.userAgent.includes('Mobile') ? 'جوال' : 'كمبيوتر/لابتوب'
-        });
-      }
+
+      setIsModalOpen(false);
+      refreshProducts();
+    } catch (err: any) {
+      toast.error('حدث خطأ غير متوقع: ' + err.message);
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsSaving(false);
-    setIsModalOpen(false);
-    await refreshProducts();
   };
 
   const handleDeleteProduct = async (prod: Product) => {
@@ -472,12 +492,12 @@ export default function MerchantProductsPage() {
           <table className="w-full text-right text-xs">
             <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="py-3 px-4">المنتج والتفاصيل</th>
+                <th className="py-3 px-4">{isServiceStore ? 'الخدمة والتفاصيل' : 'المنتج والتفاصيل'}</th>
                 <th className="py-3 px-4">التصنيف</th>
                 <th className="py-3 px-4">السعر الأساسي</th>
                 <th className="py-3 px-4">المعادل بالريال اليمني</th>
-                <th className="py-3 px-4">المخزون</th>
-                <th className="py-3 px-4">المبيعات</th>
+                {!isServiceStore && <th className="py-3 px-4">المخزون</th>}
+                <th className="py-3 px-4">{isServiceStore ? 'الطلبات المنجزة' : 'المبيعات'}</th>
                 <th className="py-3 px-4 text-center">الإجراءات</th>
               </tr>
             </thead>
@@ -539,16 +559,18 @@ export default function MerchantProductsPage() {
                       {formatCurrency(priceInYER, 'YER_ADEN')}
                     </td>
 
-                    {/* Stock Status */}
-                    <td className="py-3.5 px-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        isOut ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400' :
-                        isLow ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400' :
-                        'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
-                      }`}>
-                        {isOut ? 'نفد المخزون' : isLow ? `منخفض (${prod.stock})` : `${prod.stock} قطعة`}
-                      </span>
-                    </td>
+                    {/* Stock Status - only for physical stores */}
+                    {!isServiceStore && (
+                      <td className="py-3.5 px-4">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          isOut ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400' :
+                          isLow ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400' :
+                          'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
+                        }`}>
+                          {isOut ? 'نفد المخزون' : isLow ? `منخفض (${prod.stock})` : `${prod.stock} قطعة`}
+                        </span>
+                      </td>
+                    )}
 
                     {/* Sales count */}
                     <td className="py-3.5 px-4 text-slate-500 font-medium">

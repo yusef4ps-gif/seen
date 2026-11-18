@@ -388,11 +388,32 @@ export default function CustomerStorefrontPage() {
         if (revRes.success && revRes.data) {
           setStoreReviews(revRes.data);
         }
+
+        // 1. Immediately hydrate customer from localStorage (guarantees session persistence on browser Back/Forward)
+        if (typeof window !== 'undefined') {
+          try {
+            const cached = localStorage.getItem(`seen_customer_${s.id}`) || localStorage.getItem(`seen_customer_${slug}`);
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              if (parsed && (parsed.storeId === s.id || !parsed.storeId)) {
+                setCurrentCustomer(parsed);
+                if (parsed.name) setCustomerName(parsed.name);
+                if (parsed.phone) setCustomerPhone(parsed.phone);
+                if (parsed.email) setCustomerEmail(parsed.email);
+              }
+            }
+          } catch (e) {}
+        }
       }
       
       const customer = await getCurrentCustomerAction();
       if (customer && customer.storeId === s?.id) {
         setCurrentCustomer(customer);
+        if (typeof window !== 'undefined' && s) {
+          try {
+            localStorage.setItem(`seen_customer_${s.id}`, JSON.stringify(customer));
+          } catch (e) {}
+        }
         // Pre-fill checkout fields if available
         setCustomerName(customer.name || '');
         setCustomerPhone(customer.phone || '');
@@ -481,7 +502,7 @@ export default function CustomerStorefrontPage() {
       <div className="min-h-screen flex items-center justify-center p-6 text-center">
         <div className="space-y-4">
           <StoreIcon className="w-12 h-12 text-slate-400 mx-auto animate-pulse" />
-          <h2 className="text-xl font-bold">جاري تحميل المتجر...</h2>
+          <h2 className="text-xl font-bold">جاري فتح المنصة...</h2>
         </div>
       </div>
     );
@@ -594,13 +615,27 @@ export default function CustomerStorefrontPage() {
     const variantId = variant?.id;
     const variantName = variant?.name;
 
+    // For service stores, quantity is strictly locked to 1
+    const finalQuantity = isServiceStore ? 1 : quantity;
+
     const existingIndex = cart.findIndex(
       (item) => item.productId === product.id && item.variantId === variantId
     );
 
     if (existingIndex > -1) {
+      if (isServiceStore) {
+        // Enforce strictly 1 for services without increasing count
+        const updated = [...cart];
+        updated[existingIndex].quantity = 1;
+        updated[existingIndex].total = basePrice;
+        setCart(updated);
+        setSelectedProduct(null);
+        setIsCheckoutOpen(true);
+        toast.success('تم تحديد الخدمة للحجز', { icon: '💼' });
+        return;
+      }
       const updated = [...cart];
-      updated[existingIndex].quantity += quantity;
+      updated[existingIndex].quantity += finalQuantity;
       updated[existingIndex].total = updated[existingIndex].quantity * basePrice;
       setCart(updated);
     } else {
@@ -611,19 +646,33 @@ export default function CustomerStorefrontPage() {
         variantId,
         variantName,
         price: basePrice,
-        quantity,
-        total: basePrice * quantity,
+        quantity: finalQuantity,
+        total: basePrice * finalQuantity,
       };
       setCart([...cart, newItem]);
     }
 
     setSelectedProduct(null);
-    toast.success('تم إضافة المنتج إلى السلة بنجاح', {
-      icon: '🛒',
-    });
+    if (isServiceStore) {
+      toast.success('تم اختيار الخدمة وتجهيزها للحجز', {
+        icon: '💼',
+      });
+      setIsCheckoutOpen(true);
+    } else {
+      toast.success('تم إضافة المنتج إلى السلة بنجاح', {
+        icon: '🛒',
+      });
+    }
   };
 
   const handleUpdateCartQuantity = (index: number, delta: number) => {
+    if (isServiceStore) {
+      // In service profiles, quantity cannot be incremented or decremented - delta < 0 removes it
+      if (delta < 0) {
+        setCart(cart.filter((_, i) => i !== index));
+      }
+      return;
+    }
     const updated = [...cart];
     updated[index].quantity += delta;
     if (updated[index].quantity <= 0) {
@@ -938,6 +987,10 @@ export default function CustomerStorefrontPage() {
                     <button 
                       onClick={async () => {
                         await logoutCustomerAction();
+                        if (typeof window !== 'undefined') {
+                          localStorage.removeItem(`seen_customer_${store.id}`);
+                          localStorage.removeItem(`seen_customer_${slug}`);
+                        }
                         setCurrentCustomer(null);
                         window.location.reload();
                       }}
@@ -1258,7 +1311,7 @@ export default function CustomerStorefrontPage() {
                                 />
                                 <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-teal-600 text-white text-[10px] font-black shadow-md flex items-center gap-1">
                                   <Briefcase className="w-3 h-3" />
-                                  <span>خدمة مهنية</span>
+                                  <span>معاينة الخدمة</span>
                                 </div>
                               </div>
 
@@ -1604,29 +1657,31 @@ export default function CustomerStorefrontPage() {
             </div>
 
             <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2.5 bg-white dark:bg-slateDark-900">
-              <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-                <button
-                  onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
-                  className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
-                <span className="px-2 text-xs font-bold">{itemQuantity}</span>
-                <button
-                  onClick={() => setItemQuantity(itemQuantity + 1)}
-                  className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              {!isServiceStore && (
+                <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                  <button
+                    onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
+                    className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="px-2 text-xs font-bold">{itemQuantity}</span>
+                  <button
+                    onClick={() => setItemQuantity(itemQuantity + 1)}
+                    className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
 
               <button
-                onClick={() => handleAddToCart(selectedProduct, selectedVariant || undefined, itemQuantity)}
+                onClick={() => handleAddToCart(selectedProduct, selectedVariant || undefined, isServiceStore ? 1 : itemQuantity)}
                 className="flex-1 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm text-white shadow-md flex items-center justify-center gap-2"
                 style={{ backgroundColor: primaryColor }}
               >
-                <ShoppingCart className="w-4 h-4" />
-                <span>إضافة إلى السلة</span>
+                {isServiceStore ? <Briefcase className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
+                <span>{isServiceStore ? 'حجز وطلب هذه الخدمة ⚡' : 'إضافة إلى السلة'}</span>
               </button>
             </div>
 
@@ -1703,21 +1758,36 @@ export default function CustomerStorefrontPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <button
-                          onClick={() => handleUpdateCartQuantity(idx, -1)}
-                          className="p-1 text-slate-500 hover:text-red-500"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="text-xs font-bold px-1">{item.quantity}</span>
-                        <button
-                          onClick={() => handleUpdateCartQuantity(idx, 1)}
-                          className="p-1 text-slate-500 hover:text-brand-600"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
+                      {isServiceStore ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300">
+                            خدمة 1x
+                          </span>
+                          <button
+                            onClick={() => setCart(cart.filter((_, i) => i !== idx))}
+                            className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                            title="حذف الخدمة"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <button
+                            onClick={() => handleUpdateCartQuantity(idx, -1)}
+                            className="p-1 text-slate-500 hover:text-red-500"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="text-xs font-bold px-1">{item.quantity}</span>
+                          <button
+                            onClick={() => handleUpdateCartQuantity(idx, 1)}
+                            className="p-1 text-slate-500 hover:text-brand-600"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
@@ -2222,7 +2292,7 @@ export default function CustomerStorefrontPage() {
         <p className="opacity-75 mb-4 text-slate-500 font-medium">© {new Date().getFullYear()} {store.name}. جميع الحقوق محفوظة.</p>
         <div className="flex flex-col items-center justify-center gap-3">
           <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-            تم تطوير هذا المتجر بواسطة
+            تم تطوير المنصة بواسطة
           </span>
           <BrandLogo size="sm" showText={true} href="/" className="hover:opacity-80 transition-opacity" />
         </div>
@@ -2293,6 +2363,11 @@ export default function CustomerStorefrontPage() {
           const customer = await getCurrentCustomerAction();
           if (customer) {
             setCurrentCustomer(customer);
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem(`seen_customer_${store.id}`, JSON.stringify(customer));
+              } catch (e) {}
+            }
             setCustomerName(customer.name || '');
             setCustomerPhone(customer.phone || '');
             const orders = await getCustomerOrdersAction(store.id, customer.customerId, 'id');

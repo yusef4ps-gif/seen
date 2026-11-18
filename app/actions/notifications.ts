@@ -45,7 +45,7 @@ export async function getStoreNotificationsAction(storeId: string) {
       // 3. Store Details for Trial Calculation
       prisma.store.findUnique({
         where: { id: storeId },
-        select: { createdAt: true, planStatus: true, planTier: true }
+        select: { createdAt: true, planStatus: true, planTier: true, planStartDate: true, planEndDate: true }
       }),
 
       // 4. Recent New Orders

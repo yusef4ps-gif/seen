@@ -41,15 +41,17 @@ export default function SubscriptionPage() {
     );
   }
 
-  // Calculate days left for trial (assuming 14 days)
-  const createdAt = new Date(store.createdAt);
+  // Calculate days left for trial (guarantee 14 days for trial/new accounts)
   const now = new Date();
-  const diffTime = Math.abs(now.getTime() - createdAt.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  const maxTrialDays = 14;
-  const remaining = Math.max(0, maxTrialDays - diffDays);
+  let endDate = store.planEndDate ? new Date(store.planEndDate) : (store.trialEndsAt ? new Date(store.trialEndsAt) : null);
+  if (!endDate || isNaN(endDate.getTime())) {
+    const start = store.createdAt ? new Date(store.createdAt) : new Date();
+    endDate = new Date(start.getTime() + 14 * 24 * 60 * 60 * 1000);
+  }
+  const diffTime = endDate.getTime() - now.getTime();
+  const remaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
   
-  const isExpired = store.planStatus === 'expired' || (store.planStatus === 'trial' && remaining <= 0);
+  const isExpired = store.planStatus === 'expired' || (remaining <= 0 && store.planStatus !== 'active' && store.planStatus !== 'trial' && store.planStatus !== 'pending_approval');
 
   const plans = [
     {
@@ -136,7 +138,7 @@ export default function SubscriptionPage() {
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white">
-                  {store.planStatus === 'trial' ? 'الباقة التجريبية' : store.planStatus === 'active' ? 'الباقة الاحترافية' : 'باقة منتهية'}
+                  {store.planStatus === 'active' ? 'الباقة الاحترافية' : 'الباقة التجريبية المجانية (14 يوماً)'}
                 </h2>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                   isExpired 
@@ -149,7 +151,7 @@ export default function SubscriptionPage() {
               <p className="text-slate-500 text-sm font-medium">
                 {isExpired 
                   ? 'لقد انتهت صلاحية باقتك، يرجى الترقية لتتمكن من استقبال الطلبات.'
-                  : 'أنت الآن تستمتع بمزايا التجربة المجانية لمنصة سِين.'}
+                  : `أنت الآن تستمتع بمزايا التجربة المجانية الكاملة لمنصة سِين (متبقي ${remaining} يوماً).`}
               </p>
             </div>
           </div>

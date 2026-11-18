@@ -24,6 +24,7 @@ export default function CreateStorePage() {
   // Wizard Steps: 1 -> Details, 2 -> Theme & Visuals, 3 -> Payments & Currency, 4 -> Generation
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isPendingApproval, setIsPendingApproval] = useState(false);
+  const [createdStoreSlug, setCreatedStoreSlug] = useState('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   React.useEffect(() => {
@@ -272,24 +273,52 @@ export default function CreateStorePage() {
       await new Promise((resolve) => setTimeout(resolve, 400));
 
       if (res.success && res.store) {
+        setCreatedStoreSlug(res.store.slug || cleanSlug);
         setIsPendingApproval(true);
       } else {
-        alert('حدث خطأ أثناء إنشاء المتجر: ' + res.error);
+        alert('حدث خطأ أثناء إنشاء المتجر: ' + (res.error || 'حدث خطأ غير معروف'));
         setIsGenerating(false);
       }
   };
 
   if (isPendingApproval) {
+    const targetSlug = createdStoreSlug || slug || 'my-store';
+    const isService = storeType === 'SERVICE';
     return (
       <div className="min-h-screen bg-slate-100 dark:bg-slateDark-950 flex flex-col items-center justify-center p-6 text-center space-y-6">
-        <div className="w-24 h-24 bg-brand-100 dark:bg-brand-900/50 text-brand-500 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(20,184,166,0.3)]">
+        <div className="w-24 h-24 bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(16,185,129,0.3)] animate-bounce">
           <CheckCircle2 className="w-12 h-12" />
         </div>
-        <h2 className="text-3xl font-black text-slate-800 dark:text-white">تم رفع طلب متجرك بنجاح! 🎉</h2>
-        <p className="text-lg text-slate-600 dark:text-slate-300 max-w-lg leading-relaxed">
-          طلبك الآن قيد المراجعة من قبل إدارة منصة سِين. سنتواصل معك قريباً عبر الواتساب على الرقم ({phone}) لتزويدك ببقية المعلومات والخطوات التالية.
-        </p>
-        <Link href="/" className="px-8 py-3.5 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors">العودة للرئيسية</Link>
+        <div className="space-y-2 max-w-lg">
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white">
+            {isService ? 'تم إنشاء بروفايلك المهني بنجاح! 🎉' : 'تم إنشاء متجرك السحابي بنجاح! 🎉'}
+          </h2>
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+            تم تفعيل باقتك التجريبية المجانية لمدة 14 يوماً مع كافة الصلاحيات. رقم التواصل المسجل: <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400" dir="ltr">{phone}</span>
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 w-full max-w-md">
+          <Link 
+            href={`/merchant/${targetSlug}`} 
+            className="w-full sm:flex-1 py-3.5 px-6 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-2xl shadow-lg shadow-brand-600/25 transition-all text-sm flex items-center justify-center gap-2"
+          >
+            <Rocket className="w-4 h-4" />
+            <span>الدخول إلى لوحة التحكم فوراً 🚀</span>
+          </Link>
+          <Link 
+            href={`/store/${targetSlug}`} 
+            target="_blank"
+            className="w-full sm:w-auto py-3.5 px-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white font-bold rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-sm flex items-center justify-center gap-2"
+          >
+            <Eye className="w-4 h-4" />
+            <span>معاينة المنصة</span>
+          </Link>
+        </div>
+
+        <Link href="/" className="text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 pt-2">
+          ← العودة للصفحة الرئيسية
+        </Link>
       </div>
     );
   }
@@ -838,8 +867,15 @@ export default function CreateStorePage() {
                   ← السابق
                 </button>
                 <button
-                  onClick={() => setCurrentStep(3)}
-                  className="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-brand-600/20"
+                  onClick={() => {
+                    if (!validateStep1()) {
+                      setCurrentStep(1);
+                      toast.error('يرجى تعبئة الحقول الإلزامية أولاً');
+                      return;
+                    }
+                    setCurrentStep(3);
+                  }}
+                  className="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-brand-600/20 active:scale-95 transition-all"
                 >
                   <span>التالي: إعداد المحافظ والعملة 💳</span>
                   <ArrowLeft className="w-4 h-4" />

@@ -130,6 +130,13 @@ export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess 
     setLoading(false);
     
     if (finalRes.success) {
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`seen_customer_${storeId}`, JSON.stringify(sessionData));
+        } catch (e) {
+          console.error('Failed to save customer to localStorage', e);
+        }
+      }
       onSuccess();
     } else {
       setError('حدث خطأ أثناء تسجيل الدخول');

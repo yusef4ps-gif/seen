@@ -257,14 +257,15 @@ export default function MerchantLayout({
 
     // 4. Subscription Calculation
     if (notifsData.storeDetails) {
-      const createdAt = new Date(notifsData.storeDetails.createdAt);
       const now = new Date();
-      const diffTime = Math.abs(now.getTime() - createdAt.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      const maxTrialDays = 14;
-      const remaining = maxTrialDays - diffDays;
+      let endDate = notifsData.storeDetails.planEndDate ? new Date(notifsData.storeDetails.planEndDate) : null;
+      if (!endDate || isNaN(endDate.getTime())) {
+        const createdAt = notifsData.storeDetails.createdAt ? new Date(notifsData.storeDetails.createdAt) : new Date();
+        endDate = new Date(createdAt.getTime() + 14 * 24 * 60 * 60 * 1000);
+      }
+      const remaining = Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
 
-      if (notifsData.storeDetails.planStatus === 'trial') {
+      if (notifsData.storeDetails.planStatus === 'trial' || notifsData.storeDetails.planStatus === 'pending_approval') {
         if (remaining <= 3 && remaining > 0) {
           const notifId = `sub-trial-${remaining}`;
           const isRead = readNotifIds.has(notifId);
@@ -272,13 +273,13 @@ export default function MerchantLayout({
             id: notifId,
             type: 'info',
             title: 'تنبيه الاشتراك',
-            message: `باقة المتجر الأساسية (الفترة التجريبية) ستنتهي بعد ${remaining} أيام، يرجى التجديد قريباً لتجنب الإيقاف.`,
+            message: `باقة المنصة الأساسية (الفترة التجريبية) ستنتهي بعد ${remaining} أيام، يرجى التجديد قريباً لتجنب الإيقاف.`,
             time: 'اليوم',
             link: `/merchant/${slug}/subscription`,
             isRead
           });
           if (!isRead) unread++;
-        } else if (remaining <= 0) {
+        } else if (remaining <= 0 && notifsData.storeDetails.planStatus === 'expired') {
           const notifId = `sub-expired`;
           const isRead = readNotifIds.has(notifId);
           dynamicNotifs.push({
@@ -938,41 +939,35 @@ export default function MerchantLayout({
 
         {/* Unified Subscription Banner */}
         {(() => {
-          let startDateStr = store.planStartDate;
-          let endDateStr = store.planEndDate;
-          
-          if (!startDateStr) startDateStr = store.createdAt;
-          if (!endDateStr) {
-            const fallbackEnd = new Date(store.createdAt);
-            fallbackEnd.setDate(fallbackEnd.getDate() + 14);
-            endDateStr = fallbackEnd;
+          let startDate = store.planStartDate ? new Date(store.planStartDate) : (store.createdAt ? new Date(store.createdAt) : new Date());
+          let endDate = store.planEndDate ? new Date(store.planEndDate) : (store.trialEndsAt ? new Date(store.trialEndsAt) : null);
+          if (!endDate || isNaN(endDate.getTime())) {
+            endDate = new Date(startDate.getTime() + 14 * 24 * 60 * 60 * 1000);
           }
+          if (isNaN(startDate.getTime())) startDate = new Date();
+          if (isNaN(endDate.getTime())) endDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
-          const startDate = new Date(startDateStr);
-          const endDate = new Date(endDateStr);
           const now = new Date();
-          
           const diffMs = endDate.getTime() - now.getTime();
-          const daysLeft = Math.ceil(diffMs / (1000 * 3600 * 24));
-          const isExpired = daysLeft <= 0;
-          const isWarning = daysLeft <= 7 && daysLeft > 0;
+          const daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 3600 * 24)));
+          const isExpired = store.planStatus === 'expired' || (daysLeft <= 0 && store.planStatus !== 'active' && store.planStatus !== 'trial' && store.planStatus !== 'pending_approval');
+          const isWarning = daysLeft <= 3 && daysLeft > 0 && !isExpired;
           
           const planNames: Record<string, string> = {
-            'free': 'الفترة المجانية',
+            'free': 'الفترة التجريبية المجانية (14 يوماً)',
             'starter': 'باقة الانطلاقة',
             'pro': 'الباقة الاحترافية',
-            'vip': 'باقة كبار الشخصيات (VIP)'
+            'vip': 'باقة المؤسسات (VIP)'
           };
           
-          // Use planTier to display the Arabic name, or fallback
-          let planName = planNames[store.planTier] || 'باقة غير معروفة';
-          if (store.planStatus === 'trial' && store.planTier === 'starter') {
-             planName = 'الفترة المجانية (انطلاقة)';
+          let planName = planNames[store.planTier] || 'الفترة التجريبية المجانية';
+          if (store.planStatus === 'trial' || store.planStatus === 'pending_approval' || store.planTier === 'free') {
+             planName = 'الفترة التجريبية المجانية (14 يوماً)';
           }
           
           let bannerBg = 'bg-gradient-to-r from-[#0f2b48] via-[#144b7a] to-[#14b8a6]'; 
           let icon = '🎁';
-          let statusText = 'اشتراك نشط';
+          let statusText = 'تجربة مجانية نشطة';
           let statusColor = 'bg-[#2dd4bf] text-[#0f2b48]';
           
           if (isExpired) {
@@ -985,9 +980,10 @@ export default function MerchantLayout({
             icon = '⏳';
             statusText = 'قارب على الانتهاء';
             statusColor = 'bg-amber-100 text-amber-900';
-          } else if (store.planStatus === 'trial') {
-             icon = '✨';
-             statusText = 'تجربة مجانية';
+          } else if (store.planStatus === 'active') {
+             icon = '⚡';
+             statusText = 'اشتراك نشط';
+             statusColor = 'bg-emerald-100 text-emerald-800';
           }
 
           return (
@@ -1052,7 +1048,7 @@ export default function MerchantLayout({
         <footer className="border-t border-slate-200 dark:border-slate-800 py-6 px-3 sm:px-8 flex flex-col items-center justify-center bg-slate-50 dark:bg-slateDark-950">
           <div className="flex flex-col items-center gap-3 p-4">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-              تم تطوير هذا المتجر بواسطة
+              تم تطوير المنصة بواسطة
             </span>
             <BrandLogo size="sm" showText={true} href="/" className="hover:opacity-80 transition-opacity" />
           </div>
