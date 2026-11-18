@@ -80,6 +80,11 @@ export default function MerchantSettingsPage() {
   const [primaryColor, setPrimaryColor] = useState('#0d9488');
   const [baseCurrency, setBaseCurrency] = useState<CurrencyCode>('SAR');
   const [storeType, setStoreType] = useState('PHYSICAL');
+  const [professionalTitle, setProfessionalTitle] = useState('');
+  const [providerBio, setProviderBio] = useState('');
+  const [experienceYears, setExperienceYears] = useState('');
+  const [consultationsCount, setConsultationsCount] = useState('');
+  const [certifications, setCertifications] = useState('');
   const [deliveryCurrency, setDeliveryCurrency] = useState<CurrencyCode>('YER_SANAA');
   const [activeYemeniMarket, setActiveYemeniMarket] = useState<'YER_ADEN' | 'YER_SANAA'>('YER_ADEN');
   const [ratesByBase, setRatesByBase] = useState<Record<string, any>>({
@@ -195,6 +200,11 @@ export default function MerchantSettingsPage() {
               if (parsed.storeType) {
                 setStoreType(parsed.storeType);
               }
+              if (parsed.professionalTitle) setProfessionalTitle(parsed.professionalTitle);
+              if (parsed.providerBio) setProviderBio(parsed.providerBio);
+              if (parsed.experienceYears) setExperienceYears(parsed.experienceYears);
+              if (parsed.consultationsCount) setConsultationsCount(parsed.consultationsCount);
+              if (parsed.certifications) setCertifications(parsed.certifications);
             } catch (e) {
               // ignore
             }
@@ -223,7 +233,16 @@ export default function MerchantSettingsPage() {
     if (!store) return;
     
     const currentThemeConfig = typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig || '{}') : (store.themeConfig || {});
-    const updatedThemeConfig = { ...currentThemeConfig, legalPages, storeType };
+    const updatedThemeConfig = { 
+      ...currentThemeConfig, 
+      legalPages, 
+      storeType,
+      professionalTitle,
+      providerBio,
+      experienceYears,
+      consultationsCount,
+      certifications
+    };
 
     const res = await updateStoreAction(store.id, {
       name,
@@ -493,12 +512,91 @@ export default function MerchantSettingsPage() {
                     onChange={(e) => setStoreType(e.target.value)}
                     className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
                   >
-                    <option value="PHYSICAL">منتجات ملموسة (تتطلب شحن وتوصيل)</option>
-                    <option value="DIGITAL">منتجات رقمية وخدمات (لا تتطلب شحن)</option>
+                    <option value="PHYSICAL">متجر سلع وبضائع ملموسة (شحن ومخزون وسلة تسوق)</option>
+                    <option value="SERVICE">منصة خدمات واستشارات مهنية (بروفايل خبير وحجوزات)</option>
+                    <option value="DIGITAL">منتجات رقمية وملفات قابلة للتنزيل</option>
                   </select>
                 </div>
               </div>
             </div>
+
+            {/* Service & Consultant Executive Profile Section */}
+            {storeType === 'SERVICE' && (
+              <div className="p-5 rounded-2xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 space-y-4">
+                <div className="flex items-center gap-2 text-teal-800 dark:text-teal-300 font-bold text-xs">
+                  <span>💼 بيانات البروفايل المهني والنبذة التعريفية (خاص بالخدمات والاستشارات)</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      المسمى المهني / التخصص الدقيق
+                    </label>
+                    <input
+                      type="text"
+                      value={professionalTitle}
+                      onChange={(e) => setProfessionalTitle(e.target.value)}
+                      placeholder="مثال: مستشار قانوني ومحكم دولي معتمد"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-teal-200 dark:border-teal-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      سنوات الخبرة العملية
+                    </label>
+                    <input
+                      type="text"
+                      value={experienceYears}
+                      onChange={(e) => setExperienceYears(e.target.value)}
+                      placeholder="مثال: +12 سنة خبرة"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-teal-200 dark:border-teal-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      عدد الاستشارات أو المشاريع المنجزة
+                    </label>
+                    <input
+                      type="text"
+                      value={consultationsCount}
+                      onChange={(e) => setConsultationsCount(e.target.value)}
+                      placeholder="مثال: +450 استشارة ناجحة"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-teal-200 dark:border-teal-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      الاعتمادات والتراخيص المهنية
+                    </label>
+                    <input
+                      type="text"
+                      value={certifications}
+                      onChange={(e) => setCertifications(e.target.value)}
+                      placeholder="مثال: عضو نقابة المحامين، معتمد من وزارة العدل"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-teal-200 dark:border-teal-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    النبذة التعريفية المفصلة عن مقدم الخدمة (Bio)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={providerBio}
+                    onChange={(e) => setProviderBio(e.target.value)}
+                    placeholder="اكتب نبذة شاملة عن مؤهلاتك، مجالات خبرتك، والقيمة المضافة التي تقدمها لعملائك ومستفيدي خدماتك..."
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-teal-200 dark:border-teal-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none resize-none"
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">

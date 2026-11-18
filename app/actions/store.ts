@@ -651,3 +651,156 @@ export async function updatePlansAction(plans: SubscriptionPlan[]) {
     return { success: false, error: error.message };
   }
 }
+
+export async function requestPlanUpgradeAction(data: {
+  storeId: string;
+  planTier: string;
+  billingCycle: 'monthly' | 'yearly';
+  transferRef?: string;
+  senderName?: string;
+  proofUrl?: string;
+  notes?: string;
+}) {
+  try {
+    const store = await prisma.store.findFirst({
+      where: {
+        OR: [{ id: data.storeId }, { slug: data.storeId }]
+      }
+    });
+
+    if (!store) {
+      return { success: false, error: 'المتجر غير موجود' };
+    }
+
+    const currentTheme = typeof store.themeConfig === 'string'
+      ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })()
+      : (store.themeConfig || {});
+
+    const upgradeRequest = {
+      planTier: data.planTier,
+      billingCycle: data.billingCycle,
+      transferRef: data.transferRef || '',
+      senderName: data.senderName || '',
+      proofUrl: data.proofUrl || '',
+      notes: data.notes || '',
+      requestedAt: new Date().toISOString(),
+      status: 'pending'
+    };
+
+    const updatedTheme = {
+      ...currentTheme,
+      pendingPlanUpgrade: upgradeRequest
+    };
+
+    await prisma.store.update({
+      where: { id: store.id },
+      data: {
+        themeConfig: JSON.stringify(updatedTheme)
+      }
+    });
+
+    revalidatePath('/seenayhq7x');
+    revalidatePath(`/merchant/${store.slug}/subscription`);
+
+    return { success: true, request: upgradeRequest };
+  } catch (error: any) {
+    console.error('Error requesting plan upgrade:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function approvePlanUpgradeAction(data: {
+  storeId: string;
+  planTier: string;
+  monthsDuration?: number;
+  customEndDate?: string;
+}) {
+  try {
+    const store = await prisma.store.findFirst({
+      where: {
+        OR: [{ id: data.storeId }, { slug: data.storeId }]
+      }
+    });
+
+    if (!store) {
+      return { success: false, error: 'المتجر غير موجود' };
+    }
+
+    const currentTheme = typeof store.themeConfig === 'string'
+      ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })()
+      : (store.themeConfig || {});
+
+    delete currentTheme.pendingPlanUpgrade;
+
+    const startDate = new Date();
+    let endDate: Date;
+
+    if (data.customEndDate) {
+      endDate = new Date(data.customEndDate);
+    } else {
+      const months = data.monthsDuration || 1;
+      endDate = new Date(startDate.getTime() + months * 30 * 24 * 60 * 60 * 1000);
+    }
+
+    const updated = await prisma.store.update({
+      where: { id: store.id },
+      data: {
+        planTier: data.planTier,
+        planStatus: 'active',
+        planStartDate: startDate,
+        planEndDate: endDate,
+        themeConfig: JSON.stringify(currentTheme)
+      }
+    });
+
+    revalidatePath('/seenayhq7x');
+    revalidatePath(`/merchant/${store.slug}`, 'layout');
+    revalidatePath(`/merchant/${store.slug}/subscription`);
+    revalidatePath(`/store/${store.slug}`, 'page');
+
+    return { success: true, store: updated };
+  } catch (error: any) {
+    console.error('Error approving plan upgrade:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateStoreSubscriptionDatesAction(data: {
+  storeId: string;
+  startDate?: string;
+  endDate?: string;
+  planStatus?: string;
+  planTier?: string;
+}) {
+  try {
+    const store = await prisma.store.findFirst({
+      where: {
+        OR: [{ id: data.storeId }, { slug: data.storeId }]
+      }
+    });
+
+    if (!store) {
+      return { success: false, error: 'المتجر غير موجود' };
+    }
+
+    const updateData: any = {};
+    if (data.startDate) updateData.planStartDate = new Date(data.startDate);
+    if (data.endDate) updateData.planEndDate = new Date(data.endDate);
+    if (data.planStatus) updateData.planStatus = data.planStatus;
+    if (data.planTier) updateData.planTier = data.planTier;
+
+    const updated = await prisma.store.update({
+      where: { id: store.id },
+      data: updateData
+    });
+
+    revalidatePath('/seenayhq7x');
+    revalidatePath(`/merchant/${store.slug}`, 'layout');
+    revalidatePath(`/merchant/${store.slug}/subscription`);
+
+    return { success: true, store: updated };
+  } catch (error: any) {
+    console.error('Error updating subscription dates:', error);
+    return { success: false, error: error.message };
+  }
+}

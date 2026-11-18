@@ -8,7 +8,7 @@ import {
   ShoppingCart, Bot, Settings, ExternalLink, ShieldCheck, Bell, 
   Menu, X, Sparkles, RefreshCw, Users, ArrowUpRight, Palette,
   Ticket, Tag, BarChart, History, LogOut, Star, Crown, Lock, ShieldAlert,
-  CheckCircle2, Briefcase, CalendarCheck, Share2
+  CheckCircle2, Briefcase, CalendarCheck, Share2, CreditCard
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
 import { Store, SystemBroadcast, SubscriptionPlan } from '@/lib/types';
@@ -82,6 +82,7 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
   products: 'products',
   inventory: 'inventory',
   orders: 'orders',
+  payments: 'orders',
   returns: 'returns',
   reviews: 'reviews',
   'abandoned-carts': 'abandoned_carts',
@@ -586,6 +587,12 @@ export default function MerchantLayout({
       href: `/merchant/${slug}/orders`,
       icon: isServiceStore ? CalendarCheck : ShoppingCart,
       badge: newOrdersCount > 0 ? String(newOrdersCount) : undefined,
+    },
+    {
+      id: 'payments',
+      title: 'المدفوعات والفواتير',
+      href: `/merchant/${slug}/payments`,
+      icon: CreditCard,
     },
     {
       id: 'returns', title: 'إدارة المرتجعات',

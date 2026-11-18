@@ -1282,6 +1282,80 @@ export default function CustomerStorefrontPage() {
             if (section.type === 'products_grid') {
               return (
                 <section id="products-grid" key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 space-y-4 scroll-mt-24">
+                  {/* Executive Provider Bio Card for Service Platforms */}
+                  {isServiceStore && (
+                    <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 text-white border border-slate-700 shadow-xl mb-6 relative overflow-hidden text-right">
+                      <div className="absolute top-0 left-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+                      
+                      <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6">
+                        {/* Avatar with Verified Badge */}
+                        <div className="relative shrink-0">
+                          <img
+                            src={store.logo || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80'}
+                            alt={store.name}
+                            className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-2 border-teal-400 shadow-lg"
+                          />
+                          <div className="absolute -bottom-2 -right-2 px-2.5 py-0.5 rounded-full bg-teal-500 text-slate-950 text-[10px] font-black flex items-center gap-1 shadow-md">
+                            <ShieldCheck className="w-3 h-3" />
+                            <span>موثّق</span>
+                          </div>
+                        </div>
+
+                        {/* Info & Bio */}
+                        <div className="flex-1 space-y-3 text-center md:text-right">
+                          <div>
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/15 border border-teal-500/30 text-teal-300 text-xs font-bold mb-2">
+                              <Briefcase className="w-3.5 h-3.5" />
+                              <span>{parsedThemeConfigForType.professionalTitle || store.category || 'مستشار وخبير مهني'}</span>
+                            </div>
+                            <h2 className="text-xl sm:text-2xl font-black text-white">
+                              {store.name}
+                            </h2>
+                          </div>
+
+                          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-3xl">
+                            {parsedThemeConfigForType.providerBio || store.description || 'نقدم خدمات واستشارات مهنية متخصصة قائمة على الخبرة والحلول الدقيقة التي تضمن تحقيق أهدافكم بكل كفاءة وسرية.'}
+                          </p>
+
+                          {/* Credentials & Stats Row */}
+                          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 pt-1">
+                            {parsedThemeConfigForType.experienceYears && (
+                              <span className="px-3 py-1 rounded-xl bg-white/10 border border-white/15 text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                                <Clock className="w-3.5 h-3.5 text-teal-400" />
+                                <span>{parsedThemeConfigForType.experienceYears}</span>
+                              </span>
+                            )}
+
+                            {parsedThemeConfigForType.consultationsCount && (
+                              <span className="px-3 py-1 rounded-xl bg-white/10 border border-white/15 text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                                <Award className="w-3.5 h-3.5 text-teal-400" />
+                                <span>{parsedThemeConfigForType.consultationsCount}</span>
+                              </span>
+                            )}
+
+                            {parsedThemeConfigForType.certifications && (
+                              <span className="px-3 py-1 rounded-xl bg-teal-950/60 border border-teal-600/40 text-xs font-bold text-teal-300 flex items-center gap-1.5">
+                                <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
+                                <span>{parsedThemeConfigForType.certifications}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Direct CTA */}
+                        <div className="shrink-0 self-center md:self-start">
+                          <button
+                            onClick={() => setIsCustomRequestModalOpen(true)}
+                            className="px-5 py-3 rounded-2xl bg-teal-500 hover:bg-teal-400 active:scale-95 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-teal-500/25 transition-all flex items-center gap-2"
+                          >
+                            <Briefcase className="w-4 h-4 text-slate-950" />
+                            <span>طلب خدمة مخصصة ✍️</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm sm:text-xl font-black">
                       {isServiceStore ? (section.settings.bannerTitle || 'الخدمات والاستشارات المتاحة') : (section.settings.bannerTitle || 'المنتجات المميزة')}
@@ -2539,6 +2613,28 @@ export default function CustomerStorefrontPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Mobile Sticky Bottom Floating Cart Bar */}
+      {cart.length > 0 && !isCheckoutOpen && !isCartOpen && (
+        <div className="fixed bottom-4 left-4 right-4 z-40 sm:hidden animate-fadeIn">
+          <button
+            onClick={() => isServiceStore ? setIsCheckoutOpen(true) : setIsCartOpen(true)}
+            className="w-full py-3.5 px-5 rounded-2xl text-white font-black text-xs shadow-2xl flex items-center justify-between border border-white/20 active:scale-95 transition-all"
+            style={{ backgroundColor: isServiceStore ? '#0d9488' : primaryColor }}
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-white/25 flex items-center justify-center text-xs font-black">
+                {cart.reduce((s, i) => s + i.quantity, 0)}
+              </span>
+              <span>{isServiceStore ? 'متابعة حجز واستكمال الخدمة' : 'معاينة السلة وإتمام الشراء'}</span>
+            </div>
+            <div className="flex items-center gap-1.5 font-black text-sm">
+              <span>{formatCurrency(cartTotalConverted, activeCurrency)}</span>
+              <ArrowLeft className="w-4 h-4" />
+            </div>
+          </button>
         </div>
       )}
 
