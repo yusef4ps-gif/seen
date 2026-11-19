@@ -560,7 +560,17 @@ export default function MerchantLayout({
     const cfg: any = typeof store.themeConfig === 'string' 
       ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })()
       : store.themeConfig;
-    return cfg?.storeType === 'SERVICE' || cfg?.presetId === 'service-expert';
+    return (
+      cfg?.storeType === 'SERVICE' || 
+      cfg?.storeType === 'DIGITAL' || 
+      cfg?.presetId === 'service-expert' ||
+      (store as any).storeType === 'SERVICE' ||
+      (store as any).storeType === 'DIGITAL' ||
+      store.category?.includes('خدمات') ||
+      store.category?.includes('استشارات') ||
+      store.category?.includes('محاماة') ||
+      store.category?.includes('عياد')
+    );
   })();
 
   const allNavItems = [

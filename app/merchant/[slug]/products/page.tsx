@@ -15,7 +15,7 @@ import { getStoreBySlugAction, getProductsByStoreAction, getPlansAction } from '
 import { getSiteContentAction } from '@/app/actions/content';
 import { isAiAllowedForStore } from '@/lib/ai-access';
 import { createProductAction, updateProductAction, deleteProductAction } from '@/app/actions/product';
-import { useStoreData, useStoreProducts } from '@/lib/swr-hooks';
+import { useStoreData, useStoreProducts, useStoreOrders } from '@/lib/swr-hooks';
 import { bulkCreateProductsAction } from '@/app/actions/importProducts';
 import Papa from 'papaparse';
 import { logActivityAction } from '@/app/actions/activity';
@@ -28,6 +28,7 @@ export default function MerchantProductsPage() {
 
   const { store } = useStoreData(slug);
   const { products = [], isLoading, mutate } = useStoreProducts(store?.id);
+  const { orders = [] } = useStoreOrders(store?.id);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
@@ -36,8 +37,38 @@ export default function MerchantProductsPage() {
     const cfg: any = typeof store.themeConfig === 'string'
       ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })()
       : store.themeConfig;
-    return cfg?.storeType === 'SERVICE' || cfg?.presetId === 'service-expert';
+    return (
+      cfg?.storeType === 'SERVICE' || 
+      cfg?.storeType === 'DIGITAL' || 
+      cfg?.presetId === 'service-expert' ||
+      (store as any).storeType === 'SERVICE' ||
+      (store as any).storeType === 'DIGITAL' ||
+      store.category?.includes('خدمات') ||
+      store.category?.includes('استشارات') ||
+      store.category?.includes('محاماة') ||
+      store.category?.includes('عياد')
+    );
   })();
+
+  // Calculate real-time sales count and revenue per product/service
+  const productPerformanceMap = React.useMemo(() => {
+    const map: Record<string, { count: number; totalRevenue: number }> = {};
+    (orders || []).forEach((order: any) => {
+      if (order.status === 'cancelled') return;
+      const orderItems = typeof order.items === 'string' 
+        ? (() => { try { return JSON.parse(order.items); } catch { return []; } })() 
+        : (order.items || []);
+      orderItems?.forEach((item: any) => {
+        const pid = item.productId || item.id;
+        if (!pid) return;
+        if (!map[pid]) map[pid] = { count: 0, totalRevenue: 0 };
+        const qty = item.quantity || 1;
+        map[pid].count += qty;
+        map[pid].totalRevenue += (item.total || ((item.price || 0) * qty));
+      });
+    });
+    return map;
+  }, [orders]);
 
   // AI Access State
   const [isAiEnabled, setIsAiEnabled] = useState(true);
@@ -559,8 +590,12 @@ export default function MerchantProductsPage() {
                 <th className="py-3 px-4">التصنيف</th>
                 <th className="py-3 px-4">السعر الأساسي</th>
                 <th className="py-3 px-4">المعادل بالريال اليمني</th>
-                {!isServiceStore && <th className="py-3 px-4">المخزون</th>}
-                <th className="py-3 px-4">{isServiceStore ? 'الطلبات المنجزة' : 'المبيعات'}</th>
+                {isServiceStore ? (
+                  <th className="py-3 px-4 font-bold text-emerald-700 dark:text-emerald-400">سجل المبيعات والعوائد 💰</th>
+                ) : (
+                  <th className="py-3 px-4">المخزون</th>
+                )}
+                <th className="py-3 px-4">{isServiceStore ? 'حالة التوفر' : 'المبيعات'}</th>
                 <th className="py-3 px-4 text-center">الإجراءات</th>
               </tr>
             </thead>
@@ -634,8 +669,19 @@ export default function MerchantProductsPage() {
                       {formatCurrency(priceInYER, 'YER_ADEN')}
                     </td>
 
-                    {/* Stock Status - only for physical stores */}
-                    {!isServiceStore && (
+                    {/* Stock Status OR Sales Revenue for Services */}
+                    {isServiceStore ? (
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-emerald-600 dark:text-emerald-400 font-mono text-xs">
+                          {formatCurrency(productPerformanceMap[prod.id]?.totalRevenue || 0, prod.baseCurrency)}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                          {(productPerformanceMap[prod.id]?.count || 0) > 0 
+                            ? `${productPerformanceMap[prod.id]?.count} طلب مكتمل` 
+                            : '0 طلب'}
+                        </div>
+                      </td>
+                    ) : (
                       <td className="py-3.5 px-4">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           isOut ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400' :
@@ -647,10 +693,19 @@ export default function MerchantProductsPage() {
                       </td>
                     )}
 
-                    {/* Sales count */}
-                    <td className="py-3.5 px-4 text-slate-500 font-medium">
-                      {prod.salesCount || 0} طلب
-                    </td>
+                    {/* Sales count OR Active Status */}
+                    {isServiceStore ? (
+                      <td className="py-3.5 px-4">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 text-[10px] font-bold border border-teal-200 dark:border-teal-800">
+                          <Check className="w-3 h-3" />
+                          <span>متاحة للحجز</span>
+                        </span>
+                      </td>
+                    ) : (
+                      <td className="py-3.5 px-4 text-slate-500 font-medium">
+                        {productPerformanceMap[prod.id]?.count || prod.salesCount || 0} طلب
+                      </td>
+                    )}
 
                     {/* Actions */}
                     <td className="py-3.5 px-4 text-center">
