@@ -242,6 +242,17 @@ export default function MerchantProductsPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [variants, setVariants] = useState<ProductVariant[]>([]);
 
+  // Distinguish between physical goods (سلع) and services/consultations (خدمات واستشارات)
+  const isServiceItem = Boolean(
+    isServiceStore || 
+    isConsultation || 
+    mainCategory?.includes('خدمات') || 
+    mainCategory?.includes('استشارات') || 
+    mainCategory?.includes('استشارة') || 
+    mainCategory?.includes('جلسات') ||
+    pricingModel === 'subscription'
+  );
+
   const allowDigitalProducts = (() => {
     try {
       const cfg = typeof store?.themeConfig === 'string' ? JSON.parse(store.themeConfig) : (store?.themeConfig || {});
@@ -491,12 +502,12 @@ export default function MerchantProductsPage() {
           price: effectivePrice,
           compareAtPrice: comparePrice || undefined,
           images: [imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'],
-          stock: isServiceStore ? 9999 : stock,
-          lowStockAlert: isServiceStore ? 0 : lowStockAlert,
+          stock: isServiceItem ? 9999 : stock,
+          lowStockAlert: isServiceItem ? 0 : lowStockAlert,
           isFeatured,
           status: 'active',
           tags: productTags,
-          variants: (isServiceStore || isConsultation) ? [] : variants,
+          variants: isServiceItem ? [] : variants,
         });
 
         if (!res.success) {
@@ -532,12 +543,12 @@ export default function MerchantProductsPage() {
           price: effectivePrice,
           compareAtPrice: comparePrice || undefined,
           images: [imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'],
-          stock: isServiceStore ? 9999 : stock,
-          lowStockAlert: isServiceStore ? 0 : lowStockAlert,
+          stock: isServiceItem ? 9999 : stock,
+          lowStockAlert: isServiceItem ? 0 : lowStockAlert,
           isFeatured,
           status: 'active',
           tags: productTags,
-          variants: (isServiceStore || isConsultation) ? [] : variants,
+          variants: isServiceItem ? [] : variants,
         });
 
         if (!res.success) {
@@ -1512,8 +1523,8 @@ export default function MerchantProductsPage() {
               </div>
               )}
 
-              {/* Stock and Alert Row (Only for Physical Stores) */}
-              {!isServiceStore && !isConsultation && (
+              {/* Stock and Alert Row (Only for Physical Goods / السلع والمنتجات المادية فقط) */}
+              {!isServiceItem && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -1543,8 +1554,8 @@ export default function MerchantProductsPage() {
                 </div>
               )}
 
-              {/* Variants Matrix Section (Only for Physical Stores and Non-Consultations) */}
-              {!isServiceStore && !isConsultation && (
+              {/* Variants Matrix Section (Only for Physical Goods / السلع والمنتجات المادية فقط) */}
+              {!isServiceItem && (
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
                   <div className="flex items-center justify-between mb-2">
                     <div>
