@@ -31,15 +31,24 @@ import WhatsAppSupportButton, { formatWhatsAppUrl } from '@/components/WhatsAppS
 import ImageUploader from '@/components/ImageUploader';
 
 function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, legacyBannerInterval, secondaryColor, onOpenCustomRequest }: any) {
-  const slides = (section.settings.heroSlides && section.settings.heroSlides.length > 0)
+  let slides = (section.settings?.heroSlides && section.settings.heroSlides.length > 0)
     ? section.settings.heroSlides
-    : ((section.settings.bannerImages && section.settings.bannerImages.length > 0)
-        ? section.settings.bannerImages.map((img: string) => ({ image: img, title: section.settings.bannerTitle, subtitle: section.settings.bannerSubtitle }))
-        : (section.settings.bannerImageUrl ? [{ image: section.settings.bannerImageUrl, title: section.settings.bannerTitle, subtitle: section.settings.bannerSubtitle }] : []));
+    : ((section.settings?.bannerImages && section.settings.bannerImages.length > 0)
+        ? section.settings.bannerImages.map((img: string) => ({ image: img, title: section.settings?.bannerTitle, subtitle: section.settings?.bannerSubtitle }))
+        : (section.settings?.bannerImageUrl ? [{ image: section.settings.bannerImageUrl, title: section.settings?.bannerTitle, subtitle: section.settings?.bannerSubtitle }] : []));
+
+  // Fallback if slides is empty: check store.banner or legacyBannerImages
+  if (slides.length === 0) {
+    if (store.banner && store.banner.trim() !== '') {
+      slides = [{ image: store.banner, title: section.settings?.bannerTitle || store.name, subtitle: section.settings?.bannerSubtitle || store.description }];
+    } else if (legacyBannerImages && legacyBannerImages.length > 0) {
+      slides = legacyBannerImages.map((img: string) => ({ image: img, title: section.settings?.bannerTitle || store.name, subtitle: section.settings?.bannerSubtitle || store.description }));
+    }
+  }
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [touchStart, setTouchStart] = useState(0);
-  const interval = section.settings.bannerInterval || legacyBannerInterval || 5;
+  const interval = section.settings?.bannerInterval || legacyBannerInterval || 5;
 
   useEffect(() => {
     if (slides.length <= 1) return;
@@ -59,7 +68,7 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
     }
   };
 
-  if (slides.length === 0) return null;
+  if (presetId !== 'service-expert' && slides.length === 0) return null;
 
   const currentSlide = slides[currentIndex];
   const title = currentSlide.title || store.name;
@@ -182,24 +191,32 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
 
     const coverImage = store.banner || parsedThemeConfig?.bannerUrl || (slides[0]?.image) || null;
 
+    let heroSocial: any = {};
+    if (store.socialLinks) {
+      try {
+        heroSocial = typeof store.socialLinks === 'string' ? JSON.parse(store.socialLinks) : store.socialLinks;
+      } catch {}
+    }
+
     return (
-      <section id="about-section" className="relative w-full bg-slate-950 text-white py-12 sm:py-20 px-4 sm:px-8 overflow-hidden">
+      <section id="about-section" className="relative w-full bg-slate-950 text-white py-12 sm:py-20 px-4 sm:px-8 overflow-hidden min-h-[320px] flex items-center">
         {/* Background Cover Image with High-Readability Overlay */}
         {coverImage ? (
           <>
             <img
               src={coverImage}
               alt={store.name}
-              className="absolute inset-0 w-full h-full object-cover object-center scale-105"
+              className="absolute inset-0 w-full h-full object-cover object-center scale-100"
             />
-            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/70 to-slate-950/60" />
+            {/* Elegant balanced overlay so the photo is clearly visible, with crisp readable text */}
+            <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-[0.5px]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-slate-950/20" />
           </>
         ) : (
           <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900" />
         )}
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#0d9488_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 relative z-10 text-right">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 relative z-10 text-right w-full">
           
           <div className="flex-1 space-y-4">
             <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white drop-shadow-md">
@@ -248,6 +265,82 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
                 </a>
               )}
             </div>
+
+            {/* Social Links Row in Hero if available */}
+            {(heroSocial.linkedin || heroSocial.x || heroSocial.instagram || heroSocial.facebook || heroSocial.snapchat || heroSocial.tiktok) && (
+              <div className="flex items-center gap-2 pt-2">
+                {heroSocial.linkedin && (
+                  <a
+                    href={heroSocial.linkedin.startsWith('http') ? heroSocial.linkedin : `https://${heroSocial.linkedin}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white hover:text-sky-400 transition-all active:scale-95 shadow-xs"
+                    title="LinkedIn"
+                  >
+                    <Linkedin className="w-4 h-4" />
+                  </a>
+                )}
+                {heroSocial.x && (
+                  <a
+                    href={heroSocial.x.startsWith('http') ? heroSocial.x : `https://${heroSocial.x}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white hover:text-sky-300 transition-all active:scale-95 shadow-xs"
+                    title="X (Twitter)"
+                  >
+                    <Twitter className="w-4 h-4" />
+                  </a>
+                )}
+                {heroSocial.instagram && (
+                  <a
+                    href={heroSocial.instagram.startsWith('http') ? heroSocial.instagram : `https://${heroSocial.instagram}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white hover:text-pink-400 transition-all active:scale-95 shadow-xs"
+                    title="Instagram"
+                  >
+                    <Instagram className="w-4 h-4" />
+                  </a>
+                )}
+                {heroSocial.facebook && (
+                  <a
+                    href={heroSocial.facebook.startsWith('http') ? heroSocial.facebook : `https://${heroSocial.facebook}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white hover:text-blue-400 transition-all active:scale-95 shadow-xs"
+                    title="Facebook"
+                  >
+                    <Facebook className="w-4 h-4" />
+                  </a>
+                )}
+                {heroSocial.tiktok && (
+                  <a
+                    href={heroSocial.tiktok.startsWith('http') ? heroSocial.tiktok : `https://${heroSocial.tiktok}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white hover:text-rose-400 transition-all active:scale-95 shadow-xs"
+                    title="TikTok"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.04.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.12-3.44-3.17-3.61-5.46-.21-2.91 1.67-5.63 4.41-6.4 1.5-.42 3.08-.27 4.54.19v4.11c-.04.02-.07.03-.11.05-1.12.56-2.61.35-3.32-.73-.55-.83-.4-2.04.33-2.73.57-.54 1.35-.73 2.06-.61.7.13 1.25.68 1.42 1.38.04.16.05.32.05.48.01 4.79.01 9.58.01 14.37v.29c.01-.2.03-.4.03-.61-.01-5.64 0-11.28-.01-16.92z"/>
+                    </svg>
+                  </a>
+                )}
+                {heroSocial.snapchat && (
+                  <a
+                    href={heroSocial.snapchat.startsWith('http') ? heroSocial.snapchat : `https://${heroSocial.snapchat}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white hover:text-yellow-400 transition-all active:scale-95 shadow-xs"
+                    title="Snapchat"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 24c-.218 0-.466-.022-.727-.066-1.348-.225-2.673-.622-3.935-1.176-.906-.398-1.574-.913-1.956-1.503-.314-.486-.395-1.025-.236-1.57.195-.668.74-1.272 1.57-1.745.28-.16.598-.292.937-.393a2.695 2.695 0 0 0 1.505-1.398c.15-.31.254-.645.308-1.01.077-.52.023-1.024-.158-1.488-.205-.53-.55-.992-1.01-1.352-.395-.312-.862-.516-1.378-.598a.965.965 0 0 1-.58-.29.897.897 0 0 1-.22-.596c0-.28.1-.53.284-.716.208-.21.49-.33.79-.33.376 0 .736.14.994.39.262.257.412.597.412.936 0 .584.498 1.054 1.102 1.054.606 0 1.106-.47 1.106-1.054 0-1.127-.954-2.046-2.124-2.046-.86 0-1.637.525-1.954 1.32-.124.314-.184.654-.176.993.024.873.34 1.696.88 2.308.528.6 1.238.995 2.008 1.116a4.595 4.595 0 0 1-2.482 2.378c-.682.316-1.442.544-2.228.665-.89.136-1.482.528-1.722 1.134-.184.47-.11.968.214 1.443.434.637 1.168 1.205 2.146 1.66 1.455.674 3.084 1.133 4.755 1.34.6.075 1.208.114 1.815.114s1.216-.04 1.815-.115c1.67-.207 3.3-.666 4.755-1.34.978-.455 1.712-1.023 2.146-1.66.324-.475.398-.973.214-1.443-.24-.606-.832-.998-1.722-1.134-.786-.12-1.546-.35-2.228-.665a4.595 4.595 0 0 1-2.482-2.378c.77-.12 1.48-.516 2.008-1.116.54-.612.856-1.435.88-2.308.008-.34-.052-.68-.176-.993-.317-.795-1.094-1.32-1.954-1.32-1.17 0-2.124.92-2.124 2.046 0 .584.5 1.054 1.106 1.054.604 0 1.102-.47 1.102-1.054 0-.34.15-.68.412-.937.258-.25.618-.39.994-.39.3 0 .582.12.79.33.184.186.284.436.284.716 0 .227-.083.43-.22.596a.965.965 0 0 1-.58.29c-.516.082-.983.286-1.378.598-.46.36-.805.822-1.01 1.352-.18.464-.235.968-.158 1.488.054.365.158.7.308 1.01a2.695 2.695 0 0 0 1.505 1.398c.34.1.658.233.937.393.83.473 1.375 1.077 1.57 1.745.158.545.078 1.084-.236 1.57-.382.59-1.05 1.105-1.956 1.503-1.262.554-2.587.95-3.935 1.176-.26.044-.51.066-.727.066zM11.975 0c1.782 0 3.397.643 4.678 1.744a6.536 6.536 0 0 1 2.22 3.654c.264 1.345.068 2.697-.563 3.882-.417.784-.988 1.47-1.68 2.015.013.106.013.22.013.336 0 .55-.078 1.096-.23 1.63a7.284 7.284 0 0 1-1.396 2.61c-.558.68-1.222 1.258-1.97 1.705-.286.173-.59.324-.91.455.053-.133.094-.275.122-.423.108-.57-.008-1.134-.334-1.637-.24-.37-.582-.676-.983-.878a2.532 2.532 0 0 0-1.127-.248h-.024c-.4.01-.79.123-1.144.33-.35.204-.64.492-.852.846-.312.518-.4 1.105-.25 1.683.056.208.136.407.242.593-.324-.135-.63-.29-.918-.466-.75-.45-1.41-1.028-1.97-1.708a7.284 7.284 0 0 1-1.397-2.61c-.152-.534-.23-1.08-.23-1.63 0-.115 0-.23.013-.335-.693-.546-1.264-1.232-1.68-2.016-.63-1.185-.827-2.537-.564-3.88a6.536 6.536 0 0 1 2.22-3.655C8.577.643 10.193 0 11.975 0z"/>
+                    </svg>
+                  </a>
+                )}
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-4 pt-3 text-[11px] text-slate-400 font-medium">
               <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-teal-400" /> خصوصية وسرية تامة</span>
@@ -2464,6 +2557,11 @@ export default function CustomerStorefrontPage() {
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 24c-.218 0-.466-.022-.727-.066-1.348-.225-2.673-.622-3.935-1.176-.906-.398-1.574-.913-1.956-1.503-.314-.486-.395-1.025-.236-1.57.195-.668.74-1.272 1.57-1.745.28-.16.598-.292.937-.393a2.695 2.695 0 0 0 1.505-1.398c.15-.31.254-.645.308-1.01.077-.52.023-1.024-.158-1.488-.205-.53-.55-.992-1.01-1.352-.395-.312-.862-.516-1.378-.598a.965.965 0 0 1-.58-.29.897.897 0 0 1-.22-.596c0-.28.1-.53.284-.716.208-.21.49-.33.79-.33.376 0 .736.14.994.39.262.257.412.597.412.936 0 .584.498 1.054 1.102 1.054.606 0 1.106-.47 1.106-1.054 0-1.127-.954-2.046-2.124-2.046-.86 0-1.637.525-1.954 1.32-.124.314-.184.654-.176.993.024.873.34 1.696.88 2.308.528.6 1.238.995 2.008 1.116a4.595 4.595 0 0 1-2.482 2.378c-.682.316-1.442.544-2.228.665-.89.136-1.482.528-1.722 1.134-.184.47-.11.968.214 1.443.434.637 1.168 1.205 2.146 1.66 1.455.674 3.084 1.133 4.755 1.34.6.075 1.208.114 1.815.114s1.216-.04 1.815-.115c1.67-.207 3.3-.666 4.755-1.34.978-.455 1.712-1.023 2.146-1.66.324-.475.398-.973.214-1.443-.24-.606-.832-.998-1.722-1.134-.786-.12-1.546-.35-2.228-.665a4.595 4.595 0 0 1-2.482-2.378c.77-.12 1.48-.516 2.008-1.116.54-.612.856-1.435.88-2.308.008-.34-.052-.68-.176-.993-.317-.795-1.094-1.32-1.954-1.32-1.17 0-2.124.92-2.124 2.046 0 .584.5 1.054 1.106 1.054.604 0 1.102-.47 1.102-1.054 0-.34.15-.68.412-.937.258-.25.618-.39.994-.39.3 0 .582.12.79.33.184.186.284.436.284.716 0 .227-.083.43-.22.596a.965.965 0 0 1-.58.29c-.516.082-.983.286-1.378.598-.46.36-.805.822-1.01 1.352-.18.464-.235.968-.158 1.488.054.365.158.7.308 1.01a2.695 2.695 0 0 0 1.505 1.398c.34.1.658.233.937.393.83.473 1.375 1.077 1.57 1.745.158.545.078 1.084-.236 1.57-.382.59-1.05 1.105-1.956 1.503-1.262.554-2.587.95-3.935 1.176-.26.044-.51.066-.727.066zM11.975 0c1.782 0 3.397.643 4.678 1.744a6.536 6.536 0 0 1 2.22 3.654c.264 1.345.068 2.697-.563 3.882-.417.784-.988 1.47-1.68 2.015.013.106.013.22.013.336 0 .55-.078 1.096-.23 1.63a7.284 7.284 0 0 1-1.396 2.61c-.558.68-1.222 1.258-1.97 1.705-.286.173-.59.324-.91.455.053-.133.094-.275.122-.423.108-.57-.008-1.134-.334-1.637-.24-.37-.582-.676-.983-.878a2.532 2.532 0 0 0-1.127-.248h-.024c-.4.01-.79.123-1.144.33-.35.204-.64.492-.852.846-.312.518-.4 1.105-.25 1.683.056.208.136.407.242.593-.324-.135-.63-.29-.918-.466-.75-.45-1.41-1.028-1.97-1.708a7.284 7.284 0 0 1-1.397-2.61c-.152-.534-.23-1.08-.23-1.63 0-.115 0-.23.013-.335-.693-.546-1.264-1.232-1.68-2.016-.63-1.185-.827-2.537-.564-3.88a6.536 6.536 0 0 1 2.22-3.655C8.577.643 10.193 0 11.975 0z"/>
                   </svg>
+                </a>
+              )}
+              {socialLinks.linkedin && (
+                <a href={socialLinks.linkedin.startsWith('http') ? socialLinks.linkedin : `https://${socialLinks.linkedin}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-sky-600 transition-colors" title="LinkedIn">
+                  <Linkedin className="w-4 h-4" />
                 </a>
               )}
             </div>

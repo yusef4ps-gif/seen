@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { 
   Settings, Wallet, RefreshCw, Truck, Store as StoreIcon, Database, 
   Save, CheckCircle2, Plus, Trash2, Building2, Phone, MapPin, Image as ImageIcon,
-  Target, ShieldCheck, Sparkles, X, Share2, Globe
+  Target, ShieldCheck, Sparkles, X, Share2, Globe, Linkedin
 } from 'lucide-react';
 import { Store, CurrencyCode, PaymentAccountConfig, ShippingMethod } from '@/lib/types';
 import { getStoreBySlugAction, updateStoreAction, getPlansAction } from '@/app/actions/store';
@@ -162,6 +162,7 @@ export default function MerchantSettingsPage() {
     x: '',
     tiktok: '',
     snapchat: '',
+    linkedin: '',
   });
 
   // Account Credentials State
@@ -226,7 +227,11 @@ export default function MerchantSettingsPage() {
           if ((s as any).socialLinks) {
             try {
               const parsed = JSON.parse((s as any).socialLinks);
-              setSocialLinks(parsed);
+              setSocialLinks(prev => ({
+                ...prev,
+                ...parsed,
+                linkedin: parsed.linkedin || ''
+              }));
             } catch (e) {
               // ignore
             }
@@ -266,6 +271,22 @@ export default function MerchantSettingsPage() {
 
   if (!store) return null;
 
+  const isServiceStore = (() => {
+    try {
+      const cfg = typeof store?.themeConfig === 'string' ? JSON.parse(store?.themeConfig) : (store?.themeConfig || {});
+      return (
+        cfg?.storeType === 'SERVICE' || 
+        cfg?.presetId === 'service-expert' ||
+        (store as any)?.storeType === 'SERVICE' ||
+        store?.category === 'services' ||
+        store?.category === 'consulting' ||
+        store?.category === 'digital'
+      );
+    } catch {
+      return false;
+    }
+  })();
+
   const handleSaveSettings = async (e: React.FormEvent) => {
     if (isSaving) return;
     setIsSaving(true);
@@ -294,6 +315,7 @@ export default function MerchantSettingsPage() {
 
     const updatedThemeConfig = { 
       ...currentThemeConfig, 
+      bannerUrl: banner || currentThemeConfig.bannerUrl,
       sections: syncedSections || currentThemeConfig.sections,
       legalPages, 
       storeType,
@@ -473,7 +495,7 @@ export default function MerchantSettingsPage() {
           { id: 'marketing', label: 'التسويق والبكسلات', icon: Target },
           { id: 'accounting', label: 'الربط المحاسبي (ERP)', icon: Database },
           { id: 'legal', label: 'الصفحات القانونية', icon: ShieldCheck },
-        ].map((tab) => {
+        ].filter(tab => !isServiceStore || tab.id !== 'accounting').map((tab) => {
           const Icon = tab.icon;
           return (
             <button
@@ -793,6 +815,20 @@ export default function MerchantSettingsPage() {
                     onChange={(e) => setSocialLinks({ ...socialLinks, snapchat: e.target.value })}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
                     placeholder="https://snapchat.com/add/..."
+                    dir="ltr"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 mb-1.5 flex items-center gap-1.5">
+                    <Linkedin className="w-3.5 h-3.5 text-sky-600" />
+                    <span>رابط LinkedIn</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={socialLinks.linkedin || ''}
+                    onChange={(e) => setSocialLinks({ ...socialLinks, linkedin: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    placeholder="https://linkedin.com/in/..."
                     dir="ltr"
                   />
                 </div>
@@ -1341,7 +1377,7 @@ export default function MerchantSettingsPage() {
 
         
         {/* Tab 6: Accounting Integrations */}
-        {activeTab === 'accounting' && (
+        {!isServiceStore && activeTab === 'accounting' && (
           <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 space-y-5">
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
