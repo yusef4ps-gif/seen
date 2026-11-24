@@ -314,22 +314,30 @@ export default function MerchantLayout({
     
     async function loadData() {
       if (slug) {
-        const [s, dbPlans] = await Promise.all([
-          getStoreBySlugAction(slug),
-          getPlansAction()
-        ]);
-        if (dbPlans && dbPlans.length > 0) {
-          storeEngine.setPlans(dbPlans);
-          setPlans(dbPlans);
-        }
-        if (s) {
-          setStore(s as any);
-          
-          // Fetch Real Notifications
-          const notifsRes = await getStoreNotificationsAction(s.id);
-          if (notifsRes.success && notifsRes.data) {
-            handleNotifData(notifsRes.data, s);
+        try {
+          const [s, dbPlans] = await Promise.all([
+            getStoreBySlugAction(slug),
+            getPlansAction()
+          ]);
+          if (dbPlans && dbPlans.length > 0) {
+            storeEngine.setPlans(dbPlans);
+            setPlans(dbPlans);
           }
+          if (s) {
+            setStore(s as any);
+            
+            // Fetch Real Notifications
+            try {
+              const notifsRes = await getStoreNotificationsAction(s.id);
+              if (notifsRes && notifsRes.success && notifsRes.data) {
+                handleNotifData(notifsRes.data, s);
+              }
+            } catch (notifErr) {
+              console.warn('Notifications fetch skipped:', notifErr);
+            }
+          }
+        } catch (err) {
+          console.error('MerchantLayout loadData error:', err);
         }
       }
     }
