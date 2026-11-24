@@ -79,6 +79,10 @@ export interface Product {
   tags: string[];
   createdAt: string;
   updatedAt: string;
+  // Digital / Attachment fields
+  digitalFileUrl?: string;
+  digitalFileName?: string;
+  digitalFileAccess?: 'instant' | 'verified';
 }
 
 export interface OrderItem {
@@ -90,6 +94,9 @@ export interface OrderItem {
   price: number;
   quantity: number;
   total: number;
+  digitalFileUrl?: string;
+  digitalFileName?: string;
+  digitalFileAccess?: 'instant' | 'verified';
 }
 
 export interface Order {

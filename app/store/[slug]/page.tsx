@@ -674,6 +674,9 @@ export default function CustomerStorefrontPage() {
         price: basePrice,
         quantity: finalQuantity,
         total: basePrice * finalQuantity,
+        digitalFileUrl: product.digitalFileUrl,
+        digitalFileName: product.digitalFileName,
+        digitalFileAccess: product.digitalFileAccess,
       };
       setCart([...cart, newItem]);
     }
@@ -867,12 +870,13 @@ export default function CustomerStorefrontPage() {
         }
       }
 
+      const orderedItems = [...cart];
       setCart([]);
       setIsCheckoutOpen(false);
       setIsSubmittingOrder(false);
 
-      // Show success modal with WhatsApp action button
-      setOrderSuccess({ ...(newOrder || {}), waUrl });
+      // Show success modal with WhatsApp action button and digital attachments
+      setOrderSuccess({ ...(newOrder || {}), items: orderedItems, waUrl });
       
       // router.push(`/store/${store.slug}/track/${newOrder?.id}`); // Removed redirect
     } else {
@@ -1548,8 +1552,15 @@ export default function CustomerStorefrontPage() {
 
                               <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
                                 <div className="space-y-1.5">
-                                  <div className="text-[11px] font-bold text-teal-600 dark:text-teal-400">
-                                    {prod.category}
+                                  <div className="flex items-center justify-between gap-1 flex-wrap">
+                                    <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400">
+                                      {prod.category}
+                                    </span>
+                                    {prod.digitalFileUrl && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold">
+                                        📥 ملف PDF مرفق
+                                      </span>
+                                    )}
                                   </div>
                                   <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white line-clamp-2">
                                     {prod.name}
@@ -2644,12 +2655,48 @@ export default function CustomerStorefrontPage() {
                 : `شكراً لتسوقك من ${store.name}. تم تسجيل طلبك وهو الآن قيد المراجعة.`}
             </p>
             
-            <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 mb-8 border border-slate-100 dark:border-slate-700">
+            <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 mb-6 border border-slate-100 dark:border-slate-700">
               <div className="text-xs text-slate-500 mb-1">{isServiceStore ? 'رقم الحجز / الخدمة' : 'رقم الطلب'}</div>
               <div className="text-xl font-bold font-mono tracking-wider text-brand-600 dark:text-brand-400">
                 {orderSuccess.orderNumber}
               </div>
             </div>
+
+            {/* Downloadable Digital Files Section */}
+            {orderSuccess.items && orderSuccess.items.some((it: any) => it.digitalFileUrl) && (
+              <div className="p-4 rounded-2xl bg-teal-50/90 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-right space-y-2.5 mb-6 shadow-sm">
+                <div className="flex items-center gap-2 text-teal-850 dark:text-teal-200 text-xs font-black">
+                  <Sparkles className="w-4 h-4 text-teal-500 animate-pulse" />
+                  <span>الملفات والمستندات الرقمية المرفقة (PDF):</span>
+                </div>
+                {orderSuccess.items.filter((it: any) => it.digitalFileUrl).map((it: any, idx: number) => {
+                  const isInstant = it.digitalFileAccess !== 'verified';
+                  return (
+                    <div key={idx} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-teal-100 dark:border-teal-800/60 flex items-center justify-between gap-2">
+                      <div className="truncate text-xs font-bold text-slate-800 dark:text-slate-200">
+                        📄 {it.digitalFileName || it.productName}
+                      </div>
+                      {isInstant ? (
+                        <a
+                          href={it.digitalFileUrl}
+                          download={it.digitalFileName || 'ملف_الخدمة.pdf'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 shrink-0"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>تحميل الملف 📥</span>
+                        </a>
+                      ) : (
+                        <span className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-md shrink-0 font-medium">
+                          ⏳ سيتاح التحميل فور تأكيد الحوالة
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             
             <div className="space-y-3">
               {orderSuccess.waUrl && (

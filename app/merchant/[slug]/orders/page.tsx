@@ -6,7 +6,7 @@ import {
   ShoppingBag, Search, Filter, Eye, CheckCircle2, 
   Clock, AlertTriangle, Printer, Phone, MessageSquare, 
   X, Check, DollarSign, Image as ImageIcon, ArrowLeft, RefreshCw,
-  CalendarCheck
+  CalendarCheck, Download, FileText
 } from 'lucide-react';
 import { Store, Order, OrderStatus } from '@/lib/types';
 import { getStoreBySlugAction, getOrdersByStoreAction } from '@/app/actions/store';
@@ -370,6 +370,20 @@ export default function MerchantOrdersPage() {
                           <div className="text-[10px] text-slate-400">الخيار: {item.variantName}</div>
                         )}
                         <div className="text-[10px] text-slate-500">الكمية: {item.quantity} × {formatCurrency(item.price, selectedOrder.currency)}</div>
+                        {(item as any).digitalFileUrl && (
+                          <div className="mt-1">
+                            <a
+                              href={(item as any).digitalFileUrl}
+                              download={(item as any).digitalFileName || 'ملف_الخدمة.pdf'}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-[10px] font-bold hover:bg-teal-100 transition-colors"
+                            >
+                              <Download className="w-2.5 h-2.5" />
+                              <span>تحميل الملف الرقمي ({(item as any).digitalFileName || 'PDF'}) 📥</span>
+                            </a>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="font-bold text-emerald-600 dark:text-emerald-400">

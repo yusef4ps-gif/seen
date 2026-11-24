@@ -299,11 +299,21 @@ export async function getProductsByStoreAction(storeId: string) {
       include: { variants: true },
       orderBy: { createdAt: 'desc' },
     });
-    return products.map(p => ({
-      ...p,
-      images: p.images ? JSON.parse(p.images) : [],
-      tags: p.tags ? JSON.parse(p.tags) : [],
-    }));
+    return products.map(p => {
+      const parsedTags: string[] = p.tags ? JSON.parse(p.tags) : [];
+      const urlTag = parsedTags.find(t => t.startsWith('digital_url:'));
+      const nameTag = parsedTags.find(t => t.startsWith('digital_name:'));
+      const accessTag = parsedTags.find(t => t.startsWith('digital_access:'));
+
+      return {
+        ...p,
+        images: p.images ? JSON.parse(p.images) : [],
+        tags: parsedTags,
+        digitalFileUrl: urlTag ? decodeURIComponent(urlTag.replace('digital_url:', '')) : '',
+        digitalFileName: nameTag ? decodeURIComponent(nameTag.replace('digital_name:', '')) : '',
+        digitalFileAccess: (accessTag ? accessTag.replace('digital_access:', '') : 'instant') as any,
+      };
+    });
   } catch (error) {
     console.error('Error fetching products:', error);
     return [];

@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { 
   Package, Plus, Search, Filter, Edit, Trash2, Sparkles, 
   Bot, Image as ImageIcon, AlertTriangle, Check, X, Layers, Eye, DollarSign, Download, FileSpreadsheet, Database, RefreshCw,
-  Briefcase
+  Briefcase, FileText, UploadCloud
 } from 'lucide-react';
 import { formatCurrency, convertCurrency } from '@/lib/currency-engine';
 import { Store, Product, ProductVariant } from '@/lib/types';
@@ -239,6 +239,12 @@ export default function MerchantProductsPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [variants, setVariants] = useState<ProductVariant[]>([]);
 
+  // Digital Delivery / PDF Attachment State
+  const [hasDigitalFile, setHasDigitalFile] = useState(false);
+  const [digitalFileName, setDigitalFileName] = useState('');
+  const [digitalFileUrl, setDigitalFileUrl] = useState('');
+  const [digitalFileAccess, setDigitalFileAccess] = useState<'instant' | 'verified'>('instant');
+
   // AI loading state
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
@@ -276,6 +282,10 @@ export default function MerchantProductsPage() {
     setPricingModel('one_time');
     setBillingCycle('monthly');
     setVariants([]);
+    setHasDigitalFile(false);
+    setDigitalFileName('');
+    setDigitalFileUrl('');
+    setDigitalFileAccess('instant');
     setIsModalOpen(true);
   };
 
@@ -303,6 +313,10 @@ export default function MerchantProductsPage() {
       setBillingCycle('monthly');
     }
     setVariants(prod.variants || []);
+    setHasDigitalFile(Boolean(prod.digitalFileUrl));
+    setDigitalFileName(prod.digitalFileName || '');
+    setDigitalFileUrl(prod.digitalFileUrl || '');
+    setDigitalFileAccess(prod.digitalFileAccess || 'instant');
     setIsModalOpen(true);
   };
 
@@ -349,6 +363,14 @@ export default function MerchantProductsPage() {
     if (isServiceStore && pricingModel === 'subscription') {
       productTags.push(`subscription:${billingCycle}`);
     }
+    if (hasDigitalFile && digitalFileUrl) {
+      productTags.push('digital:has_file');
+      productTags.push(`digital_url:${encodeURIComponent(digitalFileUrl)}`);
+      if (digitalFileName) {
+        productTags.push(`digital_name:${encodeURIComponent(digitalFileName)}`);
+      }
+      productTags.push(`digital_access:${digitalFileAccess}`);
+    }
 
     try {
       if (editingProductId) {
@@ -363,6 +385,9 @@ export default function MerchantProductsPage() {
           images: [imageUrl || p.images?.[0] || ''],
           isFeatured,
           tags: JSON.stringify(productTags),
+          digitalFileUrl: hasDigitalFile ? digitalFileUrl : undefined,
+          digitalFileName: hasDigitalFile ? digitalFileName : undefined,
+          digitalFileAccess: hasDigitalFile ? digitalFileAccess : undefined,
         } : p);
         mutate(updatedOptimistic, false);
         setIsModalOpen(false);
@@ -418,6 +443,9 @@ export default function MerchantProductsPage() {
           isFeatured,
           status: 'active',
           tags: JSON.stringify(productTags),
+          digitalFileUrl: hasDigitalFile ? digitalFileUrl : undefined,
+          digitalFileName: hasDigitalFile ? digitalFileName : undefined,
+          digitalFileAccess: hasDigitalFile ? digitalFileAccess : undefined,
           variants: isServiceStore ? [] : variants,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -618,11 +646,17 @@ export default function MerchantProductsPage() {
                           className="w-11 h-11 rounded-xl object-cover border border-slate-200 dark:border-slate-700 bg-slate-100" 
                         />
                         <div>
-                          <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                             <span>{prod.name}</span>
                             {prod.isFeatured && (
                               <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[9px] font-bold">
                                 مميز
+                              </span>
+                            )}
+                            {prod.digitalFileUrl && (
+                              <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 dark:bg-teal-950 dark:text-teal-300 text-[9px] font-bold inline-flex items-center gap-1 border border-teal-200 dark:border-teal-800">
+                                <FileText className="w-2.5 h-2.5" />
+                                <span>PDF مرفق ({prod.digitalFileAccess === 'verified' ? 'مشروط بالدفع' : 'فوري'})</span>
                               </span>
                             )}
                           </div>
@@ -935,6 +969,162 @@ export default function MerchantProductsPage() {
                 onChange={setImageUrl}
                 label={isServiceStore ? "صورة معبرة أو بنر تعريفي للخدمة" : "صورة المنتج الرئيسية (سحب وإفلات أو اختيار من الجهاز)"}
               />
+
+              {/* Digital Delivery / PDF Attachment Section */}
+              <div className="p-4 rounded-2xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/60 space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-teal-600 text-white shadow-xs">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                        ملف رقمي مرفق (PDF / حقيبة / مستند قابل للتحميل) 📥
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        يتيح للعميل تنزيل الملف فوراً أو بعد مراجعة إشعار الدفع
+                      </p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={hasDigitalFile}
+                      onChange={(e) => {
+                        setHasDigitalFile(e.target.checked);
+                        if (!e.target.checked) {
+                          setDigitalFileUrl('');
+                          setDigitalFileName('');
+                        }
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+                  </label>
+                </div>
+
+                {hasDigitalFile && (
+                  <div className="pt-3 border-t border-teal-200/60 dark:border-teal-800/60 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        اسم الملف للعميل (مثال: دليل_كتابة_الإعلانات.pdf)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="دليل_الخدمة_الرقمي.pdf"
+                        value={digitalFileName}
+                        onChange={(e) => setDigitalFileName(e.target.value)}
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-teal-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          رفع ملف PDF من جهازك:
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-dashed border-teal-400 bg-white dark:bg-slate-900 hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-700 dark:text-teal-300 text-xs font-bold transition-all truncate">
+                            <UploadCloud className="w-4 h-4 shrink-0" />
+                            <span className="truncate">{digitalFileUrl ? (digitalFileUrl.startsWith('data:') ? 'تم تجهيز الملف ✓' : 'رابط خارجي مضاف') : 'اختر ملف PDF...'}</span>
+                            <input
+                              type="file"
+                              accept=".pdf,.doc,.docx,.zip,.rar,.epub"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  if (file.size > 20 * 1024 * 1024) {
+                                    alert('حجم الملف كبير جداً (أكثر من 20MB). يُفضل وضع رابط Google Drive أو Dropbox في الحقل المجاور.');
+                                    return;
+                                  }
+                                  if (!digitalFileName) setDigitalFileName(file.name);
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    setDigitalFileUrl(reader.result as string);
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                          </label>
+                          {digitalFileUrl && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDigitalFileUrl('');
+                                setDigitalFileName('');
+                              }}
+                              className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl"
+                              title="حذف الملف"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          أو رابط تحميل خارجي (Google Drive / Dropbox):
+                        </label>
+                        <input
+                          type="url"
+                          placeholder="https://drive.google.com/..."
+                          value={digitalFileUrl.startsWith('data:') ? '' : digitalFileUrl}
+                          onChange={(e) => setDigitalFileUrl(e.target.value)}
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-teal-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        سياسة تسليم الملف للعميل:
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <label className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                          digitalFileAccess === 'instant' 
+                            ? 'bg-teal-600/10 border-teal-500 text-teal-900 dark:text-teal-200 font-bold' 
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="digitalAccess"
+                            value="instant"
+                            checked={digitalFileAccess === 'instant'}
+                            onChange={() => setDigitalFileAccess('instant')}
+                            className="mt-0.5"
+                          />
+                          <div>
+                            <div>⚡ تسليم فوري مباشر</div>
+                            <div className="text-[10px] text-slate-500 font-normal">يظهر زر التحميل للعميل فور إتمام الطلب مباشرة</div>
+                          </div>
+                        </label>
+
+                        <label className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                          digitalFileAccess === 'verified' 
+                            ? 'bg-teal-600/10 border-teal-500 text-teal-900 dark:text-teal-200 font-bold' 
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="digitalAccess"
+                            value="verified"
+                            checked={digitalFileAccess === 'verified'}
+                            onChange={() => setDigitalFileAccess('verified')}
+                            className="mt-0.5"
+                          />
+                          <div>
+                            <div>🔒 بعد التحقق من الدفع</div>
+                            <div className="text-[10px] text-slate-500 font-normal">يتاح التحميل فقط بعد تأكيد التاجر لإشعار التحويل</div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Stock and Alert Row (Only for Physical Stores) */}
               {!isServiceStore && (
