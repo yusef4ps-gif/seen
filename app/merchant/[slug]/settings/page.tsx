@@ -278,20 +278,34 @@ export default function MerchantSettingsPage() {
   if (!store) return null;
 
   const isServiceStore = (() => {
+    if (storeType === 'SERVICE' || storeType === 'DIGITAL') return true;
     try {
       const cfg = typeof store?.themeConfig === 'string' ? JSON.parse(store?.themeConfig) : (store?.themeConfig || {});
       return (
         cfg?.storeType === 'SERVICE' || 
+        cfg?.storeType === 'DIGITAL' || 
         cfg?.presetId === 'service-expert' ||
         (store as any)?.storeType === 'SERVICE' ||
-        store?.category === 'services' ||
-        store?.category === 'consulting' ||
-        store?.category === 'digital'
+        (store as any)?.storeType === 'DIGITAL' ||
+        store?.category?.includes('خدمات') ||
+        store?.category?.includes('استشارات') ||
+        store?.category?.includes('تدريب') ||
+        store?.category?.includes('محاماة') ||
+        store?.category?.includes('عياد') ||
+        store?.category?.includes('services') ||
+        store?.category?.includes('consulting') ||
+        store?.category?.includes('digital')
       );
     } catch {
       return false;
     }
   })();
+
+  useEffect(() => {
+    if (isServiceStore && (activeTab === 'shipping' || activeTab === 'accounting')) {
+      setActiveTab('general');
+    }
+  }, [isServiceStore, activeTab]);
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     if (isSaving) return;

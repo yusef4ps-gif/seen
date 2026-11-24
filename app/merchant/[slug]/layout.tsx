@@ -8,7 +8,7 @@ import {
   ShoppingCart, Bot, Settings, ExternalLink, ShieldCheck, Bell, 
   Menu, X, Sparkles, RefreshCw, Users, ArrowUpRight, Palette,
   Ticket, Tag, BarChart, History, LogOut, Star, Crown, Lock, ShieldAlert,
-  CheckCircle2, Briefcase, CalendarCheck, Share2, CreditCard
+  CheckCircle2, Briefcase, CalendarCheck, Share2, CreditCard, Check
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
 import { Store, SystemBroadcast, SubscriptionPlan } from '@/lib/types';
@@ -413,10 +413,6 @@ export default function MerchantLayout({
     }
   }, [currentUser, router, slug]);
 
-  if (currentUser?.role === 'CUSTOMER') {
-    return null; // Return nothing while redirecting
-  }
-
   // 🔄 Silent Live Refresh ("رفرش خفي") every 5 seconds for store freeze, tier changes, and feature permissions
   useEffect(() => {
     if (!slug) return;
@@ -501,6 +497,10 @@ export default function MerchantLayout({
       router.replace(`/merchant/${slug}`);
     }
   }, [pathname, slug, store?.planTier, plans, router]);
+
+  if (currentUser?.role === 'CUSTOMER') {
+    return null; // Return nothing while redirecting
+  }
 
   if (!store) {
     return (
@@ -873,16 +873,16 @@ export default function MerchantLayout({
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-3 border-t border-slate-700/60 bg-[#0b2138]">
+        <div className="p-3 border-t border-slate-700/60 bg-[#091a2c]">
           <button
             onClick={async () => {
               authEngine.logout();
               try { await fetch('/api/logout', { method: 'POST' }); } catch(e) {}
               router.push('/seenlogin5xa');
             }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-black text-rose-200 bg-rose-950/70 hover:bg-rose-900/90 border border-rose-800/80 transition-all shadow-sm active:scale-98"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-black text-white bg-red-700 hover:bg-red-800 active:scale-98 border border-red-600/80 transition-all shadow-md"
           >
-            <LogOut className="w-4 h-4 text-rose-300" />
+            <LogOut className="w-4 h-4 text-white" />
             <span>تسجيل الخروج</span>
           </button>
         </div>

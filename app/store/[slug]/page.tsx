@@ -30,7 +30,14 @@ import toast from 'react-hot-toast';
 import WhatsAppSupportButton, { formatWhatsAppUrl } from '@/components/WhatsAppSupportButton';
 import ImageUploader from '@/components/ImageUploader';
 
-function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, legacyBannerInterval, secondaryColor, primaryColor = '#0d9488', onOpenCustomRequest }: any) {
+function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, legacyBannerInterval, secondaryColor, primaryColor = '#0d9488', onOpenCustomRequest, isServiceStore }: any) {
+  const isService = Boolean(
+    isServiceStore ||
+    presetId === 'service-expert' ||
+    (store?.themeConfig && (typeof store.themeConfig === 'string' ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })() : store.themeConfig)?.storeType === 'SERVICE') ||
+    (store as any)?.storeType === 'SERVICE'
+  );
+
   let slides = (section.settings?.heroSlides && section.settings.heroSlides.length > 0)
     ? section.settings.heroSlides
     : ((section.settings?.bannerImages && section.settings.bannerImages.length > 0)
@@ -183,7 +190,7 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
     );
   }
 
-  if (presetId === 'service-expert' || isServiceStore) {
+  if (presetId === 'service-expert' || isService) {
     const parsedThemeConfig = typeof store.themeConfig === 'string'
       ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })()
       : (store.themeConfig || {});
@@ -1284,6 +1291,7 @@ export default function CustomerStorefrontPage() {
                   secondaryColor={secondaryColor} 
                   primaryColor={primaryColor}
                   onOpenCustomRequest={() => setIsCustomRequestModalOpen(true)}
+                  isServiceStore={isServiceStore}
                 />
               );
             }
@@ -1450,10 +1458,13 @@ export default function CustomerStorefrontPage() {
                         onClick={() => setSelectedCategory('subscriptions_only')}
                         className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shrink-0 transition-all ${
                           selectedCategory === 'subscriptions_only'
-                            ? 'shadow-sm text-white bg-teal-600'
-                            : 'hover:bg-teal-50 dark:hover:bg-teal-950/30 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800/40'
+                            ? 'shadow-sm text-white'
+                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
                         }`}
-                        style={{ borderRadius: '14px' }}
+                        style={{
+                          backgroundColor: selectedCategory === 'subscriptions_only' ? primaryColor : undefined,
+                          borderRadius: '14px'
+                        }}
                       >
                         <span>🔄</span>
                         <span>باقات واشتراكات</span>

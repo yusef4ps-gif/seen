@@ -29,6 +29,7 @@ export default function MerchantCouponsPage() {
   const [scopeType, setScopeType] = useState<'all' | 'specific'>('all');
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [productSearch, setProductSearch] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -248,42 +249,122 @@ export default function MerchantCouponsPage() {
                 </div>
 
                 {scopeType === 'specific' && (
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2.5 max-h-48 overflow-y-auto">
-                    <div className="text-[11px] text-slate-500 font-bold">اختر الخدمات أو المنتجات المشمولة بالخصم:</div>
-                    {storeProducts.length === 0 ? (
-                      <div className="text-xs text-slate-400 text-center py-2">لا توجد خدمات متاحة حالياً</div>
-                    ) : (
-                      storeProducts.map((p) => {
-                        const isChecked = selectedProductIds.includes(p.id);
-                        return (
-                          <label
-                            key={p.id}
-                            className={`flex items-center justify-between p-2 rounded-xl cursor-pointer text-xs transition-colors ${
-                              isChecked ? 'bg-white dark:bg-slate-800 border border-brand-300 shadow-xs' : 'hover:bg-white/50'
-                            }`}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      الخدمات والاستشارات المشمولة بالخصم:
+                    </label>
+                    
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        className={`w-full p-3 rounded-2xl border text-right flex items-center justify-between text-xs font-bold transition-all shadow-xs ${
+                          selectedProductIds.length > 0
+                            ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/20 text-brand-900 dark:text-brand-200'
+                            : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Layers className="w-4 h-4 text-brand-600 shrink-0" />
+                          <span className="truncate">
+                            {selectedProductIds.length === 0
+                              ? 'اضغط لاختيار الخدمات المشمولة بالكوبون...'
+                              : `تم اختيار (${selectedProductIds.length}) من الخدمات المشمولة`}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-brand-600 dark:text-brand-400 font-bold shrink-0 flex items-center gap-1">
+                          {isDropdownOpen ? 'إغلاق القائمة ▲' : 'فتح القائمة ▼'}
+                        </span>
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {isDropdownOpen && (
+                        <div className="mt-2 p-3 bg-white dark:bg-slate-900 rounded-2xl border border-brand-200 dark:border-brand-800 shadow-2xl space-y-3 z-30 animate-fadeIn">
+                          {/* Search bar */}
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="ابحث باسم الخدمة أو الاستشارة..."
+                              value={productSearch}
+                              onChange={(e) => setProductSearch(e.target.value)}
+                              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none text-right"
+                            />
+                          </div>
+
+                          {/* Quick select buttons */}
+                          <div className="flex items-center justify-between text-[11px] font-bold px-1 border-b border-slate-100 dark:border-slate-800 pb-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedProductIds(storeProducts.map(p => p.id))}
+                              className="text-brand-600 hover:underline flex items-center gap-1"
+                            >
+                              <span>تحديد الكل ({storeProducts.length})</span>
+                            </button>
+                            {selectedProductIds.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedProductIds([])}
+                                className="text-rose-500 hover:underline"
+                              >
+                                إلغاء التحديد ({selectedProductIds.length})
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Items list */}
+                          <div className="max-h-48 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
+                            {storeProducts.length === 0 ? (
+                              <div className="text-xs text-slate-400 text-center py-2">لا توجد خدمات متاحة حالياً</div>
+                            ) : (
+                              storeProducts
+                                .filter(p => !productSearch.trim() || p.name.toLowerCase().includes(productSearch.toLowerCase()))
+                                .map((p) => {
+                                  const isChecked = selectedProductIds.includes(p.id);
+                                  return (
+                                    <label
+                                      key={p.id}
+                                      className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer text-xs transition-colors ${
+                                        isChecked
+                                          ? 'bg-brand-50/80 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800/80 text-brand-950 dark:text-brand-200 font-bold'
+                                          : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2 truncate">
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setSelectedProductIds([...selectedProductIds, p.id]);
+                                            } else {
+                                              setSelectedProductIds(selectedProductIds.filter(id => id !== p.id));
+                                            }
+                                          }}
+                                          className="accent-brand-600 rounded shrink-0"
+                                        />
+                                        <span className="truncate">{p.name}</span>
+                                      </div>
+                                      <span className="text-[11px] font-mono font-bold text-slate-400 shrink-0">
+                                        {formatCurrency(p.price, store.baseCurrency)}
+                                      </span>
+                                    </label>
+                                  );
+                                })
+                            )}
+                          </div>
+
+                          {/* Confirm & Close Button */}
+                          <button
+                            type="button"
+                            onClick={() => setIsDropdownOpen(false)}
+                            className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all"
                           >
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedProductIds([...selectedProductIds, p.id]);
-                                  } else {
-                                    setSelectedProductIds(selectedProductIds.filter(id => id !== p.id));
-                                  }
-                                }}
-                                className="accent-brand-600 rounded"
-                              />
-                              <span className="font-bold truncate max-w-[200px]">{p.name}</span>
-                            </div>
-                            <span className="text-[11px] font-mono font-bold text-slate-500">
-                              {formatCurrency(p.price, store.baseCurrency)}
-                            </span>
-                          </label>
-                        );
-                      })
-                    )}
+                            <Check className="w-3.5 h-3.5" />
+                            <span>تم الاختيار ✓ (إغلاق القائمة والعودة للنموذج)</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

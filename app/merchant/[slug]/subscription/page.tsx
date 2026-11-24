@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { getStoreBySlugAction, requestPlanUpgradeAction } from '@/app/actions/store';
 import { ShieldCheck, Zap, Crown, CheckCircle2, Rocket, CalendarDays, ArrowUpRight, X, CreditCard, Send, Check, AlertCircle } from 'lucide-react';
@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 export default function SubscriptionPage() {
   const params = useParams();
-  const slug = params.slug as string;
+  const slug = params?.slug as string;
   const [store, setStore] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -21,7 +21,7 @@ export default function SubscriptionPage() {
   const [upgradeNotes, setUpgradeNotes] = useState('');
   const [isSubmittingUpgrade, setIsSubmittingUpgrade] = useState(false);
 
-  const parsedThemeConfig = React.useMemo(() => {
+  const parsedThemeConfig = useMemo(() => {
     if (!store?.themeConfig) return {};
     try {
       return typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig) : store.themeConfig;
