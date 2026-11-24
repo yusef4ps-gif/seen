@@ -17,6 +17,7 @@ import BrandLogo from '@/components/BrandLogo';
 import ShareStoreModal from '@/components/ShareStoreModal';
 import { getStoreBySlugAction, getPlansAction } from '@/app/actions/store';
 import { getStoreNotificationsAction } from '@/app/actions/notifications';
+import { getUserStoresAction, switchStoreAction } from '@/app/actions/auth';
 import LiveVisitorPill from '@/components/LiveVisitorPill';
 import toast from 'react-hot-toast';
 
@@ -115,6 +116,10 @@ export default function MerchantLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  
+  // Multi-store accounts support
+  const [merchantStores, setMerchantStores] = useState<any[]>([]);
+  const [isSwitchStoreOpen, setIsSwitchStoreOpen] = useState(false);
   
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -339,6 +344,16 @@ export default function MerchantLayout({
               }
             } catch (notifErr) {
               console.warn('Notifications fetch skipped:', notifErr);
+            }
+
+            // Fetch other stores for multi-store merchant switcher
+            try {
+              const userStoresRes = await getUserStoresAction();
+              if (userStoresRes && userStoresRes.success && userStoresRes.stores && userStoresRes.stores.length > 1) {
+                setMerchantStores(userStoresRes.stores);
+              }
+            } catch (storesErr) {
+              console.warn('User stores fetch skipped:', storesErr);
             }
           }
         } catch (err) {
@@ -740,6 +755,16 @@ export default function MerchantLayout({
                   <span>•</span>
                   <span>باقة {store.planTier.toUpperCase()}</span>
                 </div>
+                {merchantStores.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsSwitchStoreOpen(true)}
+                    className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-md bg-teal-500/20 text-teal-300 hover:bg-teal-500/30 text-[10px] font-bold border border-teal-500/30 transition-colors w-fit"
+                  >
+                    <RefreshCw className="w-2.5 h-2.5" />
+                    <span>تبديل المتجر ({merchantStores.length})</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -834,6 +859,18 @@ export default function MerchantLayout({
               <h2 className="text-xs sm:text-base font-bold text-slate-900 dark:text-white truncate">
                 {store.name}
               </h2>
+              {merchantStores.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setIsSwitchStoreOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/60 text-[11px] font-bold border border-teal-200 dark:border-teal-800 transition-colors shrink-0"
+                  title="تبديل المتجر أو البروفايل"
+                >
+                  <RefreshCw className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                  <span className="hidden sm:inline">تبديل المتجر</span>
+                  <span className="px-1.5 py-0.2 text-[9px] bg-teal-200 dark:bg-teal-800 rounded font-mono">{merchantStores.length}</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -1104,6 +1141,76 @@ export default function MerchantLayout({
           storeName={store.name}
           isService={isServiceStore}
         />
+      )}
+
+      {/* Switch Store Modal (Multi-Store accounts) */}
+      {isSwitchStoreOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 max-w-md w-full shadow-2xl space-y-4 text-right animate-scaleIn">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <button 
+                onClick={() => setIsSwitchStoreOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                <span>تبديل المتجر / البروفايل</span>
+                <RefreshCw className="w-4 h-4 text-teal-500" />
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500">اختر المتجر أو البروفايل الذي ترغب بالانتقال إلى لوحة تحكمه:</p>
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-0.5">
+              {merchantStores.map((st) => (
+                <div
+                  key={st.id}
+                  onClick={async () => {
+                    if (st.slug === slug) {
+                      setIsSwitchStoreOpen(false);
+                      return;
+                    }
+                    toast.loading(`جاري الانتقال إلى ${st.name}...`, { id: 'switch-store' });
+                    const res = await switchStoreAction(st.id);
+                    if (res.success) {
+                      toast.success(`تم التبديل بنجاح!`, { id: 'switch-store' });
+                      window.location.href = `/merchant/${st.slug}`;
+                    } else {
+                      toast.error(res.error || 'تعذر التبديل', { id: 'switch-store' });
+                    }
+                  }}
+                  className={`cursor-pointer p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                    st.slug === slug
+                      ? 'border-teal-500 bg-teal-50/50 dark:bg-teal-950/30'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-teal-400 bg-slate-50 dark:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {st.logo ? (
+                      <img src={st.logo} alt={st.name} className="w-9 h-9 rounded-xl object-cover shrink-0" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-xl bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xs font-bold shrink-0">
+                        {st.name?.slice(0, 2)}
+                      </div>
+                    )}
+                    <div className="min-w-0 text-right">
+                      <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{st.name}</div>
+                      <div className="text-[10px] text-slate-400 font-mono" dir="ltr">/{st.slug}</div>
+                    </div>
+                  </div>
+                  {st.slug === slug ? (
+                    <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/50 px-2 py-0.5 rounded-full">
+                      الحالي ✓
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-slate-500 hover:text-teal-600 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700">
+                      انتقال ←
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

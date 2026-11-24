@@ -76,6 +76,11 @@ export async function requireStoreOwner(targetStoreId: string) {
   if (role === 'SUPER_ADMIN') return true;
   
   if (storeId !== targetStoreId) {
+    // Check if the user actually owns this store in the database
+    const store = await prisma.store.findUnique({ where: { id: targetStoreId } });
+    if (store && store.ownerId === userId) {
+      return true;
+    }
     throw new Error('Forbidden: You do not have access to this store.');
   }
 
@@ -96,15 +101,23 @@ export async function requireSuperAdmin() {
 
 export async function loginMerchantAction(phoneOrEmail: string, password: string) {
   try {
+    const cleanIdentifier = phoneOrEmail.trim().toLowerCase();
+    const rawIdentifier = phoneOrEmail.trim();
+
     // 1. Find the user
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: phoneOrEmail },
-          { phone: phoneOrEmail }
+          { email: cleanIdentifier },
+          { email: rawIdentifier },
+          { phone: rawIdentifier }
         ]
       },
-      include: { stores: true }
+      include: { 
+        stores: {
+          orderBy: { createdAt: 'desc' }
+        }
+      }
     });
 
     if (!user) {
@@ -119,8 +132,16 @@ export async function loginMerchantAction(phoneOrEmail: string, password: string
       return { success: false, error: 'هذا الحساب غير مصرح له بالدخول كتاجر.' };
     }
 
-    const storeId = user.stores[0]?.id;
-    const slug = user.stores[0]?.slug;
+    const stores = user.stores.map(s => ({
+      id: s.id,
+      slug: s.slug,
+      name: s.name,
+      logo: s.logo,
+      category: s.category
+    }));
+
+    const storeId = stores[0]?.id;
+    const slug = stores[0]?.slug;
     
     // Update last login
     await prisma.user.update({
@@ -134,6 +155,7 @@ export async function loginMerchantAction(phoneOrEmail: string, password: string
       role: user.role, 
       storeId,
       slug,
+      stores,
       email: user.email,
       name: user.name
     };
@@ -141,6 +163,43 @@ export async function loginMerchantAction(phoneOrEmail: string, password: string
   } catch (error) {
     console.error('Error in loginMerchantAction:', error);
     return { success: false, error: 'حدث خطأ في النظام، يرجى المحاولة لاحقاً.' };
+  }
+}
+
+export async function getUserStoresAction() {
+  try {
+    const userId = cookies().get('seen_session_user_id')?.value;
+    if (!userId) return { success: false, stores: [] };
+    const stores = await prisma.store.findMany({
+      where: { ownerId: userId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        logo: true,
+        category: true,
+      }
+    });
+    return { success: true, stores };
+  } catch (error) {
+    return { success: false, stores: [] };
+  }
+}
+
+export async function switchStoreAction(storeId: string) {
+  try {
+    const userId = cookies().get('seen_session_user_id')?.value;
+    const role = cookies().get('seen_session_role')?.value || 'STORE_OWNER';
+    if (!userId) return { success: false, error: 'غير مسجل دخول' };
+    const store = await prisma.store.findFirst({
+      where: { id: storeId, ownerId: userId }
+    });
+    if (!store) return { success: false, error: 'المتجر غير موجود أو غير مصرح به' };
+    await setAuthCookieAction('temp-token', userId, role, store.id);
+    return { success: true, slug: store.slug, storeId: store.id };
+  } catch (error) {
+    return { success: false, error: 'تعذر تبديل المتجر' };
   }
 }
 

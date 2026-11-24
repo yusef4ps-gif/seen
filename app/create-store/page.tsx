@@ -11,7 +11,7 @@ import {
   Briefcase, UserCheck, Package
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { createStoreAction } from '@/app/actions/store';
+import { createStoreAction, checkMerchantCredentialsAction } from '@/app/actions/store';
 import { ThemeConfig, ThemePreset, CurrencyCode } from '@/lib/types';
 import { THEME_PRESETS } from '@/lib/theme-presets';
 import { checkAuthStatusAction } from '@/app/actions/auth';
@@ -133,11 +133,32 @@ export default function CreateStorePage() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleNextToStep2 = () => {
+  const [isValidatingCredentials, setIsValidatingCredentials] = useState(false);
+
+  const handleNextToStep2 = async () => {
     if (!validateStep1()) {
       toast.error('يرجى تعبئة الحقول الإلزامية المطلوبة أولاً');
       return;
     }
+
+    setIsValidatingCredentials(true);
+    try {
+      const checkRes = await checkMerchantCredentialsAction(email, phone);
+      if (!checkRes.available) {
+        if (checkRes.field === 'email') {
+          setErrors(prev => ({ ...prev, email: checkRes.error }));
+        } else if (checkRes.field === 'phone') {
+          setErrors(prev => ({ ...prev, phone: checkRes.error }));
+        }
+        toast.error(checkRes.error || 'البيانات المدخلة مسجلة مسبقاً لدى حساب آخر.');
+        return;
+      }
+    } catch (e) {
+      console.warn('Credentials validation check bypassed due to network error');
+    } finally {
+      setIsValidatingCredentials(false);
+    }
+
     setCurrentStep(2);
   };
 
@@ -168,6 +189,19 @@ export default function CreateStorePage() {
     if (!validateStep1()) {
       setCurrentStep(1);
       toast.error('يرجى تعبئة كافة بيانات المتجر الإلزامية بشكل صحيح أولاً');
+      return;
+    }
+
+    // Strict double-check credentials before store launch
+    const checkRes = await checkMerchantCredentialsAction(email, phone);
+    if (!checkRes.available) {
+      setCurrentStep(1);
+      if (checkRes.field === 'email') {
+        setErrors(prev => ({ ...prev, email: checkRes.error }));
+      } else if (checkRes.field === 'phone') {
+        setErrors(prev => ({ ...prev, phone: checkRes.error }));
+      }
+      toast.error(checkRes.error || 'البيانات المدخلة مسجلة مسبقاً.');
       return;
     }
 
@@ -621,6 +655,18 @@ export default function CreateStorePage() {
                       setPhone(e.target.value);
                       if (errors.phone) setErrors((prev) => ({ ...prev, phone: undefined }));
                     }}
+                    onBlur={async () => {
+                      const clean = phone.replace(/[\s-]/g, '');
+                      if (clean.length >= 8) {
+                        try {
+                          const res = await checkMerchantCredentialsAction(undefined, clean);
+                          if (!res.available && res.field === 'phone') {
+                            setErrors((prev) => ({ ...prev, phone: res.error }));
+                            toast.error(res.error || 'رقم الهاتف مسجل مسبقاً');
+                          }
+                        } catch {}
+                      }
+                    }}
                     placeholder="770 000 000"
                     className={`w-full px-4 py-3 rounded-2xl border ${
                       errors.phone
@@ -646,6 +692,18 @@ export default function CreateStorePage() {
                     onChange={(e) => {
                       setEmail(e.target.value);
                       if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                    }}
+                    onBlur={async () => {
+                      const clean = email.trim().toLowerCase();
+                      if (clean && clean.includes('@')) {
+                        try {
+                          const res = await checkMerchantCredentialsAction(clean);
+                          if (!res.available && res.field === 'email') {
+                            setErrors((prev) => ({ ...prev, email: res.error }));
+                            toast.error(res.error || 'البريد الإلكتروني مسجل مسبقاً');
+                          }
+                        } catch {}
+                      }
                     }}
                     placeholder="example@gmail.com"
                     className={`w-full px-4 py-3 rounded-2xl border ${
@@ -706,10 +764,11 @@ export default function CreateStorePage() {
               <div className="pt-4 flex justify-end">
                 <button
                   type="button"
+                  disabled={isValidatingCredentials}
                   onClick={handleNextToStep2}
-                  className="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-brand-600/20 active:scale-95 transition-all"
+                  className="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-brand-600/20 active:scale-95 transition-all"
                 >
-                  <span>التالي: اختيار القالب والهوية 🎨</span>
+                  <span>{isValidatingCredentials ? 'جاري التحقق من توفر الحساب...' : 'التالي: اختيار القالب والهوية 🎨'}</span>
                   <ArrowLeft className="w-4 h-4" />
                 </button>
               </div>

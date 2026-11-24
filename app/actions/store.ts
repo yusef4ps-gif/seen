@@ -65,6 +65,58 @@ const DEFAULT_SHIPPING_METHODS = JSON.stringify([
   },
 ]);
 
+export async function checkMerchantCredentialsAction(email?: string, phone?: string) {
+  try {
+    const cleanEmail = email?.trim().toLowerCase();
+    if (cleanEmail && cleanEmail.includes('@')) {
+      const userByEmail = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: cleanEmail },
+            { email: email?.trim() }
+          ]
+        }
+      });
+      if (userByEmail) {
+        return { 
+          available: false, 
+          field: 'email', 
+          error: 'هذا البريد الإلكتروني مسجل مسبقاً لدى متجر آخر. يرجى استخدام بريد إلكتروني مختلف أو تسجيل الدخول إلى متجرك الحالي.' 
+        };
+      }
+      const storeByEmail = await prisma.store.findFirst({ 
+        where: { email: cleanEmail } 
+      });
+      if (storeByEmail) {
+        return { 
+          available: false, 
+          field: 'email', 
+          error: 'هذا البريد الإلكتروني مسجل مسبقاً لمتجر آخر. يرجى استخدام بريد إلكتروني جديد.' 
+        };
+      }
+    }
+
+    const cleanPhone = phone?.trim();
+    if (cleanPhone && cleanPhone.length >= 8) {
+      const userByPhone = await prisma.user.findFirst({ 
+        where: { phone: cleanPhone } 
+      });
+      if (userByPhone) {
+        return { 
+          available: false, 
+          field: 'phone', 
+          error: 'رقم الهاتف هذا مسجل مسبقاً لدى حساب تاجر آخر. يرجى استخدام رقم هاتف مختلف أو تسجيل الدخول.' 
+        };
+      }
+    }
+
+    return { available: true };
+  } catch (error) {
+    console.error('checkMerchantCredentialsAction error:', error);
+    return { available: true };
+  }
+}
+
 export async function createStoreAction(data: any) {
   try {
     let ownerId: string | null = null;
@@ -88,20 +140,40 @@ export async function createStoreAction(data: any) {
     const cleanEmail = data.email.trim().toLowerCase();
     const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
     if (existingUser) {
-      ownerId = existingUser.id;
-    } else {
-      const newUser = await prisma.user.create({
-        data: {
-          email: cleanEmail,
-          phone: data.phone.trim(),
-          password: data.password.trim(),
-          name: 'إدارة ' + data.name.trim(),
-          role: 'STORE_OWNER',
-          status: 'active'
-        }
-      });
-      ownerId = newUser.id;
+      return { 
+        success: false, 
+        error: 'هذا البريد الإلكتروني مسجل مسبقاً لدى متجر آخر. يرجى استخدام بريد إلكتروني مختلف أو تسجيل الدخول إلى متجرك الحالي.' 
+      };
     }
+
+    const existingStoreWithEmail = await prisma.store.findFirst({ where: { email: cleanEmail } });
+    if (existingStoreWithEmail) {
+      return { 
+        success: false, 
+        error: 'هذا البريد الإلكتروني مسجل مسبقاً لدى متجر آخر. يرجى استخدام بريد إلكتروني جديد.' 
+      };
+    }
+
+    const cleanPhone = data.phone.trim();
+    const existingPhone = await prisma.user.findFirst({ where: { phone: cleanPhone } });
+    if (existingPhone) {
+      return { 
+        success: false, 
+        error: 'رقم الهاتف هذا مسجل مسبقاً لدى حساب تاجر آخر. يرجى استخدام رقم هاتف مختلف أو تسجيل الدخول.' 
+      };
+    }
+
+    const newUser = await prisma.user.create({
+      data: {
+        email: cleanEmail,
+        phone: cleanPhone,
+        password: data.password.trim(),
+        name: 'إدارة ' + data.name.trim(),
+        role: 'STORE_OWNER',
+        status: 'active'
+      }
+    });
+    ownerId = newUser.id;
 
     if (!ownerId) {
       return { success: false, error: 'تعذر إنشاء الحساب.' };

@@ -86,7 +86,26 @@ function LoginFormContent() {
   // Pending login data for 2FA
   const [pendingLoginData, setPendingLoginData] = useState<any>(null);
 
+  // Multi-store selection state for merchants with multiple stores
+  const [multipleStores, setMultipleStores] = useState<any[] | null>(null);
 
+  // Handle direct store choice
+  const handleSelectStore = async (st: any) => {
+    setIsLoading(true);
+    setErrorMessage('');
+    const result = pendingLoginData;
+    if (result && result.userId && result.role) {
+      await setAuthCookieAction('temp-token', result.userId, result.role, st.id);
+    }
+    setSuccessMessage(`مرحباً بك! جاري الدخول إلى لوحة ${st.name}...`);
+    setTimeout(() => {
+      if (redirectParam) {
+        router.push(redirectParam);
+      } else {
+        router.push(`/merchant/${st.slug}`);
+      }
+    }, 400);
+  };
 
   // Submit Login
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -130,16 +149,27 @@ function LoginFormContent() {
     }
 
     const result = pendingLoginData;
+
+    // Check if merchant owns multiple stores
+    if (result?.stores && result.stores.length > 1) {
+      setVerificationStep(false);
+      setMultipleStores(result.stores);
+      setSuccessMessage('تم التحقق بنجاح! يرجى اختيار المتجر للمتابعة.');
+      return;
+    }
+
     setSuccessMessage('تم تسجيل الدخول بنجاح! جاري التوجيه...');
-    if (result.userId && result.role) {
-      await setAuthCookieAction('temp-token', result.userId, result.role, result.storeId || undefined);
+    const chosenStoreId = result?.stores?.[0]?.id || result?.storeId;
+    const chosenSlug = result?.stores?.[0]?.slug || result?.slug;
+    if (result?.userId && result?.role) {
+      await setAuthCookieAction('temp-token', result.userId, result.role, chosenStoreId || undefined);
     }
     setTimeout(() => {
       if (redirectParam) {
           router.push(redirectParam);
-      } else if (result.slug) {
-          router.push(`/merchant/${result.slug}`);
-      } else if (result.role === 'STORE_OWNER') {
+      } else if (chosenSlug) {
+          router.push(`/merchant/${chosenSlug}`);
+      } else if (result?.role === 'STORE_OWNER') {
           router.push('/create-store');
       } else {
           router.push('/profile');
@@ -241,31 +271,115 @@ function LoginFormContent() {
         <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-2xl text-right space-y-5">
           
 
-          {/* Mode Switcher */}
-          <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs font-bold">
-            <button
-              type="button"
-              onClick={() => { setAuthMode('login'); setErrorMessage(''); setSuccessMessage(''); }}
-              className={`py-2.5 rounded-xl transition-all ${
-                authMode === 'login'
-                  ? 'bg-[#0f2b48] text-white shadow-md'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              تسجيل الدخول
-            </button>
-            <button
-              type="button"
-              onClick={() => { setAuthMode('register'); setErrorMessage(''); setSuccessMessage(''); }}
-              className={`py-2.5 rounded-xl transition-all ${
-                authMode === 'register'
-                  ? 'bg-[#0f2b48] text-white shadow-md'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              حساب عميل جديد
-            </button>
-          </div>
+          {/* MULTI-STORE SELECTOR (Shown when user account owns multiple stores) */}
+          {multipleStores && multipleStores.length > 1 ? (
+            <div className="space-y-4 animate-fadeIn">
+              <div className="text-center space-y-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto mb-1.5 shadow-xs">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  اختر المتجر أو البروفايل
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  تم العثور على <span className="font-bold text-teal-600 dark:text-teal-400 font-mono">{multipleStores.length}</span> متاجر مسجلة بهذا الحساب. اختر المتجر الذي ترغب بإدارته:
+                </p>
+              </div>
+
+              <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-0.5">
+                {multipleStores.map((st) => (
+                  <div
+                    key={st.id}
+                    onClick={() => !isLoading && handleSelectStore(st)}
+                    className="group cursor-pointer p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-teal-500 dark:hover:border-teal-500 hover:shadow-md transition-all flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {st.logo ? (
+                        <img 
+                          src={st.logo} 
+                          alt={st.name} 
+                          className="w-11 h-11 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0" 
+                        />
+                      ) : (
+                        <div className="w-11 h-11 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold text-xs shrink-0">
+                          {st.name?.slice(0, 2) || 'متجر'}
+                        </div>
+                      )}
+                      <div className="min-w-0 text-right">
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                          {st.name}
+                        </h4>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {st.category && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium truncate">
+                              {st.category}
+                            </span>
+                          )}
+                          <span className="text-[10px] text-slate-400 font-mono truncate" dir="ltr">
+                            /{st.slug}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isLoading}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectStore(st);
+                      }}
+                      className="shrink-0 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center gap-1"
+                    >
+                      <span>دخول</span>
+                      <ArrowRight className="w-3 h-3 rotate-180" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMultipleStores(null);
+                    setVerificationStep(false);
+                    setVerificationCode('');
+                    setPendingLoginData(null);
+                  }}
+                  className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-bold transition-colors"
+                >
+                  ← العودة وتسجيل الدخول بحساب آخر
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Mode Switcher */}
+              <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('login'); setErrorMessage(''); setSuccessMessage(''); }}
+                  className={`py-2.5 rounded-xl transition-all ${
+                    authMode === 'login'
+                      ? 'bg-[#0f2b48] text-white shadow-md'
+                      : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  تسجيل الدخول
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('register'); setErrorMessage(''); setSuccessMessage(''); }}
+                  className={`py-2.5 rounded-xl transition-all ${
+                    authMode === 'register'
+                      ? 'bg-[#0f2b48] text-white shadow-md'
+                      : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  حساب عميل جديد
+                </button>
+              </div>
 
           {/* Feedback */}
           {errorMessage && (
@@ -522,6 +636,8 @@ function LoginFormContent() {
                     <span>{isLoading ? 'جاري الإرسال...' : 'إنشاء المتجر 🛍️'}</span>
                   </button>
             </form>
+          )}
+          </>
           )}
 
         </div>
