@@ -10,7 +10,7 @@ import {
   Wallet, Image as ImageIcon, QrCode, ExternalLink, Flame, 
   Truck, RefreshCw, Star, Tag, Ticket, Cpu, Zap, Award, Coffee, Heart,
   Facebook, Instagram, Twitter, Youtube, Linkedin, MessageCircle, Mail, User, Settings, Lock,
-  Briefcase, CalendarCheck, Share2, Trash2, Home
+  Briefcase, CalendarCheck, Share2, Trash2, Home, Download
 } from 'lucide-react';
 import ShareStoreModal from '@/components/ShareStoreModal';
 import CustomServiceRequestModal from '@/components/CustomServiceRequestModal';
@@ -230,15 +230,18 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
             {/* Configurable overlay: none = 100% natural image, light = balanced, dark = high contrast */}
             {bannerOverlayStyle !== 'none' && (
               <>
-                <div className={`absolute inset-0 ${bannerOverlayStyle === 'dark' ? 'bg-slate-950/70 backdrop-blur-[1px]' : 'bg-slate-950/35'}`} />
-                <div className={`absolute inset-0 bg-gradient-to-t ${bannerOverlayStyle === 'dark' ? 'from-slate-950 via-slate-950/60 to-slate-950/30' : 'from-slate-950/85 via-slate-950/30 to-transparent'}`} />
+                <div className={`absolute inset-0 ${bannerOverlayStyle === 'dark' ? 'bg-slate-950/70 backdrop-blur-[1px]' : 'bg-slate-950/20'}`} />
+                <div className={`absolute inset-0 bg-gradient-to-t ${bannerOverlayStyle === 'dark' ? 'from-slate-950 via-slate-950/60 to-slate-950/30' : 'from-slate-950/70 via-slate-950/20 to-transparent'}`} />
               </>
             )}
           </>
         ) : (
           <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900" />
         )}
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#0d9488_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+        <div 
+          className="absolute inset-0 opacity-15 pointer-events-none" 
+          style={{ backgroundImage: `radial-gradient(${primaryColor} 1px, transparent 1px)`, backgroundSize: '16px 16px' }}
+        />
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 relative z-10 text-right w-full">
           
           <div className="flex-1 space-y-4">
@@ -600,6 +603,43 @@ export default function CustomerStorefrontPage() {
     loadStorefront();
   }, [slug]);
 
+  // Live Refresh on Tab Focus or Settings Update (guarantees immediate theme color & banner changes)
+  useEffect(() => {
+    if (!slug) return;
+    const handleRefresh = async () => {
+      try {
+        const s = await getStoreBySlugAction(slug);
+        if (s) {
+          setStore(s as any);
+          const prods = await getProductsByStoreAction(s.id);
+          if (prods) setProducts(prods as any);
+        }
+      } catch (e) {}
+    };
+
+    const onVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        handleRefresh();
+      }
+    };
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key?.includes('seen_store') || e.key?.includes('seen_clean_stores') || !e.key) {
+        handleRefresh();
+      }
+    };
+
+    window.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', handleRefresh);
+
+    return () => {
+      window.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', handleRefresh);
+    };
+  }, [slug]);
+
   // Visitor Tracking Ping
   useEffect(() => {
     if (!slug) return;
@@ -750,7 +790,7 @@ export default function CustomerStorefrontPage() {
   };
 
   const presetId = theme.presetId || (isServiceStore ? 'service-expert' : 'fashion-luxury');
-  const primaryColor = store.primaryColor || theme.colors?.primary || '#0d9488';
+  const primaryColor = store.primaryColor || theme.colors?.primary || (typeof window !== 'undefined' ? localStorage.getItem(`seen_store_primaryColor_${slug}`) : null) || '#0d9488';
   const secondaryColor = theme.colors?.secondary || '#d97706';
   const fontFamily = theme.typography?.fontFamily || 'Tajawal';
   const borderRadiusClass = theme.layout?.borderRadius === 'pill' ? 'rounded-full' : theme.layout?.borderRadius === 'curved' ? 'rounded-2xl' : 'rounded-none';
@@ -1046,7 +1086,7 @@ export default function CustomerStorefrontPage() {
   // Helper to normalize category name and prevent duplicate or typo tabs
   const normalizeCatName = (name: string) => {
     if (!name) return '';
-    let cleaned = name.trim();
+    let cleaned = name.trim().replace(/\s+/g, ' ');
     if (cleaned.includes('منتحات')) {
       cleaned = cleaned.replace(/منتحات/g, 'منتجات');
     }
@@ -1081,6 +1121,12 @@ export default function CustomerStorefrontPage() {
   };
 
   const filteredProducts = products.filter((p) => {
+    // 1. Digital products optionality check: if merchant disabled digital products, hide them
+    const allowDigital = parsedThemeConfigForType?.allowDigitalProducts !== false;
+    if (!allowDigital && (p.digitalFileUrl || p.category?.includes('رقمي') || (p.tags && p.tags.some((t: string) => t.includes('digital') || t.includes('رقمي'))))) {
+      return false;
+    }
+
     const normProdCat = normalizeCatName(p.category || '');
     let matchesCategory = selectedCategory === 'all' || 
                           normProdCat === selectedCategory || 
@@ -1106,6 +1152,7 @@ export default function CustomerStorefrontPage() {
       }`}
       style={{ fontFamily }}
     >
+      <style dangerouslySetInnerHTML={{ __html: `:root { --store-primary: ${primaryColor}; }` }} />
       
       {/* 1. ANNOUNCEMENT BAR (Customized per theme) */}
       {(() => {
@@ -1621,76 +1668,58 @@ export default function CustomerStorefrontPage() {
                 <section id="products-grid" key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 space-y-4 scroll-mt-24">
                   {/* Executive Provider Bio Card for Service Platforms */}
                   {isServiceStore && (
-                    <div id="bio-section" className="scroll-mt-28 p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 text-white border border-slate-700 shadow-xl mb-6 relative overflow-hidden text-right">
-                      <div className="absolute top-0 left-0 w-96 h-96 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: `${primaryColor}20` }} />
-                      
-                      <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6">
-                        {/* Avatar with Verified Badge */}
-                        <div className="relative shrink-0">
-                          <img
-                            src={store.logo || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80'}
-                            alt={store.name}
-                            className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-2 shadow-lg"
-                            style={{ borderColor: primaryColor }}
-                          />
-                          <div className="absolute -bottom-2 -right-2 px-2.5 py-0.5 rounded-full text-white text-[10px] font-black flex items-center gap-1 shadow-md" style={{ backgroundColor: primaryColor }}>
-                            <ShieldCheck className="w-3 h-3" />
-                            <span>موثّق</span>
+                    <div id="bio-section" className="scroll-mt-28 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm mb-6 text-right space-y-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm" style={{ backgroundColor: primaryColor }}>
+                            <User className="w-5 h-5" />
                           </div>
-                        </div>
-
-                        {/* Info & Bio */}
-                        <div className="flex-1 space-y-3 text-center md:text-right">
                           <div>
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold mb-2" style={{ color: primaryColor, backgroundColor: `${primaryColor}15`, borderColor: `${primaryColor}30` }}>
-                              <Briefcase className="w-3.5 h-3.5" style={{ color: primaryColor }} />
-                              <span>{parsedThemeConfigForType.professionalTitle || store.category || 'مستشار وخبير مهني'}</span>
-                            </div>
-                            <h2 className="text-xl sm:text-2xl font-black text-white">
-                              {store.name}
-                            </h2>
-                          </div>
-
-                          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-3xl">
-                            {parsedThemeConfigForType.providerBio || store.description || 'نقدم خدمات واستشارات مهنية متخصصة قائمة على الخبرة والحلول الدقيقة التي تضمن تحقيق أهدافكم بكل كفاءة وسرية.'}
-                          </p>
-
-                          {/* Credentials & Stats Row */}
-                          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 pt-1">
-                            {parsedThemeConfigForType.experienceYears && (
-                              <span className="px-3 py-1 rounded-xl bg-white/10 border border-white/15 text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                                <Clock className="w-3.5 h-3.5" style={{ color: primaryColor }} />
-                                <span>{parsedThemeConfigForType.experienceYears}</span>
-                              </span>
-                            )}
-
-                            {parsedThemeConfigForType.consultationsCount && (
-                              <span className="px-3 py-1 rounded-xl bg-white/10 border border-white/15 text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                                <Award className="w-3.5 h-3.5" style={{ color: primaryColor }} />
-                                <span>{parsedThemeConfigForType.consultationsCount}</span>
-                              </span>
-                            )}
-
-                            {parsedThemeConfigForType.certifications && (
-                              <span className="px-3 py-1 rounded-xl bg-white/10 border border-white/15 text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                                <ShieldCheck className="w-3.5 h-3.5" style={{ color: primaryColor }} />
-                                <span>{parsedThemeConfigForType.certifications}</span>
-                              </span>
-                            )}
+                            <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">نبذة تعريفية وسيرة مهنية</h3>
+                            <p className="text-xs text-slate-500 font-medium">الخبرات والاعتمادات الرسمية</p>
                           </div>
                         </div>
-
-                        {/* Direct CTA */}
-                        <div className="shrink-0 self-center md:self-start">
-                          <button
-                            onClick={() => setIsCustomRequestModalOpen(true)}
-                            className="px-5 py-3 rounded-2xl active:scale-95 text-white font-black text-xs sm:text-sm shadow-lg transition-all flex items-center gap-2"
-                            style={{ backgroundColor: primaryColor, boxShadow: `0 8px 20px -4px ${primaryColor}40` }}
-                          >
-                            <Briefcase className="w-4 h-4 text-white" />
-                            <span>طلب خدمة مخصصة ✍️</span>
-                          </button>
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shrink-0" style={{ color: primaryColor, backgroundColor: `${primaryColor}15`, borderColor: `${primaryColor}30` }}>
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>بروفايل معتمد وموثق</span>
                         </div>
+                      </div>
+
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-4xl pt-1">
+                        {parsedThemeConfigForType.providerBio || store.description || 'نقدم خدمات واستشارات مهنية متخصصة قائمة على الخبرة والحلول الدقيقة التي تضمن تحقيق أهدافكم بكل كفاءة وسرية.'}
+                      </p>
+
+                      {/* Credentials & Stats Row */}
+                      <div className="flex flex-wrap items-center gap-2.5 pt-2">
+                        {parsedThemeConfigForType.experienceYears && (
+                          <span className="px-3.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            <Clock className="w-4 h-4" style={{ color: primaryColor }} />
+                            <span>سنوات الخبرة: <b>{parsedThemeConfigForType.experienceYears}</b></span>
+                          </span>
+                        )}
+
+                        {parsedThemeConfigForType.consultationsCount && (
+                          <span className="px-3.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            <Award className="w-4 h-4" style={{ color: primaryColor }} />
+                            <span>جلسات واستشارات منجزة: <b>{parsedThemeConfigForType.consultationsCount}</b></span>
+                          </span>
+                        )}
+
+                        {parsedThemeConfigForType.certifications && (
+                          <span className="px-3.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4" style={{ color: primaryColor }} />
+                            <span>الاعتمادات: <b>{parsedThemeConfigForType.certifications}</b></span>
+                          </span>
+                        )}
+
+                        <button
+                          onClick={() => setIsCustomRequestModalOpen(true)}
+                          className="mr-auto px-4 py-2 rounded-xl text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+                          style={{ backgroundColor: primaryColor }}
+                        >
+                          <Briefcase className="w-3.5 h-3.5" />
+                          <span>طلب مخصص أو استشارة ✍️</span>
+                        </button>
                       </div>
                     </div>
                   )}

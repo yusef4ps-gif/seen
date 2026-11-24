@@ -488,6 +488,9 @@ export default function MerchantLayout({
     const subRoute = segments[1]?.split('/')[0]?.split('?')[0];
     if (!subRoute) return;
 
+    // Critical merchant routes that must always remain accessible:
+    if (subRoute === 'subscription' || subRoute === 'settings' || subRoute === 'notifications') return;
+
     const requiredFeature = ROUTE_FEATURE_MAP[subRoute];
     const currentStorePlan = plans.find(p => p.id === store.planTier) || storeEngine.getPlans().find(p => p.id === store.planTier);
     const currentActiveFeatures = currentStorePlan?.features || [];

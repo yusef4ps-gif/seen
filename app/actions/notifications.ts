@@ -14,7 +14,8 @@ export async function getStoreNotificationsAction(storeId: string) {
       store,
       recentNewOrders,
       newOrdersCount,
-      newReturnsCount
+      newReturnsCount,
+      systemBroadcasts
     ] = await Promise.all([
       // 1. Abandoned carts total & count (select only total to minimize payload)
       prisma.abandonedCart.findMany({

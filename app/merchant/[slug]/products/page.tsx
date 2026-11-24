@@ -20,6 +20,7 @@ import { bulkCreateProductsAction } from '@/app/actions/importProducts';
 import Papa from 'papaparse';
 import { logActivityAction } from '@/app/actions/activity';
 import { authEngine } from '@/lib/auth-engine';
+import toast from 'react-hot-toast';
 
 export default function MerchantProductsPage() {
   const params = useParams();
@@ -615,21 +616,24 @@ export default function MerchantProductsPage() {
             </button>
           )}
 
-          {isServiceStore && (
-            <button
-              onClick={handleOpenConsultationModal}
-              className="px-4 py-2.5 rounded-xl font-bold text-xs bg-amber-600 hover:bg-amber-500 text-white transition-all shadow-md shadow-amber-600/25 flex items-center justify-center gap-1.5 active:scale-95"
-            >
-              <CalendarCheck className="w-4 h-4" />
-              <span>إضافة استشارة 🗓️</span>
-            </button>
-          )}
-
+          {/* زر إضافة استشارة 🗓️ بجوار زر إضافة خدمة جديدة */}
           <button
+            type="button"
+            onClick={handleOpenConsultationModal}
+            className="px-4 py-2.5 rounded-xl font-bold text-xs bg-amber-600 hover:bg-amber-500 text-white transition-all shadow-md shadow-amber-600/25 flex items-center justify-center gap-2 active:scale-95 shrink-0"
+            title="إضافة استشارة جديدة وتحديد عدد الجلسات والمدة والسعر"
+          >
+            <CalendarCheck className="w-4 h-4" />
+            <span>إضافة استشارة 🗓️</span>
+          </button>
+
+          {/* زر إضافة خدمة جديدة أو منتج جديد */}
+          <button
+            type="button"
             onClick={handleOpenNewModal}
             className={`px-4 py-2.5 rounded-xl font-bold text-xs ${
               isServiceStore ? 'bg-teal-600 hover:bg-teal-500 shadow-teal-600/25' : 'bg-brand-600 hover:bg-brand-500 shadow-brand-600/25'
-            } text-white transition-all shadow-md flex items-center justify-center gap-1.5`}
+            } text-white transition-all shadow-md flex items-center justify-center gap-2 active:scale-95 shrink-0`}
           >
             <Plus className="w-4 h-4" />
             <span>{isServiceStore ? 'إضافة خدمة جديدة' : 'إضافة منتج جديد'}</span>
@@ -1151,7 +1155,7 @@ export default function MerchantProductsPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    {isServiceStore ? `أتعاب / سعر الخدمة (${store?.baseCurrency})` : `السعر (${store?.baseCurrency})`} <span className="text-red-500">*</span>
+                    {isConsultation ? `أتعاب / سعر الاستشارة (${store?.baseCurrency})` : isServiceStore ? `أتعاب / سعر الخدمة (${store?.baseCurrency})` : `السعر (${store?.baseCurrency})`} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -1166,7 +1170,7 @@ export default function MerchantProductsPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    السعر قبل الخصم (اختياري)
+                    {isConsultation ? 'سعر الاستشارة قبل الخصم (اختياري)' : 'السعر قبل الخصم (اختياري)'}
                   </label>
                   <input
                     type="number"
@@ -1493,9 +1497,19 @@ export default function MerchantProductsPage() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2.5 rounded-xl font-bold text-xs bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-600/25 disabled:opacity-50"
+                  className={`px-5 py-2.5 rounded-xl font-bold text-xs text-white shadow-md disabled:opacity-50 transition-all ${
+                    isConsultation 
+                      ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/25' 
+                      : isServiceStore 
+                      ? 'bg-teal-600 hover:bg-teal-500 shadow-teal-600/25' 
+                      : 'bg-brand-600 hover:bg-brand-500 shadow-brand-600/25'
+                  }`}
                 >
-                  {isSaving ? 'جاري الحفظ...' : (editingProductId ? 'حفظ التعديلات' : 'إضافة المنتج فوراً')}
+                  {isSaving 
+                    ? 'جاري الحفظ...' 
+                    : editingProductId 
+                    ? (isConsultation ? 'حفظ تعديلات الاستشارة' : isServiceStore ? 'حفظ تعديلات الخدمة' : 'حفظ التعديلات') 
+                    : (isConsultation ? 'حفظ وإتاحة الاستشارة في المتجر 🗓️' : isServiceStore ? 'إضافة الخدمة للمتجر ⚡' : 'إضافة المنتج فوراً')}
                 </button>
               </div>
 
