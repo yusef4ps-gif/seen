@@ -195,6 +195,10 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
       ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })()
       : (store.themeConfig || {});
     const profTitle = parsedThemeConfig?.professionalTitle;
+    const hideBannerTexts = Boolean(parsedThemeConfig?.hideBannerTexts);
+    const hideTrustBadges = Boolean(parsedThemeConfig?.hideTrustBadges);
+    const hideBannerButtons = Boolean(parsedThemeConfig?.hideBannerButtons);
+    const bannerOverlayStyle = parsedThemeConfig?.bannerOverlayStyle || 'light';
 
     let resolvedBanner = store.banner;
     if (resolvedBanner && (resolvedBanner.startsWith('[') || resolvedBanner.startsWith('{'))) {
@@ -223,9 +227,13 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
               alt={store.name}
               className="absolute inset-0 w-full h-full object-cover object-center scale-100"
             />
-            {/* Elegant balanced overlay so the photo is clearly visible, with crisp readable text */}
-            <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-[0.5px]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-slate-950/20" />
+            {/* Configurable overlay: none = 100% natural image, light = balanced, dark = high contrast */}
+            {bannerOverlayStyle !== 'none' && (
+              <>
+                <div className={`absolute inset-0 ${bannerOverlayStyle === 'dark' ? 'bg-slate-950/70 backdrop-blur-[1px]' : 'bg-slate-950/35'}`} />
+                <div className={`absolute inset-0 bg-gradient-to-t ${bannerOverlayStyle === 'dark' ? 'from-slate-950 via-slate-950/60 to-slate-950/30' : 'from-slate-950/85 via-slate-950/30 to-transparent'}`} />
+              </>
+            )}
           </>
         ) : (
           <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900" />
@@ -234,53 +242,59 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 relative z-10 text-right w-full">
           
           <div className="flex-1 space-y-4">
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white drop-shadow-md">
-              {store.name}
-            </h1>
+            {!hideBannerTexts && (
+              <>
+                <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white drop-shadow-md">
+                  {store.name}
+                </h1>
 
-            {profTitle && (
-              <div className="text-sm sm:text-base font-bold flex items-center gap-2" style={{ color: primaryColor }}>
-                <CheckCircle2 className="w-4 h-4" style={{ color: primaryColor }} />
-                <span>{profTitle}</span>
-              </div>
+                {profTitle && (
+                  <div className="text-sm sm:text-base font-bold flex items-center gap-2" style={{ color: primaryColor }}>
+                    <CheckCircle2 className="w-4 h-4" style={{ color: primaryColor }} />
+                    <span>{profTitle}</span>
+                  </div>
+                )}
+
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
+                  {subtitle || store.description || 'نقدم خدمات واستشارات مهنية متخصصة بأعلى معايير الجودة والسرية والاحترافية لخدمة عملائنا الكرام.'}
+                </p>
+              </>
             )}
 
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
-              {subtitle || store.description || 'نقدم خدمات واستشارات مهنية متخصصة بأعلى معايير الجودة والسرية والاحترافية لخدمة عملائنا الكرام.'}
-            </p>
-
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <a
-                href="#products-grid"
-                className="px-6 py-3 rounded-2xl text-white font-bold text-xs sm:text-sm shadow-lg transition-all flex items-center gap-2 active:scale-95"
-                style={{ backgroundColor: primaryColor, boxShadow: `0 8px 20px -4px ${primaryColor}40` }}
-              >
-                <CalendarCheck className="w-4 h-4" />
-                <span>طلب خدمة / استعراض الباقات 📅</span>
-              </a>
-
-              {onOpenCustomRequest && (
-                <button
-                  onClick={onOpenCustomRequest}
-                  className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs sm:text-sm transition-all flex items-center gap-2 shadow-xs active:scale-95"
-                >
-                  <Briefcase className="w-4 h-4" style={{ color: primaryColor }} />
-                  <span>طلب مخصص أو استشارة ✍️</span>
-                </button>
-              )}
-
-              {store.whatsapp && (
+            {!hideBannerButtons && (
+              <div className="flex flex-wrap items-center gap-3 pt-2">
                 <a
-                  href={`https://wa.me/${store.whatsapp.replace(/[^0-9]/g, '')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-5 py-3 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 font-bold text-xs sm:text-sm transition-all flex items-center gap-2"
+                  href="#products-grid"
+                  className="px-6 py-3 rounded-2xl text-white font-bold text-xs sm:text-sm shadow-lg transition-all flex items-center gap-2 active:scale-95"
+                  style={{ backgroundColor: primaryColor, boxShadow: `0 8px 20px -4px ${primaryColor}40` }}
                 >
-                  <MessageCircle className="w-4 h-4 text-emerald-400" />
-                  <span>تواصل واتساب مباشر</span>
+                  <CalendarCheck className="w-4 h-4" />
+                  <span>طلب خدمة / استعراض الباقات 📅</span>
                 </a>
-              )}
-            </div>
+
+                {onOpenCustomRequest && (
+                  <button
+                    onClick={onOpenCustomRequest}
+                    className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs sm:text-sm transition-all flex items-center gap-2 shadow-xs active:scale-95"
+                  >
+                    <Briefcase className="w-4 h-4" style={{ color: primaryColor }} />
+                    <span>طلب مخصص أو استشارة ✍️</span>
+                  </button>
+                )}
+
+                {store.whatsapp && (
+                  <a
+                    href={`https://wa.me/${store.whatsapp.replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-5 py-3 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 font-bold text-xs sm:text-sm transition-all flex items-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4 text-emerald-400" />
+                    <span>تواصل واتساب مباشر</span>
+                  </a>
+                )}
+              </div>
+            )}
 
             {/* Social Links Row in Hero if available */}
             {(heroSocial.linkedin || heroSocial.x || heroSocial.instagram || heroSocial.facebook || heroSocial.snapchat || heroSocial.tiktok) && (
@@ -358,11 +372,13 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
               </div>
             )}
 
-            <div className="flex flex-wrap gap-4 pt-3 text-[11px] text-slate-400 font-medium">
-              <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" style={{ color: primaryColor }} /> خصوصية وسرية تامة</span>
-              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" style={{ color: primaryColor }} /> دقة في المواعيد</span>
-              <span className="flex items-center gap-1.5"><Award className="w-3.5 h-3.5" style={{ color: primaryColor }} /> خبرة معتمدة</span>
-            </div>
+            {!hideTrustBadges && (
+              <div className="flex flex-wrap gap-4 pt-3 text-[11px] text-slate-400 font-medium">
+                <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" style={{ color: primaryColor }} /> خصوصية وسرية تامة</span>
+                <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" style={{ color: primaryColor }} /> دقة في المواعيد</span>
+                <span className="flex items-center gap-1.5"><Award className="w-3.5 h-3.5" style={{ color: primaryColor }} /> خبرة معتمدة</span>
+              </div>
+            )}
           </div>
 
           {/* Profile Card / Avatar */}
@@ -490,7 +506,7 @@ export default function CustomerStorefrontPage() {
     store?.category?.includes('digital') ||
     store?.category?.includes('service')
   );
-  const [activeServiceTab, setActiveServiceTab] = useState<'home' | 'services' | 'about' | 'contact'>('home');
+  const [activeServiceTab, setActiveServiceTab] = useState<'home' | 'services' | 'about' | 'portfolio' | 'contact'>('home');
   
   const [customerEmail, setCustomerEmail] = useState('');
 
@@ -1358,7 +1374,27 @@ export default function CustomerStorefrontPage() {
                         <span>نبذة تعريفية</span>
                       </button>
 
-                      {/* 4. تواصل معي */}
+                      {/* 4. معرض أعمال سابقة (إذا كان مفعلاً) */}
+                      {parsedThemeConfigForType.showPortfolio && (
+                        <button
+                          onClick={() => {
+                            setActiveServiceTab('portfolio');
+                            const el = document.getElementById('portfolio-section');
+                            if (el) el.scrollIntoView({ behavior: 'smooth' });
+                          }}
+                          className={`flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all ${
+                            activeServiceTab === 'portfolio'
+                              ? 'text-white shadow-md'
+                              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          }`}
+                          style={{ backgroundColor: activeServiceTab === 'portfolio' ? primaryColor : undefined }}
+                        >
+                          <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          <span>أعمال سابقة</span>
+                        </button>
+                      )}
+
+                      {/* 5. تواصل معي */}
                       <button
                         onClick={() => {
                           setActiveServiceTab('contact');
@@ -1659,6 +1695,42 @@ export default function CustomerStorefrontPage() {
                     </div>
                   )}
 
+                  {/* Optional Portfolio Section for Service Providers */}
+                  {isServiceStore && parsedThemeConfigForType.showPortfolio && (
+                    <div id="portfolio-section" className="scroll-mt-28 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md mb-6 text-right space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Award className="w-5 h-5" style={{ color: primaryColor }} />
+                          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">معرض الأعمال والمشاريع السابقة</h3>
+                        </div>
+                        <span className="text-xs font-bold text-slate-500">نماذج وسابقة نجاح</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-2">
+                          <div className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs" style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}>
+                            01
+                          </div>
+                          <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">استشارات عقود وتأسيس شركات</h4>
+                          <p className="text-[11px] text-slate-500 leading-relaxed">صياغة وتدقيق أكثر من 120 عقداً تجارياً وتأسيس شركات مساهمة ومحدودة المسؤولية بنجاح تام.</p>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-2">
+                          <div className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs" style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}>
+                            02
+                          </div>
+                          <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">خطط التسويق وبناء العلامات التجارية</h4>
+                          <p className="text-[11px] text-slate-500 leading-relaxed">إدارة وإطلاق حملات إعلانية متكاملة زادت مبيعات المتاجر والشركات بنسبة تجاوزت 180%.</p>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-2">
+                          <div className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs" style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}>
+                            03
+                          </div>
+                          <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">إرشاد وتدريب رواد الأعمال</h4>
+                          <p className="text-[11px] text-slate-500 leading-relaxed">تقديم برامج إرشادية وتدريبية لأكثر من 500 مستفيد ومستفيدة في إدارة وتطوير المشاريع الصغيرة.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Service Categories Filter Bar inside products grid if multiple categories exist */}
                   {isServiceStore && (parsedCategories.length > 1 || products.some(p => p.tags?.some(t => t.startsWith('subscription:')))) && (
                     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 mb-2">
@@ -1833,7 +1905,7 @@ export default function CustomerStorefrontPage() {
                                 />
                                 <div className="absolute top-3 right-3 px-3 py-1.5 rounded-full text-white text-[10px] font-bold shadow-md flex items-center gap-1.5 backdrop-blur-xs transition-all" style={{ backgroundColor: primaryColor }}>
                                   <Sparkles className="w-3 h-3 text-white/80" />
-                                  <span>مزيد من المعلومات حول الخدمة</span>
+                                  <span>استعراض المزيد</span>
                                 </div>
                               </div>
 
@@ -2204,6 +2276,31 @@ export default function CustomerStorefrontPage() {
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl">
                   {selectedProduct.description}
                 </p>
+
+                {/* Downloadable / Openable Digital File in Product Modal */}
+                {selectedProduct.digitalFileUrl && (
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                        <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <span>الملف الرقمي المرفق (PDF / مستند):</span>
+                      </span>
+                      <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-300 truncate max-w-[150px]">
+                        {selectedProduct.digitalFileName || 'مستند رقمي'}
+                      </span>
+                    </div>
+                    <a
+                      href={selectedProduct.digitalFileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download={selectedProduct.digitalFileName || 'ملف_الخدمة'}
+                      className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>تحميل / استعراض الملف المرفق الآن 📥</span>
+                    </a>
+                  </div>
+                )}
 
                 {selectedProduct.variants && selectedProduct.variants.length > 0 && (
                   <div className="space-y-1.5">

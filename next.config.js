@@ -45,6 +45,9 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ['sharp', 'onnxruntime-node', 'onnxruntime-web'],
+    serverActions: {
+      bodySizeLimit: '50mb',
+    },
   },
   webpack: (config, { webpack, isServer }) => {
     config.plugins.push(

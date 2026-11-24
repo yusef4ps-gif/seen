@@ -128,6 +128,11 @@ export default function MerchantSettingsPage() {
   const [experienceYears, setExperienceYears] = useState('');
   const [consultationsCount, setConsultationsCount] = useState('');
   const [certifications, setCertifications] = useState('');
+  const [hideBannerTexts, setHideBannerTexts] = useState(false);
+  const [hideTrustBadges, setHideTrustBadges] = useState(false);
+  const [hideBannerButtons, setHideBannerButtons] = useState(false);
+  const [bannerOverlayStyle, setBannerOverlayStyle] = useState<'none' | 'light' | 'dark'>('light');
+  const [showPortfolio, setShowPortfolio] = useState(false);
   const [deliveryCurrency, setDeliveryCurrency] = useState<CurrencyCode>('YER_SANAA');
   const [activeYemeniMarket, setActiveYemeniMarket] = useState<'YER_ADEN' | 'YER_SANAA'>('YER_ADEN');
   const [ratesByBase, setRatesByBase] = useState<Record<string, any>>({
@@ -256,6 +261,11 @@ export default function MerchantSettingsPage() {
               if (parsed.experienceYears) setExperienceYears(parsed.experienceYears);
               if (parsed.consultationsCount) setConsultationsCount(parsed.consultationsCount);
               if (parsed.certifications) setCertifications(parsed.certifications);
+              if (parsed.hideBannerTexts !== undefined) setHideBannerTexts(Boolean(parsed.hideBannerTexts));
+              if (parsed.hideTrustBadges !== undefined) setHideTrustBadges(Boolean(parsed.hideTrustBadges));
+              if (parsed.hideBannerButtons !== undefined) setHideBannerButtons(Boolean(parsed.hideBannerButtons));
+              if (parsed.bannerOverlayStyle) setBannerOverlayStyle(parsed.bannerOverlayStyle);
+              if (parsed.showPortfolio !== undefined) setShowPortfolio(Boolean(parsed.showPortfolio));
             } catch (e) {
               // ignore
             }
@@ -348,7 +358,12 @@ export default function MerchantSettingsPage() {
       providerBio,
       experienceYears,
       consultationsCount,
-      certifications
+      certifications,
+      hideBannerTexts,
+      hideTrustBadges,
+      hideBannerButtons,
+      bannerOverlayStyle,
+      showPortfolio
     };
 
     const res = await updateStoreAction(store.id, {
@@ -770,6 +785,22 @@ export default function MerchantSettingsPage() {
                     className="w-full px-3 py-2 text-xs rounded-xl border border-teal-200 dark:border-teal-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none resize-none"
                   />
                 </div>
+
+                {/* Show Portfolio Toggle */}
+                <div className="pt-2 border-t border-teal-200/60 dark:border-teal-800/40">
+                  <label className="flex items-center justify-between p-3 rounded-xl border border-teal-200 dark:border-teal-800 bg-white dark:bg-slate-900 cursor-pointer">
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-slate-800 dark:text-slate-200">تفعيل تبويب وقسم معرض الأعمال وسابقة المشاريع (Portfolio)</div>
+                      <div className="text-[10px] text-slate-500">إظهار تبويب "معرض الأعمال" في الشريط العلوي بالمتجر لاستعراض سابقة أعمالك ونماذج المشاريع المنجزة</div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={showPortfolio}
+                      onChange={(e) => setShowPortfolio(e.target.checked)}
+                      className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500"
+                    />
+                  </label>
+                </div>
               </div>
             )}
 
@@ -959,6 +990,75 @@ export default function MerchantSettingsPage() {
                       }}
                     />
                   </label>
+                </div>
+
+                {/* Cover Banner Customization & Visibility Controls */}
+                <div className="mt-3.5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-3">
+                  <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                    <span>🎨 تخصيص مظهر ونصوص الغلاف (Cover Banner Options)</span>
+                    <span className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold">للتحكم بما يظهر فوق صورة الغلاف</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Hide Texts Toggle */}
+                    <label className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 cursor-pointer hover:border-teal-500 transition-colors">
+                      <div className="text-right pl-2">
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">إخفاء النصوص والعناوين من الغلاف</div>
+                        <div className="text-[10px] text-slate-500">موصى به إذا كان البنر مصمماً وجاهزاً ومكتوباً عليه مسبقاً</div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={hideBannerTexts}
+                        onChange={(e) => setHideBannerTexts(e.target.checked)}
+                        className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 shrink-0"
+                      />
+                    </label>
+
+                    {/* Hide Badges Toggle */}
+                    <label className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 cursor-pointer hover:border-teal-500 transition-colors">
+                      <div className="text-right pl-2">
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">إخفاء شارات الثقة من الغلاف</div>
+                        <div className="text-[10px] text-slate-500">إخفاء شارات (خصوصية وسرية، دقة المواعيد، خبرة معتمدة)</div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={hideTrustBadges}
+                        onChange={(e) => setHideTrustBadges(e.target.checked)}
+                        className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 shrink-0"
+                      />
+                    </label>
+
+                    {/* Hide Hero Buttons Toggle */}
+                    <label className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 cursor-pointer hover:border-teal-500 transition-colors">
+                      <div className="text-right pl-2">
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">إخفاء أزرار الإجراءات من الغلاف</div>
+                        <div className="text-[10px] text-slate-500">إخفاء أزرار (طلب خدمة / استعراض الباقات) من فوق الغلاف</div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={hideBannerButtons}
+                        onChange={(e) => setHideBannerButtons(e.target.checked)}
+                        className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 shrink-0"
+                      />
+                    </label>
+
+                    {/* Banner Overlay Style */}
+                    <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-between gap-2">
+                      <div className="text-right">
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">تعتيم خلفية صورة الغلاف</div>
+                        <div className="text-[10px] text-slate-500">درجة التظليل والتعتيم فوق الغلاف</div>
+                      </div>
+                      <select
+                        value={bannerOverlayStyle}
+                        onChange={(e) => setBannerOverlayStyle(e.target.value as any)}
+                        className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold outline-none shrink-0"
+                      >
+                        <option value="none">بدون تعتيم (ألوان حقيقية 100%)</option>
+                        <option value="light">تعتيم خفيف (متوازن)</option>
+                        <option value="dark">تعتيم داكن (تباين عالي للنصوص)</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -253,6 +253,7 @@ export default function MerchantProductsPage() {
   const [digitalFileName, setDigitalFileName] = useState('');
   const [digitalFileUrl, setDigitalFileUrl] = useState('');
   const [digitalFileAccess, setDigitalFileAccess] = useState<'instant' | 'verified'>('instant');
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
 
   // Consultation specific state
   const [isConsultation, setIsConsultation] = useState(false);
@@ -428,7 +429,12 @@ export default function MerchantProductsPage() {
     e.preventDefault();
     const category = subCategory ? `${mainCategory.trim()} > ${subCategory.trim()}` : mainCategory.trim();
     const effectivePrice = pricingModel === 'free' ? 0 : Number(price);
-    if (!store || !name || (pricingModel !== 'free' && effectivePrice <= 0) || isSaving) return;
+    if (!store || !name || isSaving) return;
+
+    if (pricingModel !== 'free' && effectivePrice <= 0) {
+      toast.error('يرجى تحديد سعر صحيح للخدمة، أو اختيار "مجانية 🎁"');
+      return;
+    }
 
     setIsSaving(true);
 
@@ -456,32 +462,13 @@ export default function MerchantProductsPage() {
 
     try {
       if (editingProductId) {
-        // Optimistic UI update: instantly update table
-        const updatedOptimistic = products.map(p => p.id === editingProductId ? {
-          ...p,
-          name,
-          description,
-          category,
-          price: effectivePrice,
-          comparePrice: comparePrice ? Number(comparePrice) : null,
-          images: [imageUrl || p.images?.[0] || ''],
-          isFeatured,
-          tags: JSON.stringify(productTags),
-          digitalFileUrl: hasDigitalFile ? digitalFileUrl : undefined,
-          digitalFileName: hasDigitalFile ? digitalFileName : undefined,
-          digitalFileAccess: hasDigitalFile ? digitalFileAccess : undefined,
-        } : p);
-        mutate(updatedOptimistic, false);
-        setIsModalOpen(false);
-        toast.success(isServiceStore ? 'تم تعديل الخدمة بنجاح ⚡' : 'تم تعديل المنتج بنجاح ⚡');
-
         const res = await updateProductAction(editingProductId, {
           name,
           description,
           category,
           price: effectivePrice,
           compareAtPrice: comparePrice || undefined,
-          images: [imageUrl],
+          images: [imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'],
           stock: isServiceStore ? 9999 : stock,
           lowStockAlert: isServiceStore ? 0 : lowStockAlert,
           isFeatured,
@@ -492,9 +479,13 @@ export default function MerchantProductsPage() {
 
         if (!res.success) {
           toast.error(res.error?.message || res.error || 'فشل تحديث البيانات');
-          mutate(); // rollback
+          setIsSaving(false);
           return;
         }
+
+        await mutate();
+        setIsModalOpen(false);
+        toast.success(isServiceStore ? 'تم تعديل الخدمة بنجاح ⚡' : 'تم تعديل المنتج بنجاح ⚡');
 
         // Fire-and-forget activity logging without blocking the UI
         const user = authEngine.getCurrentUser();
@@ -510,32 +501,6 @@ export default function MerchantProductsPage() {
         }
       } else {
         const newProdId = `prod_${Date.now()}`;
-        // Optimistic UI update: instantly insert service at top of list
-        const newOptimisticItem: any = {
-          id: newProdId,
-          storeId: store.id,
-          name,
-          description,
-          category,
-          price: effectivePrice,
-          comparePrice: comparePrice ? Number(comparePrice) : null,
-          images: [imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'],
-          stock: isServiceStore ? 9999 : stock,
-          lowStockAlert: isServiceStore ? 0 : lowStockAlert,
-          isFeatured,
-          status: 'active',
-          tags: JSON.stringify(productTags),
-          digitalFileUrl: hasDigitalFile ? digitalFileUrl : undefined,
-          digitalFileName: hasDigitalFile ? digitalFileName : undefined,
-          digitalFileAccess: hasDigitalFile ? digitalFileAccess : undefined,
-          variants: isServiceStore ? [] : variants,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        mutate([newOptimisticItem, ...products], false);
-        setIsModalOpen(false);
-        toast.success(isServiceStore ? 'تمت إضافة الخدمة بنجاح ⚡' : 'تمت إضافة المنتج بنجاح ⚡');
-
         const res = await createProductAction({
           id: newProdId,
           storeId: store.id,
@@ -555,9 +520,13 @@ export default function MerchantProductsPage() {
 
         if (!res.success) {
           toast.error(res.error?.message || res.error || 'فشل إضافة الخدمة');
-          mutate(); // rollback
+          setIsSaving(false);
           return;
         }
+
+        await mutate();
+        setIsModalOpen(false);
+        toast.success(isServiceStore ? 'تمت إضافة الخدمة بنجاح ⚡' : 'تمت إضافة المنتج بنجاح ⚡');
 
         // Fire-and-forget activity logging without blocking the UI
         const user = authEngine.getCurrentUser();
@@ -572,11 +541,8 @@ export default function MerchantProductsPage() {
           }).catch(console.error);
         }
       }
-
-      mutate(); // sync with server
     } catch (err: any) {
-      toast.error('حدث خطأ غير متوقع: ' + err.message);
-      mutate();
+      toast.error('حدث خطأ أثناء الحفظ: ' + (err?.message || ''));
     } finally {
       setIsSaving(false);
     }
@@ -1286,29 +1252,55 @@ export default function MerchantProductsPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                          رفع ملف PDF من جهازك:
+                          رفع ملف PDF / Word من جهازك:
                         </label>
                         <div className="flex items-center gap-2">
-                          <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-dashed border-teal-400 bg-white dark:bg-slate-900 hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-700 dark:text-teal-300 text-xs font-bold transition-all truncate">
-                            <UploadCloud className="w-4 h-4 shrink-0" />
-                            <span className="truncate">{digitalFileUrl ? (digitalFileUrl.startsWith('data:') ? 'تم تجهيز الملف ✓' : 'رابط خارجي مضاف') : 'اختر ملف PDF...'}</span>
+                          <label className={`flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-dashed border-teal-400 bg-white dark:bg-slate-900 hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-700 dark:text-teal-300 text-xs font-bold transition-all truncate ${isUploadingFile ? 'opacity-60 pointer-events-none' : ''}`}>
+                            {isUploadingFile ? (
+                              <RefreshCw className="w-4 h-4 shrink-0 animate-spin text-teal-600" />
+                            ) : (
+                              <UploadCloud className="w-4 h-4 shrink-0" />
+                            )}
+                            <span className="truncate">
+                              {isUploadingFile 
+                                ? 'جارٍ رفع الملف إلى السحابة...' 
+                                : digitalFileUrl 
+                                ? (digitalFileUrl.startsWith('/uploads/') ? 'تم رفع الملف بنجاح ✓' : 'رابط خارجي مضاف ✓') 
+                                : 'اختر ملف PDF أو Word...'}
+                            </span>
                             <input
                               type="file"
                               accept=".pdf,.doc,.docx,.zip,.rar,.epub"
                               className="hidden"
-                              onChange={(e) => {
+                              disabled={isUploadingFile}
+                              onChange={async (e) => {
                                 const file = e.target.files?.[0];
-                                if (file) {
-                                  if (file.size > 20 * 1024 * 1024) {
-                                    alert('حجم الملف كبير جداً (أكثر من 20MB). يُفضل وضع رابط Google Drive أو Dropbox في الحقل المجاور.');
-                                    return;
+                                if (!file) return;
+                                if (file.size > 50 * 1024 * 1024) {
+                                  toast.error('حجم الملف يتجاوز الحد المسموح (50MB). يُفضل وضع رابط Google Drive في الحقل المجاور.');
+                                  return;
+                                }
+                                if (!digitalFileName) setDigitalFileName(file.name);
+                                setIsUploadingFile(true);
+                                try {
+                                  const fd = new FormData();
+                                  fd.append('file', file);
+                                  const upRes = await fetch('/api/upload', {
+                                    method: 'POST',
+                                    body: fd,
+                                  });
+                                  const upData = await upRes.json();
+                                  if (upData.success && upData.url) {
+                                    setDigitalFileUrl(upData.url);
+                                    if (!digitalFileName) setDigitalFileName(upData.fileName || file.name);
+                                    toast.success('تم رفع الملف بنجاح! 📥');
+                                  } else {
+                                    toast.error(upData.error || 'فشل رفع الملف');
                                   }
-                                  if (!digitalFileName) setDigitalFileName(file.name);
-                                  const reader = new FileReader();
-                                  reader.onloadend = () => {
-                                    setDigitalFileUrl(reader.result as string);
-                                  };
-                                  reader.readAsDataURL(file);
+                                } catch (err: any) {
+                                  toast.error(err.message || 'حدث خطأ أثناء رفع الملف');
+                                } finally {
+                                  setIsUploadingFile(false);
                                 }
                               }}
                             />
@@ -1336,10 +1328,15 @@ export default function MerchantProductsPage() {
                         <input
                           type="url"
                           placeholder="https://drive.google.com/..."
-                          value={digitalFileUrl.startsWith('data:') ? '' : digitalFileUrl}
+                          value={digitalFileUrl.startsWith('/uploads/') || digitalFileUrl.startsWith('data:') ? '' : digitalFileUrl}
                           onChange={(e) => setDigitalFileUrl(e.target.value)}
                           className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-teal-500"
                         />
+                        {digitalFileUrl.startsWith('/uploads/') && (
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">
+                            ✓ تم ربط الملف المرفوع: {digitalFileName || 'ملف رقمي'}
+                          </p>
+                        )}
                       </div>
                     </div>
 

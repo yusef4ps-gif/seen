@@ -971,6 +971,7 @@ export default function MerchantLayout({
                           <div 
                             key={n.id} 
                             onClick={() => {
+                              handleMarkSingleAsRead(n.id);
                               if (n.link) {
                                 router.push(n.link);
                                 setIsNotificationsOpen(false);
@@ -1175,18 +1176,36 @@ export default function MerchantLayout({
         })()}
 
 
-        {/* Global Broadcast Banner (if any) */}
-        {broadcasts.length > 0 && (
-          <div className="px-3 sm:px-8 pt-3">
-            {broadcasts.map((bc) => (
+        {/* Global Broadcast Banner (Only shown if unread) */}
+        {broadcasts.filter(bc => !readNotifIds.has(`broadcast-${bc.id}`)).length > 0 && (
+          <div className="px-3 sm:px-8 pt-3 space-y-2">
+            {broadcasts.filter(bc => !readNotifIds.has(`broadcast-${bc.id}`)).map((bc) => (
               <div 
                 key={bc.id} 
-                className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2 font-medium"
+                className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between gap-3 font-medium animate-fadeIn"
               >
-                <Bell className="w-4 h-4 text-amber-600 shrink-0" />
-                <div className="truncate">
-                  <strong className="ml-1">{bc.title}:</strong>
-                  <span>{bc.message}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Bell className="w-4 h-4 text-amber-600 shrink-0" />
+                  <div className="truncate">
+                    <strong className="ml-1 font-bold">تحديث المنصة ({bc.title}):</strong>
+                    <span>{bc.message}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleMarkSingleAsRead(`broadcast-${bc.id}`)}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-900 dark:text-amber-200 transition-colors flex items-center gap-1"
+                  >
+                    <Check className="w-3 h-3" />
+                    <span>تحديد كمقروء وإخفاء</span>
+                  </button>
+                  <button
+                    onClick={() => handleMarkSingleAsRead(`broadcast-${bc.id}`)}
+                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-md"
+                    title="إغلاق التنبيه"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             ))}
