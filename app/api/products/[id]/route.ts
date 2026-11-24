@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth, requireStoreOwner } from '@/app/actions/auth';
+import { invalidateStoreCache } from '@/app/actions/store';
 
 // GET /api/products/[id]
 export async function GET(
@@ -33,15 +35,31 @@ export async function GET(
   }
 }
 
-// PATCH /api/products/[id] - Update product
+// PATCH /api/products/[id] - Update product (Store Owner / Super Admin only)
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
-    const body = await request.json();
+    try {
+      await requireAuth();
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
+    const { id } = params;
+    const existing = await prisma.product.findUnique({ where: { id }, select: { storeId: true } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    try {
+      await requireStoreOwner(existing.storeId);
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const body = await request.json();
     const dataToUpdate: any = {};
     if (body.name !== undefined) dataToUpdate.name = body.name;
     if (body.description !== undefined) dataToUpdate.description = body.description;
@@ -68,6 +86,8 @@ export async function PATCH(
       include: { variants: true },
     });
 
+    await invalidateStoreCache(existing.storeId);
+
     return NextResponse.json({
       ...updated,
       images: JSON.parse(updated.images || '[]'),
@@ -83,14 +103,32 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/products/[id]
+// DELETE /api/products/[id] (Store Owner / Super Admin only)
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+    try {
+      await requireAuth();
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
     const { id } = params;
+    const existing = await prisma.product.findUnique({ where: { id }, select: { storeId: true } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    try {
+      await requireStoreOwner(existing.storeId);
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
     await prisma.product.delete({ where: { id } });
+    await invalidateStoreCache(existing.storeId);
     return NextResponse.json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {
     console.error('Error deleting product:', error);

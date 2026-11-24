@@ -3,6 +3,7 @@
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { requireStoreOwner } from '@/app/actions/auth';
+import { invalidateStoreCache } from '@/app/actions/store';
 
 export interface StoreOffer {
   id: string;
@@ -98,6 +99,8 @@ export async function createStoreOfferAction(data: {
       }
     });
 
+    await invalidateStoreCache(store.slug);
+    await invalidateStoreCache(store.id);
     try {
       revalidatePath(`/merchant/${store.slug}/offers`, 'page');
       revalidatePath(`/store/${store.slug}`, 'page');
@@ -138,6 +141,8 @@ export async function deleteStoreOfferAction(storeId: string, offerId: string) {
       }
     });
 
+    await invalidateStoreCache(store.slug);
+    await invalidateStoreCache(store.id);
     try {
       revalidatePath(`/merchant/${store.slug}/offers`, 'page');
       revalidatePath(`/store/${store.slug}`, 'page');
@@ -178,6 +183,8 @@ export async function toggleStoreOfferAction(storeId: string, offerId: string) {
       }
     });
 
+    await invalidateStoreCache(store.slug);
+    await invalidateStoreCache(store.id);
     try {
       revalidatePath(`/merchant/${store.slug}/offers`, 'page');
       revalidatePath(`/store/${store.slug}`, 'page');

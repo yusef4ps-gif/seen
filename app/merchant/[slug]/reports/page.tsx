@@ -8,7 +8,7 @@ import {
   Briefcase, CalendarCheck, CheckCircle2, Award, Clock
 } from 'lucide-react';
 import { getStoreBySlugAction, getProductsByStoreAction, getOrdersByStoreAction } from '@/app/actions/store';
-import { Store, Product, Order } from '@/lib/types';
+import { Store, Product, Order, CurrencyCode } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
 
 export default function MerchantReportsPage() {
@@ -169,7 +169,7 @@ export default function MerchantReportsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
           <p className="text-sm text-slate-500 mb-1">{isServiceStore ? 'عوائد الخدمات (كل الوقت)' : 'إجمالي المبيعات (كل الوقت)'}</p>
-          <p className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(validOrders.reduce((s, o) => s + o.total, 0), store.currency)}</p>
+          <p className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(validOrders.reduce((s, o) => s + o.total, 0), (store.baseCurrency || 'SAR') as CurrencyCode)}</p>
         </div>
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
           <p className="text-sm text-slate-500 mb-1">{isServiceStore ? 'إجمالي الحجوزات والتعاقدات' : 'إجمالي الطلبات (كل الوقت)'}</p>
@@ -263,7 +263,7 @@ export default function MerchantReportsPage() {
                 >
                   {d.total > 0 && (
                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                      {formatCurrency(d.total, store.currency)}
+                      {formatCurrency(d.total, (store.baseCurrency || 'SAR') as CurrencyCode)}
                     </div>
                   )}
                 </div>
@@ -288,7 +288,7 @@ export default function MerchantReportsPage() {
           <p className="text-sm font-medium text-slate-500 mb-1">
             {isServiceStore ? 'إجمالي عوائد الخدمات للمدة المحددة' : 'إجمالي المبيعات للمدة المحددة'}
           </p>
-          <h3 className="text-2xl font-black text-slate-900 dark:text-white">{formatCurrency(totalSalesVolume, store.currency)}</h3>
+          <h3 className="text-2xl font-black text-slate-900 dark:text-white">{formatCurrency(totalSalesVolume, (store.baseCurrency || 'SAR') as CurrencyCode)}</h3>
         </div>
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
           <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
@@ -297,7 +297,7 @@ export default function MerchantReportsPage() {
           <p className="text-sm font-medium text-slate-500 mb-1">
             {isServiceStore ? 'متوسط قيمة الاستشارة / الخدمة' : 'متوسط قيمة الطلب للمدة المحددة'}
           </p>
-          <h3 className="text-2xl font-black text-slate-900 dark:text-white">{formatCurrency(totalOrdersCount > 0 ? totalSalesVolume / totalOrdersCount : 0, store.currency)}</h3>
+          <h3 className="text-2xl font-black text-slate-900 dark:text-white">{formatCurrency(totalOrdersCount > 0 ? totalSalesVolume / totalOrdersCount : 0, (store.baseCurrency || 'SAR') as CurrencyCode)}</h3>
         </div>
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
           <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center mb-4">
@@ -400,7 +400,7 @@ export default function MerchantReportsPage() {
                   </div>
                 </div>
                 <div className="text-left">
-                  <div className="font-black text-slate-900 dark:text-white">{formatCurrency(p.realRevenue, store.currency)}</div>
+                  <div className="font-black text-slate-900 dark:text-white">{formatCurrency(p.realRevenue, (store.baseCurrency || 'SAR') as CurrencyCode)}</div>
                 </div>
               </div>
             );
@@ -449,7 +449,7 @@ export default function MerchantReportsPage() {
               <div>
                 <p className="text-sm font-medium text-slate-500 mb-1">عوائد الاشتراكات الدورية</p>
                 <h3 className="text-2xl font-black text-slate-900 dark:text-white">
-                  {formatCurrency(activeSubscriptions.reduce((sum, o) => sum + o.total, 0), store.currency)}
+                  {formatCurrency(activeSubscriptions.reduce((sum, o) => sum + o.total, 0), (store.baseCurrency || 'SAR') as CurrencyCode)}
                 </h3>
               </div>
             </div>

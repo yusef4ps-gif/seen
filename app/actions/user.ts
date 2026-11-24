@@ -1,6 +1,7 @@
 'use server';
 
 import prisma from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/app/actions/auth';
 
@@ -11,7 +12,20 @@ export async function getUserAction(id: string) {
       throw new Error('Forbidden');
     }
     const user = await prisma.user.findUnique({
-      where: { id }
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        staffTitle: true,
+        status: true,
+        avatarUrl: true,
+        createdAt: true,
+        updatedAt: true,
+        lastLoginAt: true,
+      },
     });
     return user;
   } catch (error) {
@@ -27,33 +41,44 @@ export async function updateUserAction(id: string, data: any) {
       throw new Error('Forbidden');
     }
 
-    // Check if user exists first
-    const existing = await prisma.user.findUnique({ where: { id } });
-    let updatedUser;
-    
-    if (existing) {
-      updatedUser = await prisma.user.update({
-        where: { id },
-        data,
-      });
-    } else {
-      // Create it from local storage data if it didn't exist in cloud yet
-      updatedUser = await prisma.user.create({
-        data: {
-          id,
-          name: data.name || 'User',
-          email: data.email || `${id}@seen.store`,
-          phone: data.phone || '',
-          password: data.password || '1234',
-          role: data.role || 'SUPER_ADMIN',
-          avatarUrl: data.avatarUrl,
-        }
-      });
+    const safeUpdateData: Record<string, any> = {};
+    if (typeof data?.name === 'string') safeUpdateData.name = data.name.trim();
+    if (typeof data?.email === 'string') safeUpdateData.email = data.email.trim().toLowerCase();
+    if (typeof data?.phone === 'string') safeUpdateData.phone = data.phone.trim();
+    if (typeof data?.avatarUrl === 'string' || data?.avatarUrl === null) safeUpdateData.avatarUrl = data.avatarUrl;
+    if (typeof data?.password === 'string' && data.password.trim()) {
+      safeUpdateData.password = await bcrypt.hash(data.password.trim(), 10);
     }
-    
+    if (role === 'SUPER_ADMIN') {
+      if (typeof data?.status === 'string') safeUpdateData.status = data.status;
+      if (typeof data?.staffTitle === 'string') safeUpdateData.staffTitle = data.staffTitle;
+    }
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) {
+      return { success: false, error: 'User not found' };
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: safeUpdateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        avatarUrl: true,
+        createdAt: true,
+        updatedAt: true,
+        lastLoginAt: true,
+      },
+    });
+
     revalidatePath('/seenayhq7x');
     revalidatePath('/profile');
-    
+
     return { success: true, user: updatedUser };
   } catch (error: any) {
     console.error('Error updating user:', error);
@@ -61,23 +86,6 @@ export async function updateUserAction(id: string, data: any) {
   }
 }
 
-export async function loginAction(email: string) {
-  try {
-    const user = await prisma.user.findFirst({
-      where: { email: email.toLowerCase() }
-    });
-    
-    if (user) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { lastLoginAt: new Date() }
-      });
-      return { success: true, user };
-    }
-    
-    return { success: false, error: 'User not found' };
-  } catch (error: any) {
-    console.error('Error logging in:', error);
-    return { success: false, error: error.message };
-  }
+export async function loginAction(_email: string) {
+  return { success: false, error: 'Passwordless login has been disabled for security.' };
 }

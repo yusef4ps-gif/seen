@@ -102,9 +102,10 @@ export default function MerchantAIAdvisorPage() {
     
     const res = await generateCampaignAction(customGoal, store.name, store.slug, store.city);
     
-    if (res.success) {
-      setGeneratedCampaign(res.text);
-      setCustomCampaigns([{title: customGoal, text: res.text, date: new Date().toLocaleDateString('ar-YE'), isEditing: false}, ...customCampaigns]);
+    if (res.success && res.text) {
+      const generatedText = res.text;
+      setGeneratedCampaign(generatedText);
+      setCustomCampaigns([{title: customGoal, text: generatedText, date: new Date().toLocaleDateString('ar-YE'), isEditing: false}, ...customCampaigns]);
       setCustomGoal('');
     } else if (res.error === 'MISSING_KEY') {
       alert('الرجاء إضافة مفتاح GEMINI_API_KEY في ملف .env لكي تتمكن من توليد الحملات حقيقياً.');

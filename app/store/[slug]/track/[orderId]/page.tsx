@@ -75,11 +75,8 @@ export default function OrderTrackingPage() {
       alert('تم إرسال طلب الاسترجاع بنجاح');
       setIsReturnModalOpen(false);
       // Reload order to reflect new status
-      const s = await getStoreBySlugAction(slug);
-      if (s) {
-        const o = await getOrderByIdAction(orderId, s.id);
-        if (o && o.success) setOrder(o.order);
-      }
+      const o = await getOrderByIdAction(orderId);
+      if (o) setOrder(o);
     } else {
       alert(res.error || 'حدث خطأ أثناء إرسال الطلب');
     }
@@ -169,7 +166,7 @@ export default function OrderTrackingPage() {
     return 'upcoming';
   };
 
-  const paymentMethodStr = order.paymentMethod === 'kuraimi' ? 'الكريمي' : order.paymentMethod === 'jawali' ? 'جوالي' : order.paymentMethod === 'cod' ? 'عند الاستلام' : (!order.paymentMethod || order.paymentMethod === 'undefined') ? 'غير محدد' : order.paymentMethod;
+  const paymentMethodStr = order.paymentMethod === 'kuraimi' ? 'الكريمي' : order.paymentMethod === 'jawali' ? 'جوالي' : order.paymentMethod === 'cod' ? 'عند الاستلام' : !order.paymentMethod ? 'غير محدد' : order.paymentMethod;
   const isBankTransfer = !paymentMethodStr.includes('عند الاستلام') && !paymentMethodStr.includes('COD');
 
   // Parse items safely

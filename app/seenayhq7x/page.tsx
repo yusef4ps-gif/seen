@@ -21,7 +21,9 @@ import { defaultComparisonData, ComparisonCategory } from '@/lib/data/comparison
 import { formatCurrency } from '@/lib/currency-engine';
 import BrandLogo from '@/components/BrandLogo';
 import { getUserAction, updateUserAction } from '@/app/actions/user';
-import { getSiteContentAction, updateSiteContentAction } from '@/app/actions/content';
+import { getAdminSiteContentAction, updateSiteContentAction } from '@/app/actions/content';
+import { checkAuthStatusAction } from '@/app/actions/auth';
+import { getSubscriptionExpiryInfo } from '@/lib/store-helpers';
 
 const CSSDonutChart = ({ data }: { data: { label: string, value: number, color: string }[] }) => {
   const total = data.reduce((sum, item) => sum + item.value, 0);
@@ -60,94 +62,6 @@ const CSSDonutChart = ({ data }: { data: { label: string, value: number, color: 
   );
 };
 
-export const getSubscriptionExpiryInfo = (store: Store | any) => {
-  if (store.planStatus === 'suspended') {
-    return {
-      type: 'suspended',
-      badgeClass: 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700',
-      rowClass: 'bg-slate-100/50 dark:bg-slateDark-900/60 border-r-4 border-r-slate-500',
-      dotClass: 'bg-slate-500',
-      label: '🔒 مُجمد (موقوف)',
-      remainingText: 'المتجر موقوف بقرار إداري',
-      textColor: 'text-slate-600 dark:text-slate-400 font-bold',
-      daysLeft: 0,
-      isExpiringSoon: false,
-      isExpired: true,
-    };
-  }
-
-  let startDateStr = store.planStartDate || store.createdAt;
-  let endDateStr = store.planEndDate;
-  if (!endDateStr) {
-    const fallbackEnd = new Date(startDateStr || new Date());
-    fallbackEnd.setDate(fallbackEnd.getDate() + 14);
-    endDateStr = fallbackEnd;
-  }
-
-  const endDate = new Date(endDateStr);
-  const now = new Date();
-  const diffMs = endDate.getTime() - now.getTime();
-  const daysLeft = Math.ceil(diffMs / (1000 * 3600 * 24));
-
-  if (daysLeft <= 0 || store.planStatus === 'expired') {
-    return {
-      type: 'expired',
-      badgeClass: 'bg-red-50 text-red-700 border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800 shadow-sm font-black',
-      rowClass: 'bg-red-50/40 dark:bg-red-950/20 border-r-4 border-r-red-500',
-      dotClass: 'bg-red-500 animate-pulse',
-      label: '⛔ الاشتراك منتهي',
-      remainingText: 'انتهت الصلاحية (مطلوب التجديد)',
-      textColor: 'text-red-600 dark:text-red-400 font-bold',
-      daysLeft,
-      isExpiringSoon: false,
-      isExpired: true,
-    };
-  }
-
-  if (daysLeft <= 7) {
-    return {
-      type: 'expiring_soon',
-      badgeClass: 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 shadow-sm font-black',
-      rowClass: 'bg-amber-50/40 dark:bg-amber-950/20 border-r-4 border-r-amber-500',
-      dotClass: 'bg-amber-500 animate-ping',
-      label: '⏳ قارب على الانتهاء',
-      remainingText: `متبقي ${daysLeft} ${daysLeft === 1 ? 'يوم' : daysLeft === 2 ? 'يومان' : 'أيام'} (أصفر)`,
-      textColor: 'text-amber-700 dark:text-amber-400 font-bold',
-      daysLeft,
-      isExpiringSoon: true,
-      isExpired: false,
-    };
-  }
-
-  if (store.planStatus === 'trial') {
-    return {
-      type: 'trial',
-      badgeClass: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800 font-bold',
-      rowClass: '',
-      dotClass: 'bg-sky-500',
-      label: '✨ تجربة مجانية',
-      remainingText: `متبقي ${daysLeft} يوم`,
-      textColor: 'text-slate-500 dark:text-slate-400',
-      daysLeft,
-      isExpiringSoon: false,
-      isExpired: false,
-    };
-  }
-
-  return {
-    type: 'active',
-    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 font-bold',
-    rowClass: '',
-    dotClass: 'bg-emerald-500',
-    label: '✓ نشط',
-    remainingText: `متبقي ${daysLeft} يوم`,
-    textColor: 'text-slate-500 dark:text-slate-400',
-    daysLeft,
-    isExpiringSoon: false,
-    isExpired: false,
-  };
-};
-
 export default function SuperAdminPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -158,7 +72,7 @@ export default function SuperAdminPage() {
   
   // Layout State
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'owner' | 'reports' | 'packages' | 'stores' | 'requests' | 'broadcasts' | 'texts' | 'ai'>('owner');
+  const [activeTab, setActiveTab] = useState<'owner' | 'reports' | 'packages' | 'stores' | 'requests' | 'broadcasts' | 'texts' | 'ai' | 'admins'>('owner');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Search & Filters
@@ -206,31 +120,38 @@ export default function SuperAdminPage() {
   const [passwordSuccess, setPasswordSuccess] = useState('');
 
   useEffect(() => {
-    const session = authEngine.getCurrentSession();
-    const localUser = session?.user || null;
-    if (!localUser || localUser.role !== 'SUPER_ADMIN') {
-      router.push('/seenaylogin7x');
-      return;
+    let active = true;
+    async function initAdmin() {
+      const authStatus = await checkAuthStatusAction();
+      if (!active) return;
+      if (!authStatus.isAuthenticated || authStatus.user?.role !== 'SUPER_ADMIN') {
+        router.push('/seenaylogin7x');
+        return;
+      }
+      const userObj = {
+        ...authStatus.user,
+        createdAt: '',
+      } as unknown as User;
+      setCurrentUser(userObj);
+
+      if (authStatus.user.id) {
+        getUserAction(authStatus.user.id).then(cloudUser => {
+          if (cloudUser && active) {
+            const parsedUser = {
+              ...cloudUser,
+              createdAt: cloudUser.createdAt.toISOString(),
+              updatedAt: cloudUser.updatedAt.toISOString(),
+              lastLoginAt: cloudUser.lastLoginAt.toISOString(),
+            } as unknown as User;
+            setCurrentUser(parsedUser);
+          }
+        }).catch(console.error);
+      }
+
+      refreshData();
     }
-    setCurrentUser(localUser);
-    
-    // CLOUD SYNC: Fetch the latest user profile from the cloud to sync cross-device (Phone <-> PC)
-    if (localUser?.id) {
-      getUserAction(localUser.id).then(cloudUser => {
-        if (cloudUser) {
-          const parsedUser = {
-            ...cloudUser,
-            createdAt: cloudUser.createdAt.toISOString(),
-            updatedAt: cloudUser.updatedAt.toISOString(),
-            lastLoginAt: cloudUser.lastLoginAt.toISOString(),
-          } as unknown as User;
-          setCurrentUser(parsedUser);
-          authEngine.updateUser(parsedUser.id, parsedUser as Partial<User>);
-        }
-      }).catch(console.error);
-    }
-    
-    refreshData();
+    initAdmin();
+    return () => { active = false; };
   }, [router]);
 
   // Initialize Comparison Data from siteTexts
@@ -291,8 +212,8 @@ export default function SuperAdminPage() {
       setBroadcasts(storeEngine.getBroadcasts());
     }
 
-    // Fetch dynamic texts
-    getSiteContentAction().then(res => {
+    // Fetch dynamic texts & AI keys (Super Admin only)
+    getAdminSiteContentAction().then(res => {
       if (res.success && res.dictionary) {
         setSiteTexts(res.dictionary);
       }
@@ -339,7 +260,7 @@ export default function SuperAdminPage() {
       const store = storeEngine.getStoreBySlug(storeId) || stores.find(s => s.id === storeId || s.slug === storeId);
       if (store && (store.whatsapp || store.phone)) {
         const users = authEngine.getUsers(store.id);
-        const owner = users.find(u => u.role === 'owner');
+        const owner = users.find(u => u.role === 'STORE_OWNER' || (u.role as string) === 'owner');
         
         const merchantEmail = store.email || (owner ? owner.email : '') || 'البريد الإلكتروني الخاص بك';
         const storeLink = 'https://seens.net/seenlogin5xa';
@@ -655,7 +576,7 @@ export default function SuperAdminPage() {
       
       {/* Mobile Header / Menu Toggle */}
       <div className="md:hidden bg-white dark:bg-slateDark-900 border-b border-slate-200 dark:border-slateDark-800 p-4 flex justify-between items-center sticky top-0 z-50">
-        <BrandLogo size="sm" href="/admin" />
+        <BrandLogo size="sm" href="/seenayhq7x" />
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
           className="p-2 bg-slate-100 dark:bg-slateDark-800 rounded-lg text-slate-900 dark:text-white"
@@ -668,7 +589,7 @@ export default function SuperAdminPage() {
       <aside className={`${isMobileMenuOpen ? 'block' : 'hidden'} md:block w-full md:w-72 bg-white dark:bg-slateDark-900 border-l border-slate-200 dark:border-slateDark-800 shrink-0 sticky top-0 h-screen overflow-y-auto z-40 transition-all shadow-2xl md:shadow-none`}>
         <div className="p-6 space-y-8 flex flex-col h-full">
            <div className="hidden md:block">
-             <BrandLogo size="md" href="/admin" />
+             <BrandLogo size="md" href="/seenayhq7x" />
            </div>
            
            <nav className="space-y-2 flex-1 pt-4 md:border-t border-slate-200 dark:border-slateDark-800">

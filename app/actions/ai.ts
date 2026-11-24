@@ -3,6 +3,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import prisma from '@/lib/prisma';
+import { requireAuth } from '@/app/actions/auth';
 
 // Helper to get active AI provider and key
 async function getAiConfig() {
@@ -23,6 +24,7 @@ async function getAiConfig() {
 
 export async function generateCampaignAction(prompt: string, storeName: string, storeSlug: string, storeCity: string) {
   try {
+    await requireAuth();
     const { provider, apiKey } = await getAiConfig();
     
     if (!apiKey) {
@@ -63,6 +65,7 @@ export async function generateCampaignAction(prompt: string, storeName: string, 
 
 export async function generateAdDesignAction(prompt: string, storeName: string, imageBase64?: string, mimeType?: string) {
   try {
+    await requireAuth();
     const { provider, apiKey } = await getAiConfig();
     
     if (!apiKey) {
@@ -136,11 +139,7 @@ export async function generateAdDesignAction(prompt: string, storeName: string, 
       const response = await result.response;
       let text = response.text().trim();
       
-      if (text.startsWith('\`\`\`json')) {
-        text = text.replace('\`\`\`json', '').replace('\`\`\`', '').trim();
-      } else if (text.startsWith('\`\`\`')) {
-        text = text.replace('\`\`\`', '').replace('\`\`\`', '').trim();
-      }
+      text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 
       const parsed = JSON.parse(text);
       return { success: true, data: parsed };
@@ -153,6 +152,7 @@ export async function generateAdDesignAction(prompt: string, storeName: string, 
 
 export async function generateLegalPageAction(storeName: string, category: string, pageType: string) {
   try {
+    await requireAuth();
     const titles: Record<string, string> = {
       privacy: 'سياسة الخصوصية',
       terms: 'الشروط والأحكام',

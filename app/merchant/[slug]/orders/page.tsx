@@ -220,13 +220,13 @@ export default function MerchantOrdersPage() {
                        order.paymentMethod === 'onecash' ? 'محفظة ون كاش' :
                        order.paymentMethod === 'floosak' ? 'محفظة فلوسك' :
                        order.paymentMethod === 'cod' ? 'الدفع عند الاستلام' : 
-                       (!order.paymentMethod || order.paymentMethod === 'undefined') ? 'غير محدد' : order.paymentMethod}
+                       (!order.paymentMethod || String(order.paymentMethod) === 'undefined') ? 'غير محدد' : order.paymentMethod}
                     </div>
 
                     {order.paymentProofUrl && (
                       <button
                         onClick={() => {
-                          setSelectedOrder(order);
+                          setSelectedOrder(order as any);
                           setIsReceiptModalOpen(true);
                         }}
                         className={`mt-1 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${
@@ -243,7 +243,7 @@ export default function MerchantOrdersPage() {
 
                   {/* Total */}
                   <td className="py-3.5 px-4 font-bold text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(order.total, order.currency)}
+                    {formatCurrency(order.total, (order.currency || store.baseCurrency || 'SAR') as any)}
                   </td>
 
                   {/* Status Dropdown */}
@@ -274,7 +274,7 @@ export default function MerchantOrdersPage() {
                       
                       {/* View Details */}
                       <button
-                        onClick={() => setSelectedOrder(order)}
+                        onClick={() => setSelectedOrder(order as any)}
                         className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-colors"
                         title="تفاصيل الطلب"
                       >
@@ -295,7 +295,7 @@ export default function MerchantOrdersPage() {
                       {/* Print Invoice */}
                       <button
                         onClick={() => {
-                          setSelectedOrder(order);
+                          setSelectedOrder(order as any);
                           setIsPrintModalOpen(true);
                         }}
                         className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-colors"
@@ -475,7 +475,7 @@ export default function MerchantOrdersPage() {
 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 space-y-1">
                 <div><strong>العميل:</strong> {selectedOrder.customerName} ({selectedOrder.customerPhone})</div>
-                <div><strong>طريقة الدفع:</strong> {selectedOrder.paymentMethod === 'kuraimi' ? 'الكريمي' : selectedOrder.paymentMethod === 'jawali' ? 'جوالي' : selectedOrder.paymentMethod === 'cod' ? 'عند الاستلام' : (!selectedOrder.paymentMethod || selectedOrder.paymentMethod === 'undefined') ? 'غير محدد' : selectedOrder.paymentMethod}</div>
+                <div><strong>طريقة الدفع:</strong> {selectedOrder.paymentMethod === 'kuraimi' ? 'الكريمي' : selectedOrder.paymentMethod === 'jawali' ? 'جوالي' : selectedOrder.paymentMethod === 'cod' ? 'عند الاستلام' : !selectedOrder.paymentMethod ? 'غير محدد' : selectedOrder.paymentMethod}</div>
                 <div><strong>المبلغ المطلوب:</strong> {formatCurrency(selectedOrder.total, selectedOrder.currency)}</div>
               </div>
 
@@ -650,7 +650,7 @@ export default function MerchantOrdersPage() {
                   <div><strong>العميل:</strong> {selectedOrder.customerName}</div>
                   <div><strong>الهاتف:</strong> {selectedOrder.customerPhone}</div>
                   <div><strong>العنوان:</strong> {selectedOrder.city} - {selectedOrder.address}</div>
-                  <div><strong>الدفع:</strong> {selectedOrder.paymentMethod === 'kuraimi' ? 'الكريمي' : selectedOrder.paymentMethod === 'jawali' ? 'جوالي' : selectedOrder.paymentMethod === 'cod' ? 'عند الاستلام' : (!selectedOrder.paymentMethod || selectedOrder.paymentMethod === 'undefined') ? 'غير محدد' : selectedOrder.paymentMethod}</div>
+                  <div><strong>الدفع:</strong> {selectedOrder.paymentMethod === 'kuraimi' ? 'الكريمي' : selectedOrder.paymentMethod === 'jawali' ? 'جوالي' : selectedOrder.paymentMethod === 'cod' ? 'عند الاستلام' : !selectedOrder.paymentMethod ? 'غير محدد' : selectedOrder.paymentMethod}</div>
                 </div>
 
                 {/* Items Table */}

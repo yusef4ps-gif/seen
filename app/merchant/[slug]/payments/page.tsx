@@ -354,9 +354,9 @@ export default function MerchantPaymentsPage() {
 
                       {/* Payment Proof */}
                       <td className="p-4">
-                        {ord.paymentProof ? (
+                        {ord.paymentProofUrl ? (
                           <button
-                            onClick={() => setSelectedProofUrl(ord.paymentProof)}
+                            onClick={() => setSelectedProofUrl(ord.paymentProofUrl)}
                             className="px-2.5 py-1 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800 text-[11px] font-bold hover:bg-teal-100 transition-colors flex items-center gap-1"
                           >
                             <Eye className="w-3.5 h-3.5" />

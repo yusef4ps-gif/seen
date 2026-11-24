@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShieldCheck, Lock, ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Mail, KeyRound } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
-import { setAuthCookieAction, verifyAdminIPAction, logAdminLoginAttemptAction, verifyTurnstileTokenAction, sendSuperAdminOtpAction, verifySuperAdminOtpAction, loginAdminAction } from '@/app/actions/auth';
+import { verifyAdminIPAction, logAdminLoginAttemptAction, verifyTurnstileTokenAction, sendSuperAdminOtpAction, verifySuperAdminOtpAction, loginAdminAction } from '@/app/actions/auth';
 import BrandLogo from '@/components/BrandLogo';
 
 export default function AdminLoginPage() {
@@ -97,36 +97,25 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     const otpVerification = await verifySuperAdminOtpAction(email, otp);
-    if (!otpVerification.success) {
+    if (!otpVerification.success || !otpVerification.userId) {
       setErrorMessage(otpVerification.error || 'رمز التحقق غير صحيح.');
       setIsLoading(false);
       return;
     }
 
     try {
-      // Final login step
-      const result = await loginAdminAction(email, password);
+      setSuccessMessage('تم التحقق بنجاح! جاري توجيهك للوحة التحكم...');
+      try {
+        localStorage.setItem('seen_production_session_v4', JSON.stringify({
+          user: { id: otpVerification.userId, email, role: 'SUPER_ADMIN', name: 'Admin' },
+          token: 'admin-session-active',
+          expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+        }));
+      } catch(e) {}
       
-      if (result.success && result.userId) {
-        setSuccessMessage('تم التحقق بنجاح! جاري توجيهك للوحة التحكم...');
-        const fakeToken = `tok_${result.userId}_${Date.now()}`;
-        await setAuthCookieAction(fakeToken, result.userId, result.role || 'SUPER_ADMIN', undefined);
-        
-        try {
-          localStorage.setItem('seen_production_session_v4', JSON.stringify({
-            user: { id: result.userId, email, role: 'SUPER_ADMIN', name: 'Admin' },
-            token: fakeToken,
-            expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-          }));
-        } catch(e) {}
-        
-        setTimeout(() => {
-          window.location.href = '/seenayhq7x';
-        }, 500);
-      } else {
-        setErrorMessage('حدث خطأ أثناء إصدار الجلسة.');
-        setIsLoading(false);
-      }
+      setTimeout(() => {
+        window.location.href = '/seenayhq7x';
+      }, 500);
     } catch (error) {
       setErrorMessage('حدث خطأ أثناء الاتصال بالخادم.');
       setIsLoading(false);

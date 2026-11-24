@@ -3,6 +3,7 @@
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { getCurrentCustomerAction } from './customer-auth';
+import { requireStoreOwner } from '@/app/actions/auth';
 
 // --- Customer Actions ---
 
@@ -15,13 +16,17 @@ export async function submitStoreReviewAction(storeId: string, rating: number, c
     if (!customer) {
       return { success: false, error: 'يجب تسجيل الدخول لإضافة تقييم' };
     }
+    if (!content || !content.trim()) {
+      return { success: false, error: 'يرجى كتابة محتوى التقييم' };
+    }
+    const safeRating = Math.min(5, Math.max(1, Math.round(Number(rating) || 5)));
 
     const review = await prisma.storeReview.create({
       data: {
         storeId,
         customerId: customer.customerId,
-        rating,
-        content,
+        rating: safeRating,
+        content: content.trim(),
         status: 'pending' // default status
       }
     });
@@ -71,6 +76,7 @@ export async function getPublishedReviewsAction(storeId: string) {
  */
 export async function getStoreReviewsForMerchantAction(storeId: string) {
   try {
+    await requireStoreOwner(storeId);
     const reviews = await prisma.storeReview.findMany({
       where: {
         storeId
@@ -100,8 +106,9 @@ export async function getStoreReviewsForMerchantAction(storeId: string) {
  */
 export async function updateReviewStatusAction(reviewId: string, storeId: string, status: 'pending' | 'published' | 'hidden') {
   try {
+    await requireStoreOwner(storeId);
     await prisma.storeReview.update({
-      where: { id: reviewId },
+      where: { id: reviewId, storeId },
       data: { status }
     });
 
@@ -123,8 +130,9 @@ export async function updateReviewStatusAction(reviewId: string, storeId: string
  */
 export async function deleteReviewAction(reviewId: string, storeId: string) {
   try {
+    await requireStoreOwner(storeId);
     await prisma.storeReview.delete({
-      where: { id: reviewId }
+      where: { id: reviewId, storeId }
     });
 
     const store = await prisma.store.findUnique({ where: { id: storeId }, select: { slug: true } });

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireStoreOwner } from '@/app/actions/auth';
+import { invalidateStoreCache } from '@/app/actions/store';
 
 // GET /api/products - Get products (optional filter by storeId)
 export async function GET(request: Request) {
@@ -30,7 +32,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/products - Create a new product
+// POST /api/products - Create a new product (Store Owner / Super Admin only)
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -38,6 +40,12 @@ export async function POST(request: Request) {
 
     if (!storeId || !name || price === undefined) {
       return NextResponse.json({ error: 'storeId, name, and price are required' }, { status: 400 });
+    }
+
+    try {
+      await requireStoreOwner(storeId);
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     const newProduct = await prisma.product.create({
@@ -66,6 +74,8 @@ export async function POST(request: Request) {
       },
       include: { variants: true },
     });
+
+    await invalidateStoreCache(storeId);
 
     return NextResponse.json({
       ...newProduct,

@@ -53,8 +53,8 @@ export default function ImageUploader({
       img.onload = () => {
         // Optimize & resize image on canvas
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1200;
-        const MAX_HEIGHT = 1200;
+        const MAX_WIDTH = 900;
+        const MAX_HEIGHT = 900;
         let width = img.width;
         let height = img.height;
 
@@ -77,7 +77,7 @@ export default function ImageUploader({
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
           // Export as compressed WebP or JPEG
-          const optimizedDataUrl = canvas.toDataURL('image/webp', 0.85);
+          const optimizedDataUrl = canvas.toDataURL('image/webp', 0.78);
           onChange(optimizedDataUrl);
           setIsProcessing(false);
         } else {

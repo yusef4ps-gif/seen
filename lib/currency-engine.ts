@@ -33,8 +33,8 @@ export const DEFAULT_CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
  */
 export function convertCurrency(
   amount: number,
-  fromCode: CurrencyCode,
-  toCode: CurrencyCode,
+  fromCode: CurrencyCode | string,
+  toCode: CurrencyCode | string,
   customRates?: any
 ): number {
   if (fromCode === toCode) return amount;
@@ -61,8 +61,8 @@ export function convertCurrency(
   // 2. Fallback to old flat map logic (rates relative to USD)
   // If customRates is nested, this flat fallback might not find the keys, which is fine, it will use defaults.
   const flatRates = (customRates && typeof customRates[fromCode] !== 'object') ? customRates : {};
-  const rateFrom = flatRates?.[fromCode] ?? DEFAULT_CURRENCIES[fromCode]?.rateToUSD ?? 1.0;
-  const rateTo = flatRates?.[toCode] ?? DEFAULT_CURRENCIES[toCode]?.rateToUSD ?? 1.0;
+  const rateFrom = flatRates?.[fromCode] ?? (DEFAULT_CURRENCIES as Record<string, CurrencyConfig>)[fromCode]?.rateToUSD ?? 1.0;
+  const rateTo = flatRates?.[toCode] ?? (DEFAULT_CURRENCIES as Record<string, CurrencyConfig>)[toCode]?.rateToUSD ?? 1.0;
 
   // Convert from source to USD baseline, then from USD to target
   const amountInUSD = amount / rateFrom;
@@ -76,10 +76,10 @@ export function convertCurrency(
  */
 export function formatCurrency(
   amount: number,
-  currencyCode: CurrencyCode,
+  currencyCode: CurrencyCode | string,
   customRates?: any
 ): string {
-  let symbol = DEFAULT_CURRENCIES[currencyCode]?.symbol || currencyCode || 'ر.ي';
+  let symbol = (DEFAULT_CURRENCIES as Record<string, CurrencyConfig>)[currencyCode]?.symbol || currencyCode || 'ر.ي';
   if (symbol === 'undefined') symbol = 'ر.ي';
   
   // Format numbers with commas (e.g. 15,000 ر.ي)

@@ -143,10 +143,10 @@ export default function MerchantOverviewPage() {
             </div>
           </div>
           <div className="mt-2 relative z-10">
-            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{formatCurrency(totalRevenue, store.baseCurrency)}</h3>
-            <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-emerald-500">
-              <span>155.5% ⬆</span>
-              <span className="text-slate-400 font-medium">النمو الشهري</span>
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{formatCurrency(totalRevenue, store.baseCurrency as any)}</h3>
+            <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+              <span>{completedOrders} مكتمل</span>
+              <span className="text-slate-400 font-medium">من {filteredOrders.filter(o => o.status !== 'cancelled').length} طلبات فعالة</span>
             </div>
           </div>
         </Link>
@@ -162,10 +162,10 @@ export default function MerchantOverviewPage() {
             </div>
           </div>
           <div className="mt-2 relative z-10">
-            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{new Set(filteredOrders.map(o => o.customerId)).size}</h3>
-            <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-emerald-500">
-              <span>100.0% ⬆</span>
-              <span className="text-slate-400 font-medium">النمو الشهري</span>
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{new Set(filteredOrders.map(o => o.customerId || o.customerPhone || o.id)).size}</h3>
+            <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-blue-600 dark:text-blue-400">
+              <span>عملاء فريدون</span>
+              <span className="text-slate-400 font-medium">حسب الفترة المحددة</span>
             </div>
           </div>
         </Link>
@@ -182,9 +182,9 @@ export default function MerchantOverviewPage() {
           </div>
           <div className="mt-2 relative z-10">
             <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{filteredOrders.length}</h3>
-            <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-emerald-500">
-              <span>100.0% ⬆</span>
-              <span className="text-slate-400 font-medium">النمو الشهري</span>
+            <div className="flex items-center gap-1.5 mt-3 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+              <span>{pendingOrders} قيد المعالجة</span>
+              <span className="text-slate-400 font-medium">في هذه الفترة</span>
             </div>
           </div>
         </Link>
@@ -316,7 +316,7 @@ export default function MerchantOverviewPage() {
                     <div className="text-[10px] text-slate-400 font-mono">{ord.customerPhone}</div>
                   </td>
                   <td className="p-3 sm:p-4 font-bold text-slate-900 dark:text-white">
-                    {formatCurrency(ord.total, ord.currency)}
+                    {formatCurrency(ord.total, (ord.currency || store.baseCurrency || 'SAR') as any)}
                   </td>
                   <td className="p-3 sm:p-4">
                     <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-bold">

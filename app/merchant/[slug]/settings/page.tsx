@@ -397,7 +397,7 @@ export default function MerchantSettingsPage() {
     if (res.success && res.store) {
       setStore(res.store as any);
       try {
-        storeEngine.updateStore(res.store as any);
+        storeEngine.updateStore(store.id, res.store as any);
         if (typeof window !== 'undefined') {
           localStorage.setItem(`seen_store_primaryColor_${slug}`, primaryColor);
         }

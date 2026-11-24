@@ -1,14 +1,34 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/app/actions/auth';
+import { invalidateStoreCache } from '@/app/actions/store';
 
-// GET /api/stores - Fetch all stores
+// GET /api/stores - Fetch public storefront directory metadata (never expose apiKeys)
 export async function GET() {
   try {
     const stores = await prisma.store.findMany({
       orderBy: { createdAt: 'desc' },
-      include: {
+      select: {
+        id: true,
+        slug: true,
+        customDomain: true,
+        name: true,
+        description: true,
+        category: true,
+        logo: true,
+        banner: true,
+        primaryColor: true,
+        phone: true,
+        whatsapp: true,
+        city: true,
+        baseCurrency: true,
+        customRates: true,
+        planTier: true,
+        planStatus: true,
+        activeVisitorsNow: true,
+        createdAt: true,
         _count: {
-          select: { products: true, orders: true },
+          select: { products: true },
         },
       },
     });
@@ -16,8 +36,6 @@ export async function GET() {
     const parsedStores = stores.map((s) => ({
       ...s,
       customRates: JSON.parse(s.customRates || '{}'),
-      paymentAccounts: JSON.parse(s.paymentAccounts || '[]'),
-      shippingMethods: JSON.parse(s.shippingMethods || '[]'),
     }));
 
     return NextResponse.json(parsedStores);
@@ -27,8 +45,15 @@ export async function GET() {
   }
 }
 
-// POST /api/stores - Create new store with automatic seed products
+// POST /api/stores - Create new store (Authenticated users only)
 export async function POST(req: Request) {
+  let auth;
+  try {
+    auth = await requireAuth();
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const { name, slug, phone, category, city, baseCurrency } = body;
@@ -43,6 +68,7 @@ export async function POST(req: Request) {
 
     const newStore = await prisma.store.create({
       data: {
+        ownerId: auth.userId,
         name,
         slug: finalSlug,
         phone,
@@ -99,32 +125,17 @@ export async function POST(req: Request) {
             isActive: true,
           },
         ]),
-        planTier: 'starter',
-        planStatus: 'active',
-        activeVisitorsNow: Math.floor(Math.random() * 10) + 3,
-        products: {
-          create: [
-            {
-              name: 'منتج تجريبي مميز #1',
-              description: 'هذا منتج تجريبي تم إنشاؤه تلقائياً لمتجرك الجديد. يمكنك تعديله أو حذفه بسهولة من لوحة التحكم.',
-              category: 'المنتجات المميزة',
-              price: 50,
-              comparePrice: 70,
-              baseCurrency: baseCurrency || 'SAR',
-              images: JSON.stringify(['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800']),
-              stock: 25,
-              lowStockAlert: 5,
-              isAvailable: true,
-              isFeatured: true,
-              tags: JSON.stringify(['عرض_خاص', 'جديد']),
-            },
-          ],
-        },
+        planTier: 'free',
+        planStatus: 'trial',
+        activeVisitorsNow: 1,
       },
     });
 
+    await invalidateStoreCache();
+
     return NextResponse.json({
       ...newStore,
+      apiKeys: undefined,
       customRates: JSON.parse(newStore.customRates),
       paymentAccounts: JSON.parse(newStore.paymentAccounts),
       shippingMethods: JSON.parse(newStore.shippingMethods),

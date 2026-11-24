@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/app/actions/auth';
+import { requireSuperAdmin } from '@/app/actions/auth';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(req: Request) {
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
   try {
-    const auth = await requireAuth();
-    if (auth.role !== 'SUPER_ADMIN') {
+    try {
+      await requireSuperAdmin();
+    } catch {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

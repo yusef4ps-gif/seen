@@ -3,9 +3,11 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
+import { requireStoreOwner } from '@/app/actions/auth';
 
 export async function getApiKeysAction(storeId: string) {
   try {
+    await requireStoreOwner(storeId);
     const store = await prisma.store.findUnique({
       where: { id: storeId },
       select: { apiKeys: true }
@@ -26,6 +28,7 @@ export async function getApiKeysAction(storeId: string) {
 
 export async function generateApiKeyAction(storeId: string, label: string = 'Default Key') {
   try {
+    await requireStoreOwner(storeId);
     const store = await prisma.store.findUnique({
       where: { id: storeId },
       select: { apiKeys: true }
@@ -67,6 +70,7 @@ export async function generateApiKeyAction(storeId: string, label: string = 'Def
 
 export async function deleteApiKeyAction(storeId: string, keyId: string) {
   try {
+    await requireStoreOwner(storeId);
     const store = await prisma.store.findUnique({
       where: { id: storeId },
       select: { apiKeys: true }

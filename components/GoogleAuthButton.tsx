@@ -54,11 +54,12 @@ export default function GoogleAuthButton({
   const handleSelectAccount = (account: { name: string; email: string; avatar?: string }) => {
     setIsLoading(true);
     setTimeout(() => {
+      const safeRole = role === 'SUPER_ADMIN' ? 'STORE_OWNER' : role;
       const result = authEngine.loginWithGoogle({
         name: account.name,
         email: account.email,
         avatarUrl: account.avatar,
-        role: account.email.includes('yusef') || account.email.includes('abbas') ? 'SUPER_ADMIN' : role,
+        role: safeRole,
         storeSlug,
         storeName,
       });

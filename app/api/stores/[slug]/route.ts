@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth, requireStoreOwner } from '@/app/actions/auth';
+import { invalidateStoreCache } from '@/app/actions/store';
 
-// GET /api/stores/[slug] - Get store by slug or id
+// GET /api/stores/[slug] - Public storefront data (strips apiKeys & private customer orders)
 export async function GET(
   request: Request,
   { params }: { params: { slug: string } }
@@ -17,7 +19,6 @@ export async function GET(
         products: {
           include: { variants: true },
         },
-        orders: true,
       },
     });
 
@@ -25,8 +26,10 @@ export async function GET(
       return NextResponse.json({ error: 'Store not found' }, { status: 404 });
     }
 
+    const { apiKeys: _omitApiKeys, ...safeStore } = store;
+
     return NextResponse.json({
-      ...store,
+      ...safeStore,
       customRates: JSON.parse(store.customRates || '{}'),
       paymentAccounts: JSON.parse(store.paymentAccounts || '[]'),
       shippingMethods: JSON.parse(store.shippingMethods || '[]'),
@@ -39,10 +42,6 @@ export async function GET(
           attributes: JSON.parse(v.attributes || '{}'),
         })),
       })),
-      orders: store.orders.map((o) => ({
-        ...o,
-        items: JSON.parse(o.items || '[]'),
-      })),
     });
   } catch (error) {
     console.error('Error fetching store by slug:', error);
@@ -50,13 +49,35 @@ export async function GET(
   }
 }
 
-// PATCH /api/stores/[slug] - Update store settings
+// PATCH /api/stores/[slug] - Protected: Store Owner or Super Admin only
 export async function PATCH(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
   try {
+    let auth;
+    try {
+      auth = await requireAuth();
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
     const { slug } = params;
+    const existingStore = await prisma.store.findFirst({
+      where: { OR: [{ slug }, { id: slug }] },
+      select: { id: true, slug: true },
+    });
+
+    if (!existingStore) {
+      return NextResponse.json({ error: 'Store not found' }, { status: 404 });
+    }
+
+    try {
+      await requireStoreOwner(existingStore.id);
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
     const body = await request.json();
 
     const dataToUpdate: any = {};
@@ -71,9 +92,13 @@ export async function PATCH(
     if (body.banner !== undefined) dataToUpdate.banner = body.banner;
     if (body.primaryColor !== undefined) dataToUpdate.primaryColor = body.primaryColor;
     if (body.baseCurrency !== undefined) dataToUpdate.baseCurrency = body.baseCurrency;
-    if (body.planTier !== undefined) dataToUpdate.planTier = body.planTier;
-    if (body.planStatus !== undefined) dataToUpdate.planStatus = body.planStatus;
-    if (body.totalSalesGMV !== undefined) dataToUpdate.totalSalesGMV = body.totalSalesGMV;
+
+    // Only Super Admin may elevate planTier / planStatus / totalSalesGMV
+    if (auth.role === 'SUPER_ADMIN') {
+      if (body.planTier !== undefined) dataToUpdate.planTier = body.planTier;
+      if (body.planStatus !== undefined) dataToUpdate.planStatus = body.planStatus;
+      if (body.totalSalesGMV !== undefined) dataToUpdate.totalSalesGMV = body.totalSalesGMV;
+    }
 
     if (body.customRates !== undefined) {
       dataToUpdate.customRates = typeof body.customRates === 'string' ? body.customRates : JSON.stringify(body.customRates);
@@ -86,12 +111,17 @@ export async function PATCH(
     }
 
     const updated = await prisma.store.update({
-      where: { slug },
+      where: { id: existingStore.id },
       data: dataToUpdate,
     });
 
+    await invalidateStoreCache(existingStore.slug);
+    await invalidateStoreCache(existingStore.id);
+
+    const { apiKeys: _omitApiKeys, ...safeUpdated } = updated;
+
     return NextResponse.json({
-      ...updated,
+      ...safeUpdated,
       customRates: JSON.parse(updated.customRates || '{}'),
       paymentAccounts: JSON.parse(updated.paymentAccounts || '[]'),
       shippingMethods: JSON.parse(updated.shippingMethods || '[]'),

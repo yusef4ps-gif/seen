@@ -1,8 +1,9 @@
 'use server';
 
 import prisma from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
-import { requireAuth, requireStoreOwner, requireSuperAdmin } from '@/app/actions/auth';
+import { requireAuth, requireStoreOwner, requireSuperAdmin, issueMerchantSessionCookies } from '@/app/actions/auth';
 import { sendEmail, EmailTemplates } from '@/lib/notification-engine';
 import { INITIAL_PLANS } from '@/lib/initial-data';
 import { SubscriptionPlan } from '@/lib/types';
@@ -163,11 +164,13 @@ export async function createStoreAction(data: any) {
       };
     }
 
+    const hashedPassword = await bcrypt.hash(data.password.trim(), 10);
+
     const newUser = await prisma.user.create({
       data: {
         email: cleanEmail,
         phone: cleanPhone,
-        password: data.password.trim(),
+        password: hashedPassword,
         name: 'إدارة ' + data.name.trim(),
         role: 'STORE_OWNER',
         status: 'active'
@@ -251,16 +254,8 @@ export async function createStoreAction(data: any) {
       console.error('Failed to send welcome email:', emailErr);
     }
     
-    // Update the auth cookie with the new storeId
-    const { cookies } = await import('next/headers');
-    const isProd = process.env.NODE_ENV === 'production';
-    cookies().set('seen_session_store_id', newStore.id, {
-      httpOnly: true, 
-      path: '/', 
-      secure: isProd,
-      sameSite: 'lax' as const,
-      maxAge: 10 * 365 * 24 * 60 * 60 // 10 years
-    });
+    // Issue signed HTTP-only session cookies for the new store owner
+    await issueMerchantSessionCookies(newUser.id, newUser.role, newStore.id);
 
     return { success: true, store: parsedStore };
   } catch (error: any) {
@@ -271,6 +266,7 @@ export async function createStoreAction(data: any) {
 
 export async function getStoresAction() {
   try {
+    await requireSuperAdmin();
     const stores = await prisma.store.findMany({
       orderBy: { createdAt: 'desc' }
     });
@@ -292,6 +288,7 @@ export async function getStoresAction() {
 
 export async function getPlatformStatsAction() {
   try {
+    await requireSuperAdmin();
     const stores = await prisma.store.findMany({
       select: {
         totalSalesGMV: true,
@@ -422,6 +419,7 @@ export async function getProductsByStoreAction(storeId: string) {
 
 export async function getOrdersByStoreAction(storeId: string) {
   try {
+    await requireStoreOwner(storeId);
     const orders = await prisma.order.findMany({
       where: { storeId },
       orderBy: { createdAt: 'desc' },
@@ -443,6 +441,7 @@ export async function deleteStoreAction(storeId: string) {
     await prisma.store.delete({
       where: { id: storeId }
     });
+    storeCache.clear();
     revalidatePath('/seenayhq7x');
     return { success: true };
   } catch (error: any) {
@@ -511,6 +510,7 @@ export async function updateStoreAction(storeId: string, data: any) {
 
 export async function getStoreCustomersAction(storeId: string) {
   try {
+    await requireStoreOwner(storeId);
     // 1. Fetch all registered customers for this store
     const customers = await prisma.customer.findMany({
       where: { storeId },
@@ -604,9 +604,9 @@ export async function getStoreCustomersAction(storeId: string) {
     }
 
     const guestCustomers: any[] = [];
-    for (const [cleanPhone, gOrders] of guestOrdersByPhone.entries()) {
-      const validOrders = gOrders.filter(o => o.status !== 'cancelled');
-      const gTotal = validOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    for (const [cleanPhone, gOrders] of Array.from(guestOrdersByPhone.entries())) {
+      const validOrders = gOrders.filter((o: any) => o.status !== 'cancelled');
+      const gTotal = validOrders.reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
       const latestOrder = gOrders[0];
 
       try {
@@ -621,7 +621,7 @@ export async function getStoreCustomersAction(storeId: string) {
           }
         });
         await prisma.order.updateMany({
-          where: { id: { in: gOrders.map(o => o.id) } },
+          where: { id: { in: gOrders.map((o: any) => o.id) } },
           data: { customerId: createdGuest.id }
         });
         guestCustomers.push(createdGuest);
@@ -661,6 +661,7 @@ export async function approveStoreRequestAction(storeId: string) {
       },
       include: { owner: true }
     });
+    storeCache.clear();
 
     revalidatePath('/seenayhq7x');
     revalidatePath('/seenayhq7x/requests');
@@ -683,6 +684,7 @@ export async function rejectStoreRequestAction(storeId: string) {
         planEndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days until deletion
       },
     });
+    storeCache.clear();
 
     revalidatePath('/seenayhq7x');
     revalidatePath('/seenayhq7x/requests');
@@ -696,6 +698,7 @@ export async function rejectStoreRequestAction(storeId: string) {
 
 export async function toggleStoreStatusAction(storeId: string, newStatus: string) {
   try {
+    await requireSuperAdmin();
     const store = await prisma.store.findFirst({
       where: {
         OR: [
@@ -713,6 +716,7 @@ export async function toggleStoreStatusAction(storeId: string, newStatus: string
       where: { id: store.id },
       data: { planStatus: newStatus }
     });
+    storeCache.clear();
 
     revalidatePath('/seenayhq7x');
     revalidatePath(`/merchant/${updated.slug}`, 'layout');
@@ -748,6 +752,7 @@ export async function getPlansAction(): Promise<SubscriptionPlan[]> {
 
 export async function updatePlansAction(plans: SubscriptionPlan[]) {
   try {
+    await requireSuperAdmin();
     plansCache = null;
     await prisma.siteContent.upsert({
       where: { key: 'system_subscription_plans' },
@@ -781,6 +786,7 @@ export async function requestPlanUpgradeAction(data: {
   notes?: string;
 }) {
   try {
+    await requireStoreOwner(data.storeId);
     const store = await prisma.store.findFirst({
       where: {
         OR: [{ id: data.storeId }, { slug: data.storeId }]
@@ -817,6 +823,7 @@ export async function requestPlanUpgradeAction(data: {
         themeConfig: JSON.stringify(updatedTheme)
       }
     });
+    storeCache.clear();
 
     revalidatePath('/seenayhq7x');
     revalidatePath(`/merchant/${store.slug}/subscription`);
@@ -835,6 +842,7 @@ export async function approvePlanUpgradeAction(data: {
   customEndDate?: string;
 }) {
   try {
+    await requireSuperAdmin();
     const store = await prisma.store.findFirst({
       where: {
         OR: [{ id: data.storeId }, { slug: data.storeId }]
@@ -871,6 +879,7 @@ export async function approvePlanUpgradeAction(data: {
         themeConfig: JSON.stringify(currentTheme)
       }
     });
+    storeCache.clear();
 
     revalidatePath('/seenayhq7x');
     revalidatePath(`/merchant/${store.slug}`, 'layout');
@@ -892,6 +901,7 @@ export async function updateStoreSubscriptionDatesAction(data: {
   planTier?: string;
 }) {
   try {
+    await requireSuperAdmin();
     const store = await prisma.store.findFirst({
       where: {
         OR: [{ id: data.storeId }, { slug: data.storeId }]
@@ -912,6 +922,7 @@ export async function updateStoreSubscriptionDatesAction(data: {
       where: { id: store.id },
       data: updateData
     });
+    storeCache.clear();
 
     revalidatePath('/seenayhq7x');
     revalidatePath(`/merchant/${store.slug}`, 'layout');

@@ -1,11 +1,11 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/app/actions/auth';
+import { requireStoreOwner } from '@/app/actions/auth';
 
 export async function getStoreNotificationsAction(storeId: string) {
   try {
-    await requireAuth();
+    await requireStoreOwner(storeId);
 
     // Execute all notification queries in parallel via Promise.all to cut database latency
     const [

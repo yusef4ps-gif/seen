@@ -1,10 +1,23 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireSuperAdmin } from '@/app/actions/auth';
 
 // GET /api/admin/stats - Central Super Admin Aggregated Metrics
 export async function GET() {
   try {
-    const stores = await prisma.store.findMany();
+    await requireSuperAdmin();
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+
+  try {
+    const stores = await prisma.store.findMany({
+      select: {
+        totalSalesGMV: true,
+        activeVisitorsNow: true,
+        planStatus: true,
+      },
+    });
     const totalOrders = await prisma.order.count();
 
     const totalGMV = stores.reduce((sum, s) => sum + (s.totalSalesGMV || 0), 0);
@@ -16,7 +29,7 @@ export async function GET() {
       totalStoresCount: stores.length,
       activeStoresCount: activeStores,
       totalOrdersCount: totalOrders,
-      totalRevenue_USD: 14850,
+      totalRevenue_USD: 0,
       activeVisitorsOnline: activeVisitors,
     });
   } catch (error) {

@@ -6,6 +6,11 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'سِين (SEEN) | منصة إنشاء وإدارة المتاجر الإلكترونية المتكاملة',
   description: 'منصة سِين (SEEN) السحابية الرائدة لإنشاء وإدارة المتاجر الإلكترونية الذكية في اليمن والمنطقة مع دعم كامل للمحافظ المحلية والدفع عند الاستلام وأسعار الصرف الحية.',
+  icons: {
+    icon: '/seen-icon.png',
+    shortcut: '/seen-icon.png',
+    apple: '/seen-icon.png',
+  },
 };
 
 import { ThemeProvider } from '@/components/ThemeProvider';

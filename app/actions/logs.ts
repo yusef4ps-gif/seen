@@ -3,6 +3,7 @@
 import prisma from '@/lib/prisma';
 import { headers } from 'next/headers';
 import { getIpLocation } from '@/lib/geo';
+import { requireSuperAdmin } from '@/app/actions/auth';
 
 /**
  * Log a system action
@@ -41,6 +42,7 @@ import { unstable_noStore as noStore } from 'next/cache';
 export async function getSystemLogsAction() {
   noStore();
   try {
+    await requireSuperAdmin();
     const logs = await prisma.systemLog.findMany({
       orderBy: { createdAt: 'desc' },
       take: 100 // Limit to recent 100 for performance
@@ -58,6 +60,7 @@ export async function getSystemLogsAction() {
 export async function getBlockedIPsAction() {
   noStore();
   try {
+    await requireSuperAdmin();
     const blocked = await prisma.blockedIP.findMany({
       orderBy: { createdAt: 'desc' }
     });
@@ -73,6 +76,7 @@ export async function getBlockedIPsAction() {
  */
 export async function blockIPAction(ipAddress: string, reason: string) {
   try {
+    await requireSuperAdmin();
     // Log the action first
     await logSystemAction('BLOCK_IP', { ipAddress, reason });
 
@@ -103,6 +107,7 @@ export async function blockIPAction(ipAddress: string, reason: string) {
  */
 export async function unblockIPAction(id: string) {
   try {
+    await requireSuperAdmin();
     const blockedIP = await prisma.blockedIP.findUnique({ where: { id } });
     if (blockedIP) {
         await logSystemAction('UNBLOCK_IP', { ipAddress: blockedIP.ipAddress });

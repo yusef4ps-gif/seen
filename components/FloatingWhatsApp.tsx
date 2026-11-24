@@ -9,7 +9,7 @@ export default function FloatingWhatsApp() {
 
   // Hide the WhatsApp button in merchant dashboard, storefronts, and admin pages to avoid confusing merchants and their customers.
   // We only want this on the main platform pages (home, pricing, about, etc).
-  if (pathname?.startsWith('/merchant') || pathname?.startsWith('/store') || pathname?.startsWith('/admin') || pathname?.startsWith('/seenayhq7x') || pathname?.startsWith('/seenaylogin7x')) {
+  if (pathname?.startsWith('/merchant') || pathname?.startsWith('/store') || pathname?.startsWith('/admin') || pathname?.startsWith('/seenayhq7x') || pathname?.startsWith('/seenaylogin7x') || pathname?.startsWith('/seenlogin5xa') || pathname?.startsWith('/login')) {
     return null;
   }
 
@@ -22,7 +22,7 @@ export default function FloatingWhatsApp() {
       href={whatsappUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-6 left-6 z-50 p-3.5 rounded-full shadow-2xl bg-[#25D366] text-white border-4 border-white/20 dark:border-slate-800/50 hover:scale-110 active:scale-95 hover:shadow-[#25D366]/40 transition-all flex items-center justify-center group"
+      className="fixed bottom-3 left-3 sm:bottom-6 sm:left-6 z-50 p-2.5 sm:p-3.5 rounded-full shadow-2xl bg-[#25D366] text-white border-4 border-white/20 dark:border-slate-800/50 hover:scale-110 active:scale-95 hover:shadow-[#25D366]/40 transition-all flex items-center justify-center group"
       aria-label="تواصل معنا عبر واتساب"
     >
       <MessageCircle className="w-6 h-6 animate-pulse" />

@@ -53,7 +53,8 @@ export default function MerchantAbandonedCartsPage() {
       text += `بإمكانك العودة لإتمام طلبك متى ما أحببت عبر الرابط التالي:\n`;
     }
 
-    text += `http://localhost:3000/store/${store.slug}`;
+    const storeOrigin = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_BASE_URL || 'https://seens.net');
+    text += `${storeOrigin}/store/${store.slug}`;
 
     return encodeURIComponent(text);
   };

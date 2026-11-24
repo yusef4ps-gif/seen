@@ -8,7 +8,8 @@ import {
   Mail, Phone, Lock, LogOut, CheckCircle2, ArrowLeft, Store as StoreIcon, 
   ExternalLink, Clock, ShieldAlert, Sparkles
 } from 'lucide-react';
-import { authEngine, INITIAL_USERS } from '@/lib/auth-engine';
+import { authEngine } from '@/lib/auth-engine';
+import { checkAuthStatusAction, updateMerchantCredentialsAction } from '@/app/actions/auth';
 import { User, AuthSession } from '@/lib/types';
 
 export default function UnifiedProfilePage() {
@@ -24,22 +25,38 @@ export default function UnifiedProfilePage() {
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
-    const s = authEngine.getCurrentSession();
-    if (s) {
-      setSession(s);
-      setCurrentUser(s.user);
-      setName(s.user.name);
-      setPhone(s.user.phone);
-      setEmail(s.user.email);
-    } else {
-      // Default to the first seed user if none active for demo convenience
-      const fallback = INITIAL_USERS[0];
-      setCurrentUser(fallback);
-      setName(fallback.name);
-      setPhone(fallback.phone);
-      setEmail(fallback.email);
+    async function loadUser() {
+      const auth = await checkAuthStatusAction();
+      if (auth.isAuthenticated && auth.user) {
+        const u: User = {
+          id: auth.user.id,
+          name: auth.user.name,
+          email: auth.user.email,
+          phone: auth.user.phone || '',
+          role: auth.user.role as any,
+          status: auth.user.status as any,
+          avatarUrl: auth.user.avatarUrl,
+          createdAt: '',
+        };
+        setCurrentUser(u);
+        setName(u.name);
+        setPhone(u.phone);
+        setEmail(u.email);
+        return;
+      }
+      const s = authEngine.getCurrentSession();
+      if (s) {
+        setSession(s);
+        setCurrentUser(s.user);
+        setName(s.user.name);
+        setPhone(s.user.phone);
+        setEmail(s.user.email);
+      } else {
+        router.replace('/seenlogin5xa');
+      }
     }
-  }, []);
+    loadUser();
+  }, [router]);
 
   if (!currentUser) return null;
 
@@ -48,14 +65,11 @@ export default function UnifiedProfilePage() {
     return null;
   }
 
-  const handleUpdateProfile = (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updates: Partial<User> = { name, phone, email };
-    if (newPassword) updates.password = newPassword;
-
-    const updated = authEngine.updateUser(currentUser.id, updates);
-    if (updated) {
-      setCurrentUser(updated);
+    const res = await updateMerchantCredentialsAction(currentUser.id, email, newPassword || undefined);
+    if (res.success) {
+      setCurrentUser({ ...currentUser, name, phone, email });
       setSuccessMessage('تم حفظ التعديلات بنجاح ✓');
       setTimeout(() => setSuccessMessage(''), 3000);
       setNewPassword('');
@@ -71,7 +85,7 @@ export default function UnifiedProfilePage() {
   const isSuper = currentUser.role === 'SUPER_ADMIN';
   const isOwner = currentUser.role === 'STORE_OWNER';
   const isStaff = currentUser.role === 'STORE_STAFF';
-  const isCust = currentUser.role === 'CUSTOMER';
+  const isCust = (currentUser.role as string) === 'CUSTOMER';
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slateDark-950 text-slate-900 dark:text-slate-100 font-sans p-4 sm:p-8 flex flex-col justify-between">
@@ -164,7 +178,7 @@ export default function UnifiedProfilePage() {
           <div className="shrink-0">
             {isSuper && (
               <Link
-                href="/admin"
+                href="/seenayhq7x"
                 className="px-5 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-md shadow-brand-600/25 flex items-center gap-1.5"
               >
                 <ShieldCheck className="w-4 h-4" />

@@ -1,23 +1,108 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { OrderItem } from '@/lib/types';
+import { CurrencyCode, OrderItem } from '@/lib/types';
 import { requireStoreOwner } from '@/app/actions/auth';
 import { sendEmail, EmailTemplates } from '@/lib/notification-engine';
+import { convertCurrency } from '@/lib/currency-engine';
 
 export async function createOrderAction(data: any) {
   try {
-    // Check if store is suspended
     const store = await prisma.store.findFirst({
       where: {
         OR: [{ id: data.storeId }, { slug: data.storeId }]
       }
     });
-    if (store && store.planStatus === 'suspended') {
+    if (!store) {
+      return { success: false, error: 'المتجر غير موجود.' };
+    }
+    if (store.planStatus === 'suspended') {
       return { success: false, error: 'المتجر موقوف مؤقتاً ولا يمكن استقبال طلبات جديدة حالياً.' };
     }
 
-    const effectiveStoreId = store?.id || data.storeId;
+    const effectiveStoreId = store.id;
+    const orderCurrency = (data.currency || store.baseCurrency || 'SAR') as CurrencyCode;
+
+    let customRates: any = {};
+    try { customRates = store.customRates ? JSON.parse(store.customRates) : {}; } catch {}
+    let themeCfg: any = {};
+    try { themeCfg = store.themeConfig ? JSON.parse(store.themeConfig) : {}; } catch {}
+    const isServiceStore =
+      themeCfg?.storeType === 'SERVICE' ||
+      themeCfg?.storeType === 'DIGITAL' ||
+      themeCfg?.presetId === 'service-expert';
+
+    const rawItems: any[] = Array.isArray(data.items) ? data.items : [];
+    if (rawItems.length === 0) {
+      return { success: false, error: 'السلة فارغة.' };
+    }
+
+    const prodIds = rawItems.map(i => i?.productId).filter(Boolean);
+    const dbProducts = await prisma.product.findMany({
+      where: { id: { in: prodIds }, storeId: effectiveStoreId },
+      include: { variants: true }
+    });
+    const productMap = new Map(dbProducts.map(p => [p.id, p]));
+
+    let authoritativeSubtotalBase = 0;
+    const sanitizedItems = rawItems.map(item => {
+      const qty = Math.max(1, Math.round(Number(item?.quantity) || 1));
+      const dbProd = item?.productId ? productMap.get(item.productId) : undefined;
+      if (dbProd) {
+        const variant = item.variantId ? dbProd.variants.find(v => v.id === item.variantId) : undefined;
+        const unitBase = variant?.priceOverride ?? dbProd.price;
+        authoritativeSubtotalBase += unitBase * qty;
+        return {
+          ...item,
+          productName: dbProd.name,
+          price: unitBase,
+          quantity: qty,
+          total: unitBase * qty,
+        };
+      }
+      const fallbackPrice = Math.max(0, Number(item?.price) || 0);
+      authoritativeSubtotalBase += fallbackPrice * qty;
+      return { ...item, price: fallbackPrice, quantity: qty, total: fallbackPrice * qty };
+    });
+
+    // If matching DB products use baseCurrency, convert subtotal into requested orderCurrency
+    const baseProdCurrency = (dbProducts[0]?.baseCurrency || store.baseCurrency || 'SAR') as CurrencyCode;
+    const authoritativeSubtotal = convertCurrency(authoritativeSubtotalBase, baseProdCurrency, orderCurrency, customRates);
+
+    let authoritativeShipping = 0;
+    if (!isServiceStore && data.deliveryType !== 'pickup') {
+      let shippingList: any[] = [];
+      try { shippingList = store.shippingMethods ? JSON.parse(store.shippingMethods) : []; } catch {}
+      const activeDelivery = shippingList.find((m: any) => m.isActive && !m.isPickup);
+      authoritativeShipping = activeDelivery ? Number(activeDelivery.cost) || 0 : (Number(data.shippingCost) || 0);
+    }
+
+    let authoritativeDiscount = 0;
+    let validCouponId: string | null = null;
+    if (data.couponCode && typeof data.couponCode === 'string') {
+      const coupon = await prisma.coupon.findUnique({
+        where: { storeId_code: { storeId: effectiveStoreId, code: data.couponCode.trim().toUpperCase() } }
+      });
+      if (
+        coupon &&
+        coupon.isActive &&
+        (coupon.maxUses === 0 || coupon.usageCount < coupon.maxUses) &&
+        (!coupon.expiry || new Date() <= coupon.expiry)
+      ) {
+        validCouponId = coupon.id;
+        if (coupon.type === 'shipping') {
+          authoritativeShipping = 0;
+        } else if (coupon.type === 'percentage') {
+          authoritativeDiscount = Math.round(authoritativeSubtotal * (coupon.discount / 100) * 100) / 100;
+        } else if (coupon.type === 'fixed') {
+          authoritativeDiscount = convertCurrency(coupon.discount, (store.baseCurrency || 'SAR') as CurrencyCode, orderCurrency, customRates);
+        }
+      }
+    }
+
+    const authoritativeTotal = Math.max(0, Math.round((authoritativeSubtotal + authoritativeShipping - authoritativeDiscount) * 100) / 100);
+    const effectivePaymentMethod = authoritativeTotal <= 0 ? 'free' : (data.paymentMethod || 'cod');
+    const effectiveStatus = authoritativeTotal <= 0 || effectivePaymentMethod === 'cod' ? 'new' : 'pending_payment';
 
     // Determine the next sequential order number for this store
     const storeOrderCount = await prisma.order.count({
@@ -43,7 +128,7 @@ export async function createOrderAction(data: any) {
       }
     }
 
-    // 1. Create the order
+    // 1. Create the order with server-computed amounts
     const order = await prisma.order.create({
       data: {
         id: data.id,
@@ -55,19 +140,26 @@ export async function createOrderAction(data: any) {
         city: data.city,
         address: data.address,
         deliveryType: data.deliveryType,
-        items: JSON.stringify(data.items),
-        subtotal: data.subtotal,
-        shippingCost: data.shippingCost,
-        discount: data.discount,
-        total: data.total,
-        currency: data.currency,
-        paymentMethod: data.paymentMethod,
-        paymentProofUrl: data.paymentProofUrl,
-        paymentProofStatus: data.paymentProofStatus,
-        status: data.status,
+        items: JSON.stringify(sanitizedItems),
+        subtotal: authoritativeSubtotal,
+        shippingCost: authoritativeShipping,
+        discount: authoritativeDiscount,
+        total: authoritativeTotal,
+        currency: orderCurrency,
+        paymentMethod: effectivePaymentMethod,
+        paymentProofUrl: authoritativeTotal <= 0 ? undefined : data.paymentProofUrl,
+        paymentProofStatus: authoritativeTotal <= 0 ? undefined : (data.paymentProofStatus || 'unverified'),
+        status: effectiveStatus,
         notes: data.notes,
       }
     });
+
+    if (validCouponId) {
+      await prisma.coupon.update({
+        where: { id: validCouponId },
+        data: { usageCount: { increment: 1 } }
+      }).catch(() => {});
+    }
 
     // Update Customer CRM statistics in database
     if (linkedCustomerId) {
@@ -75,32 +167,38 @@ export async function createOrderAction(data: any) {
         where: { id: linkedCustomerId },
         data: {
           ordersCount: { increment: 1 },
-          totalSpent: { increment: Number(data.total) || 0 },
+          totalSpent: { increment: authoritativeTotal },
           lastLoginAt: new Date()
         }
       }).catch(err => console.error('Failed to update customer CRM stats:', err));
     }
 
-    // 2. Decrement stock & increment sales count for each item
+    // 2. Decrement stock & increment sales count safely for each item
     if (data.items && Array.isArray(data.items)) {
       for (const item of data.items) {
-        // Update product stock and sales count
-        await prisma.product.update({
-          where: { id: item.productId },
-          data: {
-            stock: { decrement: item.quantity },
-            salesCount: { increment: item.quantity }
-          }
-        });
-
-        // If the item has a variant, also update the variant's stock
-        if (item.variantId) {
-          await prisma.productVariant.update({
-            where: { id: item.variantId },
+        if (!item?.productId) continue;
+        const qty = Math.max(1, Number(item.quantity) || 1);
+        const prodExists = await prisma.product.findUnique({ where: { id: item.productId }, select: { id: true, stock: true } });
+        if (prodExists) {
+          await prisma.product.update({
+            where: { id: item.productId },
             data: {
-              stock: { decrement: item.quantity }
+              stock: { decrement: Math.min(qty, Math.max(0, prodExists.stock)) },
+              salesCount: { increment: qty }
             }
           });
+        }
+
+        if (item.variantId) {
+          const variantExists = await prisma.productVariant.findUnique({ where: { id: item.variantId }, select: { id: true, stock: true } });
+          if (variantExists) {
+            await prisma.productVariant.update({
+              where: { id: item.variantId },
+              data: {
+                stock: { decrement: Math.min(qty, Math.max(0, variantExists.stock)) }
+              }
+            });
+          }
         }
       }
     }
@@ -122,10 +220,10 @@ export async function createOrderAction(data: any) {
     }
 
     // 4. Mark Abandoned Cart as recovered (if any)
-    if (data.customerPhone) {
+    if (data.customerPhone && effectiveStoreId) {
       await prisma.abandonedCart.updateMany({
         where: {
-          storeId: data.storeId,
+          storeId: effectiveStoreId,
           customerPhone: data.customerPhone,
           recovered: false
         },
@@ -313,6 +411,7 @@ export async function captureAbandonedCartAction(data: any) {
 
 export async function getStoreReturnsAction(storeId: string) {
   try {
+    await requireStoreOwner(storeId);
     const returns = await prisma.orderReturn.findMany({
       where: { storeId },
       include: {
@@ -476,6 +575,7 @@ export async function getCustomerOrdersAction(storeId: string, identifier: strin
 }
 export async function getAbandonedCartsAction(storeId: string) {
   try {
+    await requireStoreOwner(storeId);
     const carts = await prisma.abandonedCart.findMany({
       where: { storeId },
       orderBy: { abandonedAt: 'desc' }
@@ -491,6 +591,9 @@ export async function getAbandonedCartsAction(storeId: string) {
 }
 export async function markAbandonedCartRecoveredAction(cartId: string) {
   try {
+    const existing = await prisma.abandonedCart.findUnique({ where: { id: cartId }, select: { storeId: true } });
+    if (!existing) return { success: false, error: 'Cart not found' };
+    await requireStoreOwner(existing.storeId);
     const updated = await prisma.abandonedCart.update({
       where: { id: cartId },
       data: { recoverySentAt: new Date(), recovered: true }
@@ -512,14 +615,22 @@ export async function requestOrderReturnAction(data: { orderId: string; reason: 
       return { success: false, error: 'لا يمكن إرجاع هذا الطلب لأن حالته ليست مكتملة' };
     }
 
+    if (!Array.isArray(data.items) || data.items.length === 0) {
+      return { success: false, error: 'يرجى تحديد منتج واحد على الأقل للاسترجاع' };
+    }
+
     let refundAmount = 0;
-    const orderItems = JSON.parse(order.items);
+    const orderItems = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
     
     data.items.forEach(retItem => {
-      // Handle missing origItem defensively
-      const origItem = orderItems.find((i: any) => i.id === retItem.item?.id || i.id === retItem.id);
+      const targetId = retItem.productId || retItem.item?.productId || retItem.item?.id || retItem.id;
+      const origItem = orderItems.find((i: any) =>
+        (targetId && (i.productId === targetId || i.id === targetId)) ||
+        (retItem.productName && i.productName === retItem.productName)
+      );
       if (origItem) {
-        refundAmount += (origItem.price || 0) * (retItem.quantity || 1);
+        const retQty = Math.min(Math.max(1, Number(origItem.quantity) || 1), Math.max(1, Number(retItem.quantity) || 1));
+        refundAmount += (Number(origItem.price) || 0) * retQty;
       }
     });
 

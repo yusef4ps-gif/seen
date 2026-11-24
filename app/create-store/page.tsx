@@ -378,11 +378,11 @@ export default function CreateStorePage() {
           <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${currentStep >= 1 ? 'bg-brand-50 text-brand-600 dark:bg-brand-950 border border-brand-200' : 'text-slate-400'}`}>
             <span>1. تفاصيل المتجر</span>
           </div>
-          <span className="text-slate-300">→</span>
+          <span className="text-slate-300">←</span>
           <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${currentStep >= 2 ? 'bg-brand-50 text-brand-600 dark:bg-brand-950 border border-brand-200' : 'text-slate-400'}`}>
             <span>2. القالب والهوية المرئية</span>
           </div>
-          <span className="text-slate-300">→</span>
+          <span className="text-slate-300">←</span>
           <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${currentStep >= 3 ? 'bg-brand-50 text-brand-600 dark:bg-brand-950 border border-brand-200' : 'text-slate-400'}`}>
             <span>3. الدفع والعملة</span>
           </div>
@@ -1259,7 +1259,7 @@ export default function CreateStorePage() {
             </div>
 
             <div className="mt-auto p-2 border-t text-center text-[8px] opacity-50">
-              © {storeName} - استضافة سحابية بواسطة مَزن
+              © {storeName} - مدعوم بواسطة منصة سِين
             </div>
 
           </div>

@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireSuperAdmin } from '@/app/actions/auth';
 
 // GET /api/admin/broadcasts - Fetch all active broadcasts
 export async function GET() {
   try {
     const broadcasts = await prisma.systemBroadcast.findMany({
+      where: { isActive: true },
       orderBy: { createdAt: 'desc' },
     });
     return NextResponse.json(broadcasts);
@@ -14,8 +16,14 @@ export async function GET() {
   }
 }
 
-// POST /api/admin/broadcasts - Create new system broadcast
+// POST /api/admin/broadcasts - Create new system broadcast (Super Admin only)
 export async function POST(request: Request) {
+  try {
+    await requireSuperAdmin();
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+
   try {
     const body = await request.json();
     const { title, message, type } = body;
@@ -26,8 +34,8 @@ export async function POST(request: Request) {
 
     const newBroadcast = await prisma.systemBroadcast.create({
       data: {
-        title,
-        message,
+        title: String(title).trim(),
+        message: String(message).trim(),
         type: type || 'info',
         isActive: true,
       },
@@ -40,8 +48,14 @@ export async function POST(request: Request) {
   }
 }
 
-// DELETE /api/admin/broadcasts?id=... - Delete a broadcast
+// DELETE /api/admin/broadcasts?id=... - Delete a broadcast (Super Admin only)
 export async function DELETE(request: Request) {
+  try {
+    await requireSuperAdmin();
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

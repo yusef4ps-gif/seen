@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Store as StoreIcon, Lock, AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Mail, KeyRound } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
-import { setAuthCookieAction, verifyTurnstileTokenAction, loginMerchantAction, sendMerchantOtpAction, verifyMerchantOtpAction } from '@/app/actions/auth';
+import { verifyTurnstileTokenAction, loginMerchantAction, sendMerchantOtpAction, verifyMerchantOtpAction } from '@/app/actions/auth';
 import BrandLogo from '@/components/BrandLogo';
 
 export default function MerchantLoginPage() {
@@ -95,31 +95,21 @@ export default function MerchantLoginPage() {
     }
 
     try {
-      // Final login step
-      const result = await loginMerchantAction(email, password);
+      setSuccessMessage('تم التحقق بنجاح! جاري توجيهك لمتجرك...');
+      try {
+        localStorage.setItem('seen_production_session_v4', JSON.stringify({
+          user: { id: otpVerification.userId, email, role: otpVerification.role || 'STORE_OWNER', storeId: otpVerification.storeId, name: 'Merchant' },
+          token: 'session-active',
+          expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+        }));
+      } catch(e) {}
       
-      if (result.success && result.userId) {
-        setSuccessMessage('تم التحقق بنجاح! جاري توجيهك لمتجرك...');
-        await setAuthCookieAction(`token-${result.userId}`, result.userId, result.role || 'STORE_OWNER', result.storeId);
-        
-        try {
-          localStorage.setItem('seen_production_session_v4', JSON.stringify({
-            user: { id: result.userId, email, role: result.role || 'STORE_OWNER', storeId: result.storeId, name: 'Merchant' },
-            token: `token-${result.userId}`,
-            expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-          }));
-        } catch(e) {}
-        
-        const storeSlug = result.slug;
-        const redirectUrl = storeSlug ? `/merchant/${storeSlug}` : '/create-store';
+      const storeSlug = otpVerification.slug;
+      const redirectUrl = storeSlug ? `/merchant/${storeSlug}` : '/create-store';
 
-        setTimeout(() => {
-          window.location.href = redirectUrl;
-        }, 500);
-      } else {
-        setErrorMessage('حدث خطأ أثناء إصدار الجلسة.');
-        setIsLoading(false);
-      }
+      setTimeout(() => {
+        window.location.href = redirectUrl;
+      }, 500);
     } catch (error) {
       setErrorMessage('حدث خطأ أثناء الاتصال بالخادم.');
       setIsLoading(false);

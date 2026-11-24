@@ -53,21 +53,21 @@ export interface ProductVariant {
     color?: string;
     size?: string;
     material?: string;
-  };
-  priceOverride?: number;
+  } | string;
+  priceOverride?: number | null;
   stock: number;
-  sku?: string;
+  sku?: string | null;
 }
 
 export interface Product {
   id: string;
   storeId: string;
   name: string;
-  description: string;
+  description?: string | null;
   category: string;
   price: number; // in store base currency
-  comparePrice?: number;
-  baseCurrency: CurrencyCode;
+  comparePrice?: number | null;
+  baseCurrency: CurrencyCode | string;
   images: string[];
   stock: number;
   lowStockAlert: number;
@@ -77,8 +77,8 @@ export interface Product {
   viewsCount: number;
   salesCount: number;
   tags: string[];
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
   // Digital / Attachment fields
   digitalFileUrl?: string;
   digitalFileName?: string;
@@ -106,21 +106,21 @@ export interface Order {
   customerName: string;
   customerPhone: string;
   city: string;
-  address: string;
-  deliveryType: 'delivery' | 'pickup';
+  address?: string | null;
+  deliveryType: 'delivery' | 'pickup' | string;
   items: OrderItem[];
   subtotal: number;
   shippingCost: number;
   discount: number;
   total: number;
-  currency: CurrencyCode;
-  paymentMethod: PaymentMethodType;
-  paymentProofUrl?: string; // Receipt screenshot
-  paymentProofStatus?: 'unverified' | 'verified' | 'rejected';
-  status: OrderStatus;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
+  currency: CurrencyCode | string;
+  paymentMethod: PaymentMethodType | string;
+  paymentProofUrl?: string | null; // Receipt screenshot
+  paymentProofStatus?: 'unverified' | 'verified' | 'rejected' | string | null;
+  status: OrderStatus | string;
+  notes?: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 export interface AbandonedCart {
@@ -256,7 +256,9 @@ export interface Store {
   paymentAccounts: PaymentAccountConfig[];
   shippingMethods: ShippingMethod[];
   planTier: SubscriptionPlanTier;
-  planStatus: 'active' | 'trial' | 'expired' | 'suspended';
+  planStatus: 'active' | 'trial' | 'expired' | 'suspended' | 'pending_approval' | 'rejected';
+  planStartDate?: string | Date;
+  planEndDate?: string | Date;
   trialEndsAt?: string;
   customCommissionRate?: number;
   customDomain?: string;
@@ -286,8 +288,8 @@ export interface SystemBroadcast {
   id: string;
   title: string;
   message: string;
-  type: 'info' | 'warning' | 'success' | 'alert';
-  createdAt: string;
+  type: 'info' | 'warning' | 'success' | 'alert' | string;
+  createdAt: string | Date;
   isActive: boolean;
 }
 

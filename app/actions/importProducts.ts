@@ -2,9 +2,11 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { requireStoreOwner } from '@/app/actions/auth';
 
 export async function bulkCreateProductsAction(storeId: string, products: any[]) {
   try {
+    await requireStoreOwner(storeId);
     const store = await prisma.store.findUnique({
       where: { id: storeId },
     });

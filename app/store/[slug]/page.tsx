@@ -230,8 +230,8 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
             {/* Configurable overlay: none = 100% natural image, light = balanced, dark = high contrast */}
             {bannerOverlayStyle !== 'none' && (
               <>
-                <div className={`absolute inset-0 ${bannerOverlayStyle === 'dark' ? 'bg-slate-950/70 backdrop-blur-[1px]' : 'bg-slate-950/20'}`} />
-                <div className={`absolute inset-0 bg-gradient-to-t ${bannerOverlayStyle === 'dark' ? 'from-slate-950 via-slate-950/60 to-slate-950/30' : 'from-slate-950/70 via-slate-950/20 to-transparent'}`} />
+                <div className={`absolute inset-0 ${bannerOverlayStyle === 'dark' ? 'bg-slate-950/75 backdrop-blur-[1px]' : 'bg-slate-950/45'}`} />
+                <div className={`absolute inset-0 bg-gradient-to-t ${bannerOverlayStyle === 'dark' ? 'from-slate-950 via-slate-950/65 to-slate-950/35' : 'from-slate-950/85 via-slate-950/40 to-slate-950/20'}`} />
               </>
             )}
           </>
@@ -266,8 +266,8 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
                   </h1>
 
                   {profTitle && (
-                    <div className="text-sm sm:text-base font-bold flex items-center gap-2" style={{ color: primaryColor }}>
-                      <CheckCircle2 className="w-4 h-4" style={{ color: primaryColor }} />
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950/55 border border-white/15 text-xs sm:text-sm font-bold text-white backdrop-blur-sm shadow-sm">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                       <span>{profTitle}</span>
                     </div>
                   )}
@@ -276,7 +276,7 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
             )}
 
             {!hideBannerTexts && (
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
+              <p className="text-xs sm:text-sm text-slate-100 leading-relaxed max-w-xl drop-shadow-sm">
                 {subtitle || store.description || 'نقدم خدمات واستشارات مهنية متخصصة بأعلى معايير الجودة والسرية والاحترافية لخدمة عملائنا الكرام.'}
               </p>
             )}
@@ -295,19 +295,19 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
                 {onOpenCustomRequest && (
                   <button
                     onClick={onOpenCustomRequest}
-                    className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs sm:text-sm transition-all flex items-center gap-2 shadow-xs active:scale-95"
+                    className="px-5 py-3 rounded-2xl bg-slate-950/55 hover:bg-slate-950/75 border border-white/25 text-white font-bold text-xs sm:text-sm transition-all flex items-center gap-2 shadow-xs active:scale-95 backdrop-blur-sm"
                   >
-                    <Briefcase className="w-4 h-4" style={{ color: primaryColor }} />
+                    <Briefcase className="w-4 h-4 text-emerald-300" />
                     <span>طلب مخصص أو استشارة ✍️</span>
                   </button>
                 )}
 
                 {store.whatsapp && (
                   <a
-                    href={`https://wa.me/${store.whatsapp.replace(/[^0-9]/g, '')}`}
+                    href={formatWhatsAppUrl(store.whatsapp || store.phone, `مرحباً ${store.name}`) || '#'}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-5 py-3 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 font-bold text-xs sm:text-sm transition-all flex items-center gap-2"
+                    className="px-5 py-3 rounded-2xl bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-400/40 text-emerald-200 font-bold text-xs sm:text-sm transition-all flex items-center gap-2 backdrop-blur-sm"
                   >
                     <MessageCircle className="w-4 h-4 text-emerald-400" />
                     <span>تواصل واتساب مباشر</span>
@@ -393,10 +393,10 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
             )}
 
             {!hideTrustBadges && (
-              <div className="flex flex-wrap gap-4 pt-3 text-[11px] text-slate-400 font-medium">
-                <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" style={{ color: primaryColor }} /> خصوصية وسرية تامة</span>
-                <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" style={{ color: primaryColor }} /> دقة في المواعيد</span>
-                <span className="flex items-center gap-1.5"><Award className="w-3.5 h-3.5" style={{ color: primaryColor }} /> خبرة معتمدة</span>
+              <div className="flex flex-wrap gap-2.5 pt-3 text-[11px] text-white/95 font-medium">
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950/50 border border-white/10 backdrop-blur-sm"><ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> خصوصية وسرية تامة</span>
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950/50 border border-white/10 backdrop-blur-sm"><Clock className="w-3.5 h-3.5 text-emerald-400" /> دقة في المواعيد</span>
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950/50 border border-white/10 backdrop-blur-sm"><Award className="w-3.5 h-3.5 text-emerald-400" /> خبرة معتمدة</span>
               </div>
             )}
           </div>
@@ -452,6 +452,7 @@ export default function CustomerStorefrontPage() {
 
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -540,44 +541,52 @@ export default function CustomerStorefrontPage() {
   useEffect(() => {
     async function loadStorefront() {
       if (!slug) return;
-      const s = await getStoreBySlugAction(slug);
-      if (s) {
-        setStore(s as any);
-        setCity(s.city);
-        if (s.paymentAccounts && s.paymentAccounts.length > 0) {
-          const activeAcc = s.paymentAccounts.find((a: any) => a.isActive);
-          if (activeAcc) setSelectedPayment(activeAcc.type);
-        }
-        if (s.baseCurrency) {
-          setActiveCurrency(s.baseCurrency as CurrencyCode);
-        }
+      setIsLoadingProducts(true);
+      let s: any = null;
+      try {
+        s = await getStoreBySlugAction(slug);
+        if (s) {
+          setStore(s as any);
+          setCity(s.city);
+          if (s.paymentAccounts && s.paymentAccounts.length > 0) {
+            const activeAcc = s.paymentAccounts.find((a: any) => a.isActive);
+            if (activeAcc) setSelectedPayment(activeAcc.type);
+          }
+          if (s.baseCurrency) {
+            setActiveCurrency(s.baseCurrency as CurrencyCode);
+          }
 
-        const prods = await getProductsByStoreAction(s.id);
-        setProducts(prods as any);
+          const [prods, revRes] = await Promise.all([
+            getProductsByStoreAction(s.id),
+            getPublishedReviewsAction(s.id),
+          ]);
+          setProducts(prods as any);
+          setIsLoadingProducts(false);
 
-        // Fetch Published Reviews
-        const revRes = await getPublishedReviewsAction(s.id);
-        if (revRes.success && revRes.data) {
-          setStoreReviews(revRes.data);
-        }
+          if (revRes.success && revRes.data) {
+            setStoreReviews(revRes.data);
+          }
 
-        // 1. Immediately hydrate customer from localStorage (guarantees session persistence on browser Back/Forward)
-        if (typeof window !== 'undefined') {
-          try {
-            const cached = localStorage.getItem(`seen_customer_${s.id}`) || localStorage.getItem(`seen_customer_${slug}`);
-            if (cached) {
-              const parsed = JSON.parse(cached);
-              if (parsed && (parsed.storeId === s.id || !parsed.storeId)) {
-                setCurrentCustomer(parsed);
-                if (parsed.name) setCustomerName(parsed.name);
-                if (parsed.phone) setCustomerPhone(parsed.phone);
-                if (parsed.email) setCustomerEmail(parsed.email);
+          // 1. Immediately hydrate customer from localStorage (guarantees session persistence on browser Back/Forward)
+          if (typeof window !== 'undefined') {
+            try {
+              const cached = localStorage.getItem(`seen_customer_${s.id}`) || localStorage.getItem(`seen_customer_${slug}`);
+              if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed && (parsed.storeId === s.id || !parsed.storeId)) {
+                  setCurrentCustomer(parsed);
+                  if (parsed.name) setCustomerName(parsed.name);
+                  if (parsed.phone) setCustomerPhone(parsed.phone);
+                  if (parsed.email) setCustomerEmail(parsed.email);
+                }
               }
-            }
-          } catch (e) {}
+            } catch (e) {}
+          }
         }
+      } finally {
+        setIsLoadingProducts(false);
       }
-      
+
       const customer = await getCurrentCustomerAction();
       if (customer && customer.storeId === s?.id) {
         setCurrentCustomer(customer);
@@ -590,7 +599,7 @@ export default function CustomerStorefrontPage() {
         setCustomerName(customer.name || '');
         setCustomerPhone(customer.phone || '');
         setCustomerEmail(customer.email || '');
-        
+
         // Try to fetch last order to get city and address
         if (s) {
           const orders = await getCustomerOrdersAction(s.id, customer.customerId, 'id');
@@ -604,10 +613,17 @@ export default function CustomerStorefrontPage() {
     loadStorefront();
   }, [slug]);
 
-  // Live Refresh on Tab Focus or Settings Update (guarantees immediate theme color & banner changes)
+  // Live Refresh on Tab Focus or Settings Update (throttled to prevent redundant reloads)
   useEffect(() => {
     if (!slug) return;
-    const handleRefresh = async () => {
+    let lastRefreshAt = Date.now();
+    let isRefreshing = false;
+
+    const handleRefresh = async (force = false) => {
+      const now = Date.now();
+      if (isRefreshing || (!force && now - lastRefreshAt < 60000)) return;
+      isRefreshing = true;
+      lastRefreshAt = now;
       try {
         const s = await getStoreBySlugAction(slug);
         if (s) {
@@ -615,29 +631,34 @@ export default function CustomerStorefrontPage() {
           const prods = await getProductsByStoreAction(s.id);
           if (prods) setProducts(prods as any);
         }
-      } catch (e) {}
+      } catch (e) {
+      } finally {
+        isRefreshing = false;
+      }
     };
 
     const onVisibilityChange = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        handleRefresh();
+        handleRefresh(false);
       }
     };
 
     const onStorage = (e: StorageEvent) => {
       if (e.key?.includes('seen_store') || e.key?.includes('seen_clean_stores') || !e.key) {
-        handleRefresh();
+        handleRefresh(true);
       }
     };
 
+    const onFocus = () => handleRefresh(false);
+
     window.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('storage', onStorage);
-    window.addEventListener('focus', handleRefresh);
+    window.addEventListener('focus', onFocus);
 
     return () => {
       window.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('storage', onStorage);
-      window.removeEventListener('focus', handleRefresh);
+      window.removeEventListener('focus', onFocus);
     };
   }, [slug]);
 
@@ -1005,6 +1026,7 @@ export default function CustomerStorefrontPage() {
       paymentProofStatus: cartTotalConverted <= 0 ? undefined : (paymentProofUrl ? 'unverified' : undefined),
       status: (cartTotalConverted <= 0 || selectedPayment === 'cod') ? 'new' : 'pending_payment',
       notes,
+      couponCode: appliedCoupon?.code || undefined,
     });
 
     if (result.success) {
@@ -1138,7 +1160,7 @@ export default function CustomerStorefrontPage() {
       matchesCategory = Boolean(p.tags?.some(t => t.startsWith('subscription:')));
     }
     const matchesSearch = p.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-                          p.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+                          (p.description || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -1812,11 +1834,23 @@ export default function CustomerStorefrontPage() {
                       {isServiceStore ? (section.settings.bannerTitle || 'الخدمات والاستشارات المتاحة') : (section.settings.bannerTitle || 'المنتجات المميزة')}
                     </h3>
                     <span className="text-xs font-bold" style={{ color: primaryColor }}>
-                      {filteredProducts.length} {isServiceStore ? 'خدمة متاحة' : 'منتج متوفر'}
+                      {isLoadingProducts
+                        ? 'جاري تحميل العروض...'
+                        : `${filteredProducts.length} ${isServiceStore ? 'خدمة متاحة' : 'منتج متوفر'}`}
                     </span>
                   </div>
 
-                  {filteredProducts.length === 0 ? (
+                  {isLoadingProducts && filteredProducts.length === 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-6">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slateDark-900 overflow-hidden animate-pulse p-3 space-y-3">
+                          <div className="aspect-square rounded-xl bg-slate-200 dark:bg-slate-800" />
+                          <div className="h-3.5 w-3/4 rounded bg-slate-200 dark:bg-slate-800" />
+                          <div className="h-3 w-1/2 rounded bg-slate-100 dark:bg-slate-800/70" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : filteredProducts.length === 0 ? (
                     <div className="p-12 text-center bg-white dark:bg-slateDark-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
                       {isServiceStore ? <Briefcase className="w-10 h-10 text-slate-300 mx-auto" /> : <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto" />}
                       <h3 className="text-sm font-bold">{isServiceStore ? 'لا توجد خدمات متاحة حالياً' : 'لا توجد منتجات مطابقة للبحث'}</h3>

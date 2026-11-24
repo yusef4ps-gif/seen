@@ -37,7 +37,7 @@ export default function StoreRequestsTab() {
     const store = stores.find(s => s.id === id);
     if (store && (store.whatsapp || store.phone)) {
       const users = authEngine.getUsers(store.id);
-      const owner = users.find(u => u.role === 'owner');
+      const owner = users.find(u => u.role === 'STORE_OWNER' || (u.role as string) === 'owner');
       
       const merchantEmail = store.email || (owner ? owner.email : '') || 'البريد الإلكتروني الخاص بك';
       const storeLink = 'https://seens.net/seenlogin5xa';

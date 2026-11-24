@@ -295,7 +295,20 @@ export default function MerchantLayout({
       }
       const remaining = Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
 
-      if (notifsData.storeDetails.planStatus === 'trial' || notifsData.storeDetails.planStatus === 'pending_approval') {
+      if (notifsData.storeDetails.planStatus === 'expired' || (remaining <= 0 && notifsData.storeDetails.planStatus !== 'active' && notifsData.storeDetails.planStatus !== 'suspended')) {
+        const notifId = `sub-expired`;
+        const isRead = readNotifIds.has(notifId);
+        dynamicNotifs.push({
+          id: notifId,
+          type: 'danger',
+          title: 'انتهاء الاشتراك',
+          message: `انتهت الفترة التجريبية المجانية الخاصة بك. يرجى الاشتراك في إحدى الباقات للاستمرار في استقبال الطلبات.`,
+          time: 'الآن',
+          link: `/merchant/${slug}/subscription`,
+          isRead
+        });
+        if (!isRead) unread++;
+      } else if (notifsData.storeDetails.planStatus === 'trial' || notifsData.storeDetails.planStatus === 'pending_approval') {
         if (remaining <= 3 && remaining > 0) {
           const notifId = `sub-trial-${remaining}`;
           const isRead = readNotifIds.has(notifId);
@@ -305,19 +318,6 @@ export default function MerchantLayout({
             title: 'تنبيه الاشتراك',
             message: `باقة المنصة الأساسية (الفترة التجريبية) ستنتهي بعد ${remaining} أيام، يرجى التجديد قريباً لتجنب الإيقاف.`,
             time: 'اليوم',
-            link: `/merchant/${slug}/subscription`,
-            isRead
-          });
-          if (!isRead) unread++;
-        } else if (remaining <= 0 && notifsData.storeDetails.planStatus === 'expired') {
-          const notifId = `sub-expired`;
-          const isRead = readNotifIds.has(notifId);
-          dynamicNotifs.push({
-            id: notifId,
-            type: 'danger',
-            title: 'انتهاء الاشتراك',
-            message: `انتهت الفترة التجريبية المجانية الخاصة بك. يرجى الاشتراك في إحدى الباقات للاستمرار في استقبال الطلبات.`,
-            time: 'الآن',
             link: `/merchant/${slug}/subscription`,
             isRead
           });
@@ -456,7 +456,7 @@ export default function MerchantLayout({
               if (!prev) return prev;
               if (prev.planStatus !== sd.planStatus || prev.planTier !== sd.planTier) {
                 router.refresh();
-                return { ...prev, planStatus: sd.planStatus, planTier: sd.planTier };
+                return { ...prev, planStatus: sd.planStatus as Store['planStatus'], planTier: sd.planTier };
               }
               return prev;
             });

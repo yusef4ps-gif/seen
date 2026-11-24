@@ -8,7 +8,7 @@ import {
   Briefcase, FileText, UploadCloud, CalendarCheck, ChevronLeft, ChevronRight, Minus
 } from 'lucide-react';
 import { formatCurrency, convertCurrency } from '@/lib/currency-engine';
-import { Store, Product, ProductVariant } from '@/lib/types';
+import { Store, Product, ProductVariant, CurrencyCode } from '@/lib/types';
 import { generateAIProductDescription } from '@/lib/ai-generator';
 import ImageUploader from '@/components/ImageUploader';
 import { getStoreBySlugAction, getProductsByStoreAction, getPlansAction } from '@/app/actions/store';
@@ -242,6 +242,14 @@ export default function MerchantProductsPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [variants, setVariants] = useState<ProductVariant[]>([]);
 
+  // Consultation specific state (must be declared before isServiceItem)
+  const [isConsultation, setIsConsultation] = useState(false);
+  const [sessionsCount, setSessionsCount] = useState<number>(1);
+  const [sessionDuration, setSessionDuration] = useState<number>(45);
+  const [sessionDurationUnit, setSessionDurationUnit] = useState<'minutes' | 'hours'>('minutes');
+  const [consultationDelivery, setConsultationDelivery] = useState<'online' | 'phone' | 'in_person'>('online');
+  const sessionsCarouselRef = useRef<HTMLDivElement>(null);
+
   // Distinguish between physical goods (سلع) and services/consultations (خدمات واستشارات)
   const isServiceItem = Boolean(
     isServiceStore || 
@@ -268,14 +276,6 @@ export default function MerchantProductsPage() {
   const [digitalFileUrl, setDigitalFileUrl] = useState('');
   const [digitalFileAccess, setDigitalFileAccess] = useState<'instant' | 'verified'>('instant');
   const [isUploadingFile, setIsUploadingFile] = useState(false);
-
-  // Consultation specific state
-  const [isConsultation, setIsConsultation] = useState(false);
-  const [sessionsCount, setSessionsCount] = useState<number>(1);
-  const [sessionDuration, setSessionDuration] = useState<number>(45);
-  const [sessionDurationUnit, setSessionDurationUnit] = useState<'minutes' | 'hours'>('minutes');
-  const [consultationDelivery, setConsultationDelivery] = useState<'online' | 'phone' | 'in_person'>('online');
-  const sessionsCarouselRef = useRef<HTMLDivElement>(null);
 
   const handleSelectSessionCount = (cnt: number) => {
     const safeCount = Math.max(1, cnt);
@@ -374,12 +374,12 @@ export default function MerchantProductsPage() {
   const handleOpenEditModal = (prod: Product) => {
     setEditingProductId(prod.id);
     setName(prod.name);
-    setDescription(prod.description);
+    setDescription(prod.description || '');
     const parts = prod.category.split(' > ');
     setMainCategory(parts[0] || '');
     setSubCategory(parts.length > 1 ? parts.slice(1).join(' > ') : '');
     setPrice(prod.price);
-    setComparePrice(prod.comparePrice);
+    setComparePrice(prod.comparePrice ?? undefined);
     setImageUrl(prod.images[0] || '');
     setStock(prod.stock);
     setLowStockAlert(prod.lowStockAlert);
@@ -726,7 +726,7 @@ export default function MerchantProductsPage() {
                 const isLow = prod.stock <= (prod.lowStockAlert || 5);
                 const isOut = prod.stock === 0;
                 // Calculate converted price in YER Aden
-                const priceInYER = convertCurrency(prod.price, prod.baseCurrency, 'YER_ADEN', store?.customRates);
+                const priceInYER = convertCurrency(prod.price, prod.baseCurrency as CurrencyCode, 'YER_ADEN', store?.customRates);
 
                 return (
                   <tr key={prod.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
@@ -779,7 +779,7 @@ export default function MerchantProductsPage() {
                     {/* Price */}
                     <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
                       <div className="flex items-center gap-1.5">
-                        <span>{formatCurrency(prod.price, prod.baseCurrency)}</span>
+                        <span>{formatCurrency(prod.price, prod.baseCurrency as CurrencyCode)}</span>
                         {prod.tags && prod.tags.includes('subscription:monthly') && (
                           <span className="text-[9px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 font-bold">
                             / شهرياً 🔄
@@ -793,7 +793,7 @@ export default function MerchantProductsPage() {
                       </div>
                       {prod.comparePrice && (
                         <span className="block text-[10px] line-through text-slate-400 font-normal">
-                          {formatCurrency(prod.comparePrice, prod.baseCurrency)}
+                          {formatCurrency(prod.comparePrice, prod.baseCurrency as CurrencyCode)}
                         </span>
                       )}
                     </td>
@@ -807,7 +807,7 @@ export default function MerchantProductsPage() {
                     {isServiceStore ? (
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-emerald-600 dark:text-emerald-400 font-mono text-xs">
-                          {formatCurrency(productPerformanceMap[prod.id]?.totalRevenue || 0, prod.baseCurrency)}
+                          {formatCurrency(productPerformanceMap[prod.id]?.totalRevenue || 0, prod.baseCurrency as CurrencyCode)}
                         </div>
                         <div className="text-[10px] text-slate-500 font-medium mt-0.5">
                           {(productPerformanceMap[prod.id]?.count || 0) > 0 

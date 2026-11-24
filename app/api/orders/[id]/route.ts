@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth, requireStoreOwner } from '@/app/actions/auth';
+import { getCurrentCustomerAction } from '@/app/actions/customer-auth';
 
-// GET /api/orders/[id]
+// GET /api/orders/[id] - Protected: owner, admin, or matching customer/phone
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
     const { id } = params;
+    const { searchParams } = new URL(request.url);
+    const phoneParam = searchParams.get('phone');
 
     const order = await prisma.order.findFirst({
       where: {
@@ -17,6 +21,29 @@ export async function GET(
 
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    let authorized = false;
+    try {
+      await requireStoreOwner(order.storeId);
+      authorized = true;
+    } catch {}
+
+    if (!authorized) {
+      const customer = await getCurrentCustomerAction();
+      if (customer && order.customerId && customer.customerId === order.customerId) {
+        authorized = true;
+      } else if (phoneParam && order.customerPhone) {
+        const cleanQuery = phoneParam.replace(/[^0-9]/g, '');
+        const cleanOrderPhone = order.customerPhone.replace(/[^0-9]/g, '');
+        if (cleanQuery.length >= 6 && cleanOrderPhone.endsWith(cleanQuery)) {
+          authorized = true;
+        }
+      }
+    }
+
+    if (!authorized) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     return NextResponse.json({
@@ -29,15 +56,31 @@ export async function GET(
   }
 }
 
-// PATCH /api/orders/[id] - Update status or verify payment proof
+// PATCH /api/orders/[id] - Update status or verify payment proof (Store Owner / Super Admin only)
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
-    const body = await request.json();
+    try {
+      await requireAuth();
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
+    const { id } = params;
+    const existing = await prisma.order.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    try {
+      await requireStoreOwner(existing.storeId);
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const body = await request.json();
     const dataToUpdate: any = {};
     if (body.status !== undefined) dataToUpdate.status = body.status;
     if (body.paymentProofStatus !== undefined) {

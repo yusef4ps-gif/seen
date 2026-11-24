@@ -149,7 +149,18 @@ export default function MerchantNotificationsPage() {
             }
             const remaining = Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
 
-            if (data.storeDetails.planStatus === 'trial' || data.storeDetails.planStatus === 'pending_approval') {
+            if (data.storeDetails.planStatus === 'expired' || (remaining <= 0 && data.storeDetails.planStatus !== 'active' && data.storeDetails.planStatus !== 'suspended')) {
+              list.push({
+                id: `sub-expired`,
+                category: 'system',
+                type: 'danger',
+                title: 'تنبيه: انتهت الفترة التجريبية',
+                message: `انتهت الفترة التجريبية لمتجرك. للاستمرار في استقبال الطلبات يرجى تجديد أو ترقية باقتك الآن.`,
+                time: 'عاجل',
+                rawDate: new Date(),
+                link: `/merchant/${slug}/subscription`,
+              });
+            } else if (data.storeDetails.planStatus === 'trial' || data.storeDetails.planStatus === 'pending_approval') {
               if (remaining <= 3 && remaining > 0) {
                 list.push({
                   id: `sub-trial-${remaining}`,
@@ -158,17 +169,6 @@ export default function MerchantNotificationsPage() {
                   title: 'تنبيه باقة المنصة التجريبية',
                   message: `تبقى ${remaining} أيام على انتهاء الفترة التجريبية المجانية. يرجى ترقية باقتك لضمان عدم توقف المتجر.`,
                   time: 'تنبيه اشتراك',
-                  rawDate: new Date(),
-                  link: `/merchant/${slug}/subscription`,
-                });
-              } else if (remaining <= 0 && data.storeDetails.planStatus === 'expired') {
-                list.push({
-                  id: `sub-expired`,
-                  category: 'system',
-                  type: 'danger',
-                  title: 'تنبيه: انتهت الفترة التجريبية',
-                  message: `انتهت الفترة التجريبية لمتجرك. للاستمرار في استقبال الطلبات يرجى تجديد أو ترقية باقتك الآن.`,
-                  time: 'عاجل',
                   rawDate: new Date(),
                   link: `/merchant/${slug}/subscription`,
                 });

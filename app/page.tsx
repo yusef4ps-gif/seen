@@ -11,7 +11,7 @@ import {
   Lock, MessageCircle, Bot, Zap, Crown, Rocket, Brush, 
   Database, Code2, GraduationCap, ChevronRight, HelpCircle, 
   CheckCircle2, Building2, Package, Layers, Search, MapPin, Phone, Mail, 
-  Clock, Facebook, Youtube, Instagram, Twitter, Linkedin, User
+  Clock, Facebook, Youtube, Instagram, Twitter, Linkedin, User, X
 } from 'lucide-react';
 import { storeEngine } from '@/lib/store-engine';
 import { Store, SubscriptionPlan, PlatformStats, AVAILABLE_FEATURES } from '@/lib/types';
@@ -31,6 +31,7 @@ export default function HomePage() {
   const [quizStep1, setQuizStep1] = useState<'growing' | 'scale' | null>(null);
   const [quizStep2, setQuizStep2] = useState<'essentials' | 'growth' | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [activeInfoModal, setActiveInfoModal] = useState<'terms' | 'privacy' | 'returns' | 'accessibility' | 'about' | 'contact' | 'faq' | null>(null);
 
 
 
@@ -978,18 +979,18 @@ export default function HomePage() {
             <div className="space-y-4">
               <div className="font-black text-slate-900 dark:text-white mb-2">تعلم</div>
               <ul className="space-y-3 text-sm">
-                <li><Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">المدونة</Link></li>
-                <li><Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">الأسئلة الشائعة</Link></li>
-                <li><Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">مركز المساعدة</Link></li>
+                <li><Link href="/#features" className="text-slate-500 hover:text-brand-600 transition-colors">مميزات المنصة</Link></li>
+                <li><button type="button" onClick={() => setActiveInfoModal('faq')} className="text-slate-500 hover:text-brand-600 transition-colors">الأسئلة الشائعة</button></li>
+                <li><button type="button" onClick={() => setActiveInfoModal('contact')} className="text-slate-500 hover:text-brand-600 transition-colors">مركز المساعدة</button></li>
               </ul>
             </div>
 
             <div className="space-y-4">
               <div className="font-black text-slate-900 dark:text-white mb-2">الشركة</div>
               <ul className="space-y-3 text-sm">
-                <li><Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">من نحن</Link></li>
-                <li><Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">تواصل معنا</Link></li>
-                <li><Link href="#" className="text-slate-500 hover:text-brand-600 transition-colors">انضم لفريقنا</Link></li>
+                <li><button type="button" onClick={() => setActiveInfoModal('about')} className="text-slate-500 hover:text-brand-600 transition-colors">من نحن</button></li>
+                <li><button type="button" onClick={() => setActiveInfoModal('contact')} className="text-slate-500 hover:text-brand-600 transition-colors">تواصل معنا</button></li>
+                <li><Link href="/create-store" className="text-slate-500 hover:text-brand-600 transition-colors">ابدأ متجرك الآن</Link></li>
               </ul>
             </div>
 
@@ -1040,21 +1041,40 @@ export default function HomePage() {
               <div className="flex items-center gap-3">
                 <span className="font-bold text-slate-900 dark:text-white">تابعنا</span>
                 <div className="flex gap-2">
-                  <Link href={t('footer_social_linkedin', '#')} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-brand-50 hover:text-brand-600 transition-colors">
-                    <Linkedin className="w-4 h-4" />
-                  </Link>
-                  <Link href={t('footer_social_facebook', '#')} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-brand-50 hover:text-brand-600 transition-colors">
-                    <Facebook className="w-4 h-4" />
-                  </Link>
-                  <Link href={t('footer_social_youtube', '#')} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-brand-50 hover:text-brand-600 transition-colors">
-                    <Youtube className="w-4 h-4" />
-                  </Link>
-                  <Link href={t('footer_social_x', '#')} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-brand-50 hover:text-brand-600 transition-colors">
-                    <Twitter className="w-4 h-4" />
-                  </Link>
-                  <Link href={t('footer_social_instagram', '#')} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-brand-50 hover:text-brand-600 transition-colors">
-                    <Instagram className="w-4 h-4" />
-                  </Link>
+                  {[
+                    { key: 'footer_social_linkedin', icon: Linkedin, label: 'LinkedIn' },
+                    { key: 'footer_social_facebook', icon: Facebook, label: 'Facebook' },
+                    { key: 'footer_social_youtube', icon: Youtube, label: 'YouTube' },
+                    { key: 'footer_social_x', icon: Twitter, label: 'X' },
+                    { key: 'footer_social_instagram', icon: Instagram, label: 'Instagram' },
+                  ].map(({ key, icon: IconComp, label }) => {
+                    const href = t(key, '');
+                    if (!href || href === '#') {
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setActiveInfoModal('contact')}
+                          aria-label={label}
+                          className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-brand-50 hover:text-brand-600 transition-colors"
+                        >
+                          <IconComp className="w-4 h-4" />
+                        </button>
+                      );
+                    }
+                    return (
+                      <a
+                        key={key}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={label}
+                        className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-brand-50 hover:text-brand-600 transition-colors"
+                      >
+                        <IconComp className="w-4 h-4" />
+                      </a>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -1064,16 +1084,96 @@ export default function HomePage() {
           {/* Bottom Copyright & Legal Links */}
           <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
             <div className="flex gap-4 sm:gap-6 flex-wrap justify-center">
-              <Link href="#" className="hover:text-brand-600">الشروط والأحكام</Link>
-              <Link href="#" className="hover:text-brand-600">الخصوصية</Link>
-              <Link href="#" className="hover:text-brand-600">سياسة الاسترداد</Link>
-              <Link href="#" className="hover:text-brand-600">إمكانية الوصول</Link>
+              <button type="button" onClick={() => setActiveInfoModal('terms')} className="hover:text-brand-600 transition-colors">الشروط والأحكام</button>
+              <button type="button" onClick={() => setActiveInfoModal('privacy')} className="hover:text-brand-600 transition-colors">الخصوصية</button>
+              <button type="button" onClick={() => setActiveInfoModal('returns')} className="hover:text-brand-600 transition-colors">سياسة الاسترداد</button>
+              <button type="button" onClick={() => setActiveInfoModal('accessibility')} className="hover:text-brand-600 transition-colors">إمكانية الوصول</button>
             </div>
             <div>جميع الحقوق محفوظة لمنصة سِين © 2026</div>
           </div>
 
         </div>
       </footer>
+
+      {activeInfoModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setActiveInfoModal(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden text-right"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-base font-black text-slate-900 dark:text-white">
+                {activeInfoModal === 'terms' && 'الشروط والأحكام'}
+                {activeInfoModal === 'privacy' && 'سياسة الخصوصية وحماية البيانات'}
+                {activeInfoModal === 'returns' && 'سياسة الاشتراكات والاسترداد'}
+                {activeInfoModal === 'accessibility' && 'معايير إمكانية الوصول'}
+                {activeInfoModal === 'about' && 'عن منصة سِين (SEEN)'}
+                {activeInfoModal === 'contact' && 'التواصل ومركز المساعدة'}
+                {activeInfoModal === 'faq' && 'الأسئلة الشائعة'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setActiveInfoModal(null)}
+                aria-label="إغلاق"
+                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 text-sm text-slate-600 dark:text-slate-300 leading-relaxed space-y-3">
+              {activeInfoModal === 'terms' && (
+                <p>باستخدامك لمنصة سِين فإنك توافق على إدارة متجرك ومنتجاتك بما يتوافق مع القوانين المحلية والأنظمة التجارية، مع تحمّل كل متجر مسؤولية منتجاته وسياسات التسليم الخاصة به.</p>
+              )}
+              {activeInfoModal === 'privacy' && (
+                <p>تلتزم منصة سِين بحماية بيانات التجار والعملاء باستخدام جلسات موقّعة ومشفّرة وعدم مشاركة أي بيانات اتصال أو مبيعات مع أطراف خارجية دون إذن.</p>
+              )}
+              {activeInfoModal === 'returns' && (
+                <p>تتوفر فترة تجربة مجانية لمدة 14 يوماً قبل الترقية لأي باقة مدفوعة. تخضع طلبات استرداد أو إلغاء المتاجر لسياسة كل متجر المعروضة للعميل.</p>
+              )}
+              {activeInfoModal === 'accessibility' && (
+                <p>تدعم واجهات سِين العرض باللغة العربية (RTL) والتنقل المتجاوب على مختلف الشاشات وتباين الألوان العالي لضمان تجربة استخدام مريحة للجميع.</p>
+              )}
+              {activeInfoModal === 'about' && (
+                <p>سِين منصة تجارة إلكترونية وخدمات سحابية مصممة خصيصاً للسوق اليمني والإقليمي، توفر ربطاً عملياً مع المحافظ المحلية وأسعار الصرف والطلبات عبر واتساب.</p>
+              )}
+              {activeInfoModal === 'contact' && (
+                <div className="space-y-2">
+                  <p>فريق الدعم الفني متاح من السبت إلى الأربعاء لمساعدة التجار في إعداد المتاجر وتفعيل الباقات:</p>
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/70 text-xs font-bold space-y-1">
+                    <div>الهاتف: <span dir="ltr">{t('footer_phone_1', '+967 779 500 088')}</span></div>
+                    <div>البريد: <span dir="ltr">{t('footer_email', 'info@seen.ye')}</span></div>
+                    <div>الفرع: {t('footer_branch_name', 'فرع صنعاء')}</div>
+                  </div>
+                </div>
+              )}
+              {activeInfoModal === 'faq' && (
+                <div className="space-y-2 text-xs">
+                  <p><strong>كم مدة التجربة المجانية؟</strong> 14 يوماً كاملة لتجربة جميع الإعدادات وإضافة المنتجات أو الخدمات.</p>
+                  <p><strong>هل تدعم المنصة الدفع المحلي؟</strong> نعم، تدعم الكريمي، القطيبي، جوالي، ون كاش، فلوسك، والتحويل البنكي والدفع عند الاستلام.</p>
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+              <Link
+                href="/create-store"
+                className="px-4 py-2 rounded-xl bg-brand-600 text-white text-xs font-bold hover:bg-brand-700 transition-colors"
+              >
+                أنشئ متجرك الآن
+              </Link>
+              <button
+                type="button"
+                onClick={() => setActiveInfoModal(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

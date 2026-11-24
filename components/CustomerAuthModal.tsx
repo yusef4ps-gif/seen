@@ -7,7 +7,7 @@ import {
   loginCustomerAction, 
   customerForgotPasswordAction,
   sendCustomerVerificationCodeAction,
-  setCustomerAuthCookieAction
+  verifyCustomerOtpAction
 } from '@/app/actions/customer-auth';
 
 interface Props {
@@ -31,7 +31,7 @@ export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess 
   
   // OTP State
   const [showOTP, setShowOTP] = useState(false);
-  const [expectedOtp, setExpectedOtp] = useState('');
+  const [otpTarget, setOtpTarget] = useState('');
   const [otpInput, setOtpInput] = useState(['', '', '', '']);
   const [sessionData, setSessionData] = useState<any>(null);
   
@@ -49,7 +49,7 @@ export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess 
       setRegisterPhone('');
       setPassword('');
       setShowOTP(false);
-      setExpectedOtp('');
+      setOtpTarget('');
       setOtpInput(['', '', '', '']);
       setSessionData(null);
     }
@@ -76,12 +76,12 @@ export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess 
 
     if (res.success && res.customer) {
       setSessionData(res.customer);
-      // Send OTP
+      const target = mode === 'register' ? (registerEmail || registerPhone) : emailOrPhone;
       const customerName = mode === 'register' ? name : (res.customer.name || 'عميل');
-      const otpRes = await sendCustomerVerificationCodeAction(mode === 'register' ? (registerEmail || registerPhone) : emailOrPhone, customerName);
+      const otpRes = await sendCustomerVerificationCodeAction(target, customerName);
       
       if (otpRes.success) {
-        setExpectedOtp(otpRes.code!);
+        setOtpTarget(target);
         setShowOTP(true);
       } else {
         setError(otpRes.error || 'فشل إرسال كود التحقق');
@@ -117,29 +117,28 @@ export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess 
       setError('يرجى إدخال كود التحقق كاملاً');
       return;
     }
-    if (code !== expectedOtp && expectedOtp !== '0000') { // 0000 backdoor for dev if needed, or strictly match expectedOtp
-      setError('كود التحقق غير صحيح');
+    if (!sessionData?.customerId || !otpTarget) {
+      setError('انتهت جلسة التحقق، يرجى المحاولة مجدداً');
       return;
     }
 
     setLoading(true);
     setError('');
     
-    // Set cookie
-    const finalRes = await setCustomerAuthCookieAction(sessionData);
+    const finalRes = await verifyCustomerOtpAction(otpTarget, code, sessionData.customerId);
     setLoading(false);
     
     if (finalRes.success) {
       if (typeof window !== 'undefined') {
         try {
-          localStorage.setItem(`seen_customer_${storeId}`, JSON.stringify(sessionData));
+          localStorage.setItem(`seen_customer_${storeId}`, JSON.stringify(finalRes.customer || sessionData));
         } catch (e) {
           console.error('Failed to save customer to localStorage', e);
         }
       }
       onSuccess();
     } else {
-      setError('حدث خطأ أثناء تسجيل الدخول');
+      setError(finalRes.error || 'كود التحقق غير صحيح');
     }
   };
 

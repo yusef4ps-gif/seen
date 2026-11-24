@@ -187,7 +187,7 @@ export default function AdminUsersPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link
-              href="/admin"
+              href="/seenayhq7x"
               className="p-2.5 rounded-xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 text-slate-600 hover:text-brand-600 shadow-xs"
             >
               <ArrowLeft className="w-4 h-4 rotate-180" />

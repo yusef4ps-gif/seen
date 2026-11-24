@@ -91,10 +91,11 @@ export default function LegalPagesModal({
 
         {/* Content */}
         <div 
-          className="p-6 sm:p-8 overflow-y-auto flex-1 custom-scrollbar text-sm leading-relaxed text-slate-700 dark:text-slate-300 prose prose-sm max-w-none dark:prose-invert prose-headings:text-brand-700 dark:prose-headings:text-brand-400 prose-p:leading-relaxed"
+          className="p-6 sm:p-8 overflow-y-auto flex-1 custom-scrollbar text-sm leading-relaxed text-slate-700 dark:text-slate-300 prose prose-sm max-w-none dark:prose-invert prose-headings:text-brand-700 dark:prose-headings:text-brand-400 prose-p:leading-relaxed whitespace-pre-wrap"
           style={{ fontFamily: 'inherit' }}
-          dangerouslySetInnerHTML={{ __html: activePage.content.replace(/\n/g, '<br />') }}
-        />
+        >
+          {activePage.content}
+        </div>
         
         {/* Footer */}
         <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-center">

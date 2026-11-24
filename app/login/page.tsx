@@ -7,7 +7,16 @@ import {
   Lock, Mail, Phone, User as UserIcon, CheckCircle2, 
   AlertCircle, Eye, EyeOff, ArrowRight, ShieldCheck, MapPin, Globe2
 } from 'lucide-react';
-import { loginMerchantAction, registerMerchantAction, setAuthCookieAction, sendVerificationCodeAction, sendLoginVerificationCodeAction } from '@/app/actions/auth';
+import {
+  loginMerchantAction,
+  registerMerchantAction,
+  sendVerificationCodeAction,
+  sendLoginVerificationCodeAction,
+  completeMerchantOtpLoginAction,
+  switchStoreAction,
+  sendMerchantPasswordResetOtpAction,
+  resetMerchantPasswordWithOtpAction,
+} from '@/app/actions/auth';
 import BrandLogo from '@/components/BrandLogo';
 
 declare global {
@@ -76,7 +85,8 @@ function LoginFormContent() {
   // Verification step state
   const [verificationStep, setVerificationStep] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
-  const [expectedCode, setExpectedCode] = useState('');
+  const [resetMode, setResetMode] = useState<'none' | 'otp'>('none');
+  const [resetNewPassword, setResetNewPassword] = useState('');
 
   // Processing state
   const [isLoading, setIsLoading] = useState(false);
@@ -93,9 +103,11 @@ function LoginFormContent() {
   const handleSelectStore = async (st: any) => {
     setIsLoading(true);
     setErrorMessage('');
-    const result = pendingLoginData;
-    if (result && result.userId && result.role) {
-      await setAuthCookieAction('temp-token', result.userId, result.role, st.id);
+    const sw = await switchStoreAction(st.id);
+    if (!sw.success) {
+      setIsLoading(false);
+      setErrorMessage(sw.error || 'تعذر فتح المتجر.');
+      return;
     }
     setSuccessMessage(`مرحباً بك! جاري الدخول إلى لوحة ${st.name}...`);
     setTimeout(() => {
@@ -111,6 +123,22 @@ function LoginFormContent() {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+
+    if (resetMode === 'otp') {
+      setIsLoading(true);
+      const resetRes = await resetMerchantPasswordWithOtpAction(loginIdentifier, verificationCode, resetNewPassword);
+      setIsLoading(false);
+      if (!resetRes.success) {
+        setErrorMessage(resetRes.error || 'تعذر إعادة تعيين كلمة المرور.');
+        return;
+      }
+      setResetMode('none');
+      setVerificationCode('');
+      setResetNewPassword('');
+      setLoginPassword('');
+      setSuccessMessage('تم تحديث كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول.');
+      return;
+    }
     
     if (!verificationStep) {
       setIsLoading(true);
@@ -125,7 +153,7 @@ function LoginFormContent() {
         return;
       }
       
-      // Send OTP to email
+      // Send OTP to email (stored hashed/DB-backed server-side)
       setIsLoading(true);
       const otpRes = await sendLoginVerificationCodeAction(result.email!, result.name!);
       setIsLoading(false);
@@ -136,40 +164,37 @@ function LoginFormContent() {
       }
 
       setPendingLoginData(result);
-      setExpectedCode(otpRes.code!);
       setVerificationStep(true);
       setSuccessMessage('تم التحقق من الحساب بنجاح. تم إرسال كود الدخول إلى بريدك الإلكتروني.');
       return;
     }
 
-    // Verification Step
-    if (verificationCode !== expectedCode) {
-      setErrorMessage('كود التحقق خطأ.');
+    // Server-side OTP verification + signed cookie issuance
+    setIsLoading(true);
+    const otpComplete = await completeMerchantOtpLoginAction(loginIdentifier, verificationCode);
+    setIsLoading(false);
+
+    if (!otpComplete.success) {
+      setErrorMessage(otpComplete.error || 'كود التحقق خطأ.');
       return;
     }
 
-    const result = pendingLoginData;
-
     // Check if merchant owns multiple stores
-    if (result?.stores && result.stores.length > 1) {
+    if (otpComplete.stores && otpComplete.stores.length > 1) {
       setVerificationStep(false);
-      setMultipleStores(result.stores);
+      setMultipleStores(otpComplete.stores);
       setSuccessMessage('تم التحقق بنجاح! يرجى اختيار المتجر للمتابعة.');
       return;
     }
 
     setSuccessMessage('تم تسجيل الدخول بنجاح! جاري التوجيه...');
-    const chosenStoreId = result?.stores?.[0]?.id || result?.storeId;
-    const chosenSlug = result?.stores?.[0]?.slug || result?.slug;
-    if (result?.userId && result?.role) {
-      await setAuthCookieAction('temp-token', result.userId, result.role, chosenStoreId || undefined);
-    }
+    const chosenSlug = otpComplete.slug;
     setTimeout(() => {
       if (redirectParam) {
           router.push(redirectParam);
       } else if (chosenSlug) {
           router.push(`/merchant/${chosenSlug}`);
-      } else if (result?.role === 'STORE_OWNER') {
+      } else if (otpComplete.role === 'STORE_OWNER') {
           router.push('/create-store');
       } else {
           router.push('/profile');
@@ -197,15 +222,8 @@ function LoginFormContent() {
         return;
       }
 
-      setExpectedCode(res.code!);
       setVerificationStep(true);
       setSuccessMessage('تم إرسال كود التحقق إلى بريدك الإلكتروني بنجاح، يرجى إدخاله أدناه.');
-      return;
-    }
-
-    // We are in verification step
-    if (verificationCode !== expectedCode) {
-      setErrorMessage('كود التحقق خطأ.');
       return;
     }
 
@@ -217,7 +235,8 @@ function LoginFormContent() {
       email: regEmail,
       password: regPassword,
       country: regCountry,
-      city: regCity
+      city: regCity,
+      otpCode: verificationCode,
     });
 
     setIsLoading(false);
@@ -226,9 +245,6 @@ function LoginFormContent() {
       setErrorMessage(result.error || 'حدث خطأ أثناء إنشاء الحساب.');
     } else {
       setSuccessMessage('تم إنشاء حسابك ومتجرك بنجاح! جاري توجيهك...');
-      if (result.userId && result.role) {
-        await setAuthCookieAction('temp-token', result.userId, result.role, result.storeId || undefined);
-      }
       setTimeout(() => {
         if (redirectParam) {
            router.push(redirectParam);
@@ -490,18 +506,69 @@ function LoginFormContent() {
                 <span>{isLoading ? 'جاري التحقق...' : 'تسجيل الدخول 🚀'}</span>
               </button>
 
-              {loginAttempts >= 2 && (
-                <div className="pt-2">
+              {resetMode === 'none' && (
+                <div className="pt-1">
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
+                      if (!loginIdentifier.trim()) {
+                        setErrorMessage('يرجى كتابة بريدك الإلكتروني أولاً.');
+                        return;
+                      }
                       setErrorMessage('');
-                      setSuccessMessage('تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني. يرجى التحقق من صندوق الوارد.');
+                      setIsLoading(true);
+                      const r = await sendMerchantPasswordResetOtpAction(loginIdentifier);
+                      setIsLoading(false);
+                      if (r.success) {
+                        setResetMode('otp');
+                        setSuccessMessage('تم إرسال رمز استعادة كلمة المرور إلى بريدك الإلكتروني.');
+                      } else {
+                        setErrorMessage(r.error || 'تعذر إرسال رمز الاستعادة.');
+                      }
                     }}
                     className="w-full text-center text-xs font-bold text-brand-600 hover:text-brand-700 hover:underline transition-colors"
                   >
-                    هل نسيت كلمة المرور؟
+                    هل نسيت كلمة المرور؟ (استعادة عبر البريد)
                   </button>
+                </div>
+              )}
+
+              {resetMode === 'otp' && (
+                <div className="p-4 rounded-2xl bg-brand-50/70 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 space-y-3">
+                  <div className="text-xs font-bold text-brand-700 dark:text-brand-300">تعيين كلمة مرور جديدة:</div>
+                  <input
+                    type="text"
+                    required
+                    placeholder="أدخل رمز الاستعادة المرسل لبريدك"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                    className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-center"
+                  />
+                  <input
+                    type="password"
+                    required
+                    minLength={4}
+                    placeholder="كلمة المرور الجديدة"
+                    value={resetNewPassword}
+                    onChange={(e) => setResetNewPassword(e.target.value)}
+                    className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setResetMode('none')}
+                      className="flex-1 py-2 text-xs font-bold rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="flex-1 py-2 text-xs font-bold rounded-xl bg-brand-600 text-white"
+                    >
+                      حفظ كلمة المرور
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -633,7 +700,7 @@ function LoginFormContent() {
                     disabled={isLoading}
                     className="w-full py-3.5 rounded-2xl bg-[#0f2b48] hover:bg-[#143d67] text-white text-xs sm:text-sm font-bold shadow-lg shadow-[#0f2b48]/25 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    <span>{isLoading ? 'جاري الإرسال...' : 'إنشاء المتجر 🛍️'}</span>
+                    <span>{isLoading ? 'جاري الإرسال...' : 'إنشاء حساب العميل ✨'}</span>
                   </button>
             </form>
           )}

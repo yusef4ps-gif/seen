@@ -1,1 +1,5 @@
-﻿import { NextResponse } from 'next/server'; import prisma from '@/lib/prisma'; export async function POST(req: any) { const { legalPages } = await req.json(); const store = await prisma.store.findFirst({ where: { slug: 'store-3jgnz' } }); const config = store?.themeConfig ? JSON.parse(store.themeConfig) : {}; config.legalPages = legalPages; await prisma.store.update({ where: { id: store?.id || '' }, data: { themeConfig: JSON.stringify(config) }}); return NextResponse.json({ success: true, themeConfig: config }); }
+import { NextResponse } from 'next/server';
+
+export async function POST() {
+  return NextResponse.json({ error: 'Not found' }, { status: 404 });
+}
