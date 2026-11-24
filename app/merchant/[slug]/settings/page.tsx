@@ -285,8 +285,6 @@ export default function MerchantSettingsPage() {
     init();
   }, [slug]);
 
-  if (!store) return null;
-
   const isServiceStore = (() => {
     if (storeType === 'SERVICE' || storeType === 'DIGITAL') return true;
     try {
@@ -316,6 +314,15 @@ export default function MerchantSettingsPage() {
       setActiveTab('general');
     }
   }, [isServiceStore, activeTab]);
+
+  if (!store) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3 text-slate-500">
+        <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs font-bold">جاري تحميل إعدادات المتجر والمحافظ...</span>
+      </div>
+    );
+  }
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     if (isSaving) return;
