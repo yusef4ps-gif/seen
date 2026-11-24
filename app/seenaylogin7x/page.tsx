@@ -23,8 +23,15 @@ export default function AdminLoginPage() {
   const [siteKey, setSiteKey] = useState<string | null>(null);
 
   useEffect(() => {
-    // Only enable Turnstile in production to avoid localhost hostname mismatch issues
-    if (process.env.NODE_ENV !== 'development' && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
+    // Only enable Turnstile on live production domain (not on localhost or local IPs) to avoid hostname mismatch
+    const isLocalhost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.startsWith('192.168.') ||
+      window.location.hostname.endsWith('.local')
+    );
+
+    if (!isLocalhost && process.env.NODE_ENV !== 'development' && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
       setSiteKey(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
     }
   }, []);
