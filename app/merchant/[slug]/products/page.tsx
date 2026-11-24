@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { 
   Package, Plus, Search, Filter, Edit, Trash2, Sparkles, 
   Bot, Image as ImageIcon, AlertTriangle, Check, X, Layers, Eye, DollarSign, Download, FileSpreadsheet, Database, RefreshCw,
-  Briefcase, FileText, UploadCloud, CalendarCheck
+  Briefcase, FileText, UploadCloud, CalendarCheck, ChevronLeft, ChevronRight, Minus
 } from 'lucide-react';
 import { formatCurrency, convertCurrency } from '@/lib/currency-engine';
 import { Store, Product, ProductVariant } from '@/lib/types';
@@ -21,6 +21,8 @@ import Papa from 'papaparse';
 import { logActivityAction } from '@/app/actions/activity';
 import { authEngine } from '@/lib/auth-engine';
 import toast from 'react-hot-toast';
+
+const SESSIONS_PRESETS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 24, 30];
 
 export default function MerchantProductsPage() {
   const params = useParams();
@@ -262,6 +264,25 @@ export default function MerchantProductsPage() {
   const [sessionDuration, setSessionDuration] = useState<number>(45);
   const [sessionDurationUnit, setSessionDurationUnit] = useState<'minutes' | 'hours'>('minutes');
   const [consultationDelivery, setConsultationDelivery] = useState<'online' | 'phone' | 'in_person'>('online');
+  const sessionsCarouselRef = useRef<HTMLDivElement>(null);
+
+  const handleSelectSessionCount = (cnt: number) => {
+    const safeCount = Math.max(1, cnt);
+    setSessionsCount(safeCount);
+    setTimeout(() => {
+      const el = document.getElementById(`session-pill-${safeCount}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }, 40);
+  };
+
+  const scrollSessions = (direction: 'left' | 'right') => {
+    if (sessionsCarouselRef.current) {
+      const scrollAmount = direction === 'left' ? -180 : 180;
+      sessionsCarouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   // AI loading state
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
@@ -475,7 +496,7 @@ export default function MerchantProductsPage() {
           isFeatured,
           status: 'active',
           tags: productTags,
-          variants: isServiceStore ? [] : variants,
+          variants: (isServiceStore || isConsultation) ? [] : variants,
         });
 
         if (!res.success) {
@@ -516,7 +537,7 @@ export default function MerchantProductsPage() {
           isFeatured,
           status: 'active',
           tags: productTags,
-          variants: isServiceStore ? [] : variants,
+          variants: (isServiceStore || isConsultation) ? [] : variants,
         });
 
         if (!res.success) {
@@ -932,60 +953,133 @@ export default function MerchantProductsPage() {
 
                   {isConsultation && (
                     <div className="space-y-3.5 animate-fadeIn">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
-                            عدد الجلسات للاستشارة:
+                      {/* عدد الجلسات - شريط تفاعلي منزلق سلس مع تحريك تلقائي وتلاشي أنيق */}
+                      <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/60 shadow-xs space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <span>عدد الجلسات للاستشارة:</span>
+                            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-xs font-black font-mono">
+                              {sessionsCount} {sessionsCount === 1 ? 'جلسة' : sessionsCount === 2 ? 'جلستان' : sessionsCount <= 10 ? 'جلسات' : 'جلسة'}
+                            </span>
                           </label>
-                          <div className="flex items-center gap-2">
+
+                          {/* Stepper Input + and - */}
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              disabled={sessionsCount <= 1}
+                              onClick={() => handleSelectSessionCount(sessionsCount - 1)}
+                              className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-sm disabled:opacity-40 transition-all active:scale-95"
+                              title="إنقاص جلسة"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
                             <input
                               type="number"
                               min={1}
                               max={100}
                               value={sessionsCount}
-                              onChange={(e) => setSessionsCount(Math.max(1, parseInt(e.target.value) || 1))}
-                              className="w-20 px-3 py-2 text-xs font-bold rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500 text-center font-mono"
+                              onChange={(e) => handleSelectSessionCount(parseInt(e.target.value) || 1)}
+                              className="w-14 py-1 text-xs font-bold rounded-lg border border-amber-300 dark:border-amber-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500 text-center font-mono"
                             />
-                            <div className="flex items-center gap-1">
-                              {[1, 2, 3, 5].map((cnt) => (
-                                <button
-                                  key={cnt}
-                                  type="button"
-                                  onClick={() => setSessionsCount(cnt)}
-                                  className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${
-                                    sessionsCount === cnt
-                                      ? 'bg-amber-600 text-white shadow-xs'
-                                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                                  }`}
-                                >
-                                  {cnt} {cnt === 1 ? 'جلسة' : 'جلسات'}
-                                </button>
-                              ))}
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleSelectSessionCount(sessionsCount + 1)}
+                              className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-sm transition-all active:scale-95"
+                              title="زيادة جلسة"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
 
-                        <div>
-                          <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                        {/* شريط الجلسات القابل للسحب والتمرير السلس */}
+                        <div className="relative flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => scrollSessions('right')}
+                            className="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 hover:text-amber-700 transition-all shrink-0 active:scale-95"
+                            title="السابق"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+
+                          <div 
+                            ref={sessionsCarouselRef}
+                            className="flex-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-1 px-1.5"
+                            style={{
+                              maskImage: 'linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent)',
+                              WebkitMaskImage: 'linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent)'
+                            }}
+                          >
+                            {SESSIONS_PRESETS.map((cnt) => {
+                              const isSelected = sessionsCount === cnt;
+                              return (
+                                <button
+                                  key={cnt}
+                                  id={`session-pill-${cnt}`}
+                                  type="button"
+                                  onClick={() => handleSelectSessionCount(cnt)}
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1 active:scale-95 ${
+                                    isSelected
+                                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md shadow-amber-500/25 ring-2 ring-amber-400 scale-105'
+                                      : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-amber-400'
+                                  }`}
+                                >
+                                  <span className="font-mono text-sm">{cnt}</span>
+                                  <span className="text-[11px] font-medium">{cnt === 1 ? 'جلسة' : cnt === 2 ? 'جلستان' : cnt <= 10 ? 'جلسات' : 'جلسة'}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => scrollSessions('left')}
+                            className="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 hover:text-amber-700 transition-all shrink-0 active:scale-95"
+                            title="التالي"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* مدة كل جلسة مع خيارات سريعة */}
+                      <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/60 shadow-xs space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
                             مدة كل جلسة:
                           </label>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              disabled={sessionDuration <= 5}
+                              onClick={() => setSessionDuration(Math.max(5, sessionDuration - (sessionDurationUnit === 'hours' ? 1 : 15)))}
+                              className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-sm disabled:opacity-40 transition-all active:scale-95"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
                             <input
                               type="number"
                               min={1}
                               max={300}
                               value={sessionDuration}
                               onChange={(e) => setSessionDuration(Math.max(1, parseInt(e.target.value) || 1))}
-                              className="w-20 px-3 py-2 text-xs font-bold rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500 text-center font-mono"
+                              className="w-14 py-1 text-xs font-bold rounded-lg border border-amber-300 dark:border-amber-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500 text-center font-mono"
                             />
-                            <div className="grid grid-cols-2 gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-amber-200 dark:border-amber-800/50">
+                            <button
+                              type="button"
+                              onClick={() => setSessionDuration(sessionDuration + (sessionDurationUnit === 'hours' ? 1 : 15))}
+                              className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-sm transition-all active:scale-95"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                            <div className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
                               <button
                                 type="button"
                                 onClick={() => setSessionDurationUnit('minutes')}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                                  sessionDurationUnit === 'minutes'
-                                    ? 'bg-amber-600 text-white'
-                                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                                className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all ${
+                                  sessionDurationUnit === 'minutes' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                                 }`}
                               >
                                 بالدقيقة
@@ -993,16 +1087,41 @@ export default function MerchantProductsPage() {
                               <button
                                 type="button"
                                 onClick={() => setSessionDurationUnit('hours')}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                                  sessionDurationUnit === 'hours'
-                                    ? 'bg-amber-600 text-white'
-                                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                                className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all ${
+                                  sessionDurationUnit === 'hours' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                                 }`}
                               >
                                 بالساعة
                               </button>
                             </div>
                           </div>
+                        </div>
+
+                        {/* خيارات مدة سريعة */}
+                        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                          {[
+                            { label: '30 دقيقة', val: 30, unit: 'minutes' },
+                            { label: '45 دقيقة', val: 45, unit: 'minutes' },
+                            { label: '60 دقيقة (ساعة)', val: 60, unit: 'minutes' },
+                            { label: 'ساعة ونصف (90 د)', val: 90, unit: 'minutes' },
+                            { label: 'ساعتان (120 د)', val: 2, unit: 'hours' },
+                          ].map((preset, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setSessionDuration(preset.val);
+                                setSessionDurationUnit(preset.unit as any);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition-all ${
+                                sessionDuration === preset.val && sessionDurationUnit === preset.unit
+                                  ? 'bg-amber-500 text-white shadow-xs ring-1 ring-amber-400'
+                                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-amber-300'
+                              }`}
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
                         </div>
                       </div>
 
@@ -1394,7 +1513,7 @@ export default function MerchantProductsPage() {
               )}
 
               {/* Stock and Alert Row (Only for Physical Stores) */}
-              {!isServiceStore && (
+              {!isServiceStore && !isConsultation && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -1424,66 +1543,68 @@ export default function MerchantProductsPage() {
                 </div>
               )}
 
-              {/* Variants Matrix Section */}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      خيارات المنتج والمتغيرات (المقاسات والألوان)
-                    </h4>
-                    <p className="text-[11px] text-slate-500">إضافة كميات وسعر منفصل لكل مقاس أو لون</p>
+              {/* Variants Matrix Section (Only for Physical Stores and Non-Consultations) */}
+              {!isServiceStore && !isConsultation && (
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        خيارات المنتج والمتغيرات (المقاسات والألوان)
+                      </h4>
+                      <p className="text-[11px] text-slate-500">إضافة كميات وسعر منفصل لكل مقاس أو لون</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddVariant}
+                      className="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>إضافة خيار</span>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAddVariant}
-                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>إضافة خيار</span>
-                  </button>
-                </div>
 
-                {variants.length > 0 && (
-                  <div className="space-y-2 mt-2">
-                    {variants.map((v, idx) => (
-                      <div key={v.id} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center gap-2 text-xs">
-                        <input
-                          type="text"
-                          placeholder="اسم الخيار (مثال: أزرق - XL)"
-                          value={v.name}
-                          onChange={(e) => {
-                            const updated = [...variants];
-                            updated[idx].name = e.target.value;
-                            setVariants(updated);
-                          }}
-                          className="flex-1 px-2 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700"
-                        />
-                        <div className="flex items-center gap-1 w-24">
-                          <span className="text-[10px] text-slate-400">الكمية:</span>
+                  {variants.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      {variants.map((v, idx) => (
+                        <div key={v.id} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center gap-2 text-xs">
                           <input
-                            type="number"
-                            min={0}
-                            value={v.stock}
+                            type="text"
+                            placeholder="اسم الخيار (مثال: أزرق - XL)"
+                            value={v.name}
                             onChange={(e) => {
                               const updated = [...variants];
-                              updated[idx].stock = parseInt(e.target.value) || 0;
+                              updated[idx].name = e.target.value;
                               setVariants(updated);
                             }}
-                            className="w-12 px-1.5 py-1 text-xs text-center rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700"
+                            className="flex-1 px-2 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700"
                           />
+                          <div className="flex items-center gap-1 w-24">
+                            <span className="text-[10px] text-slate-400">الكمية:</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={v.stock}
+                              onChange={(e) => {
+                                const updated = [...variants];
+                                updated[idx].stock = parseInt(e.target.value) || 0;
+                                setVariants(updated);
+                              }}
+                              className="w-12 px-1.5 py-1 text-xs text-center rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVariant(v.id)}
+                            className="p-1 text-slate-400 hover:text-red-500"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveVariant(v.id)}
-                          className="p-1 text-slate-400 hover:text-red-500"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Submit Buttons */}
               <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
