@@ -242,26 +242,43 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
           className="absolute inset-0 opacity-15 pointer-events-none" 
           style={{ backgroundImage: `radial-gradient(${primaryColor} 1px, transparent 1px)`, backgroundSize: '16px 16px' }}
         />
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 relative z-10 text-right w-full">
-          
-          <div className="flex-1 space-y-4">
+        <div className="max-w-5xl mx-auto relative z-10 text-right w-full">
+          <div className="space-y-4 max-w-2xl">
             {!hideBannerTexts && (
-              <>
-                <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white drop-shadow-md">
-                  {store.name}
-                </h1>
-
-                {profTitle && (
-                  <div className="text-sm sm:text-base font-bold flex items-center gap-2" style={{ color: primaryColor }}>
-                    <CheckCircle2 className="w-4 h-4" style={{ color: primaryColor }} />
-                    <span>{profTitle}</span>
+              <div className="flex items-center gap-4 sm:gap-5">
+                {/* Profile Avatar placed right in the corner beside the name (عند الأغبر) */}
+                <div className="relative shrink-0">
+                  <div 
+                    className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden border-2 shadow-2xl bg-slate-800 relative group"
+                    style={{ borderColor: `${primaryColor}90` }}
+                  >
+                    <img
+                      src={store.logo || (slides[0]?.image) || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80'}
+                      alt={store.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
                   </div>
-                )}
+                </div>
 
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
-                  {subtitle || store.description || 'نقدم خدمات واستشارات مهنية متخصصة بأعلى معايير الجودة والسرية والاحترافية لخدمة عملائنا الكرام.'}
-                </p>
-              </>
+                <div className="space-y-1">
+                  <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white drop-shadow-md">
+                    {store.name}
+                  </h1>
+
+                  {profTitle && (
+                    <div className="text-sm sm:text-base font-bold flex items-center gap-2" style={{ color: primaryColor }}>
+                      <CheckCircle2 className="w-4 h-4" style={{ color: primaryColor }} />
+                      <span>{profTitle}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!hideBannerTexts && (
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
+                {subtitle || store.description || 'نقدم خدمات واستشارات مهنية متخصصة بأعلى معايير الجودة والسرية والاحترافية لخدمة عملائنا الكرام.'}
+              </p>
             )}
 
             {!hideBannerButtons && (
@@ -382,22 +399,6 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
                 <span className="flex items-center gap-1.5"><Award className="w-3.5 h-3.5" style={{ color: primaryColor }} /> خبرة معتمدة</span>
               </div>
             )}
-          </div>
-
-          {/* Profile Card / Avatar */}
-          <div className="relative shrink-0">
-            <div className="w-36 h-36 sm:w-48 sm:h-48 rounded-3xl overflow-hidden border-4 shadow-2xl bg-slate-800 relative group" style={{ borderColor: `${primaryColor}60` }}>
-              <img
-                src={store.logo || (slides[0]?.image) || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80'}
-                alt={store.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent" />
-            </div>
-            <div className="absolute -bottom-2 -right-2 px-3 py-1 rounded-full text-white text-[10px] font-black shadow-lg border flex items-center gap-1" style={{ backgroundColor: primaryColor, borderColor: primaryColor }}>
-              <ShieldCheck className="w-3 h-3" />
-              <span>موثّق</span>
-            </div>
           </div>
 
         </div>
