@@ -80,6 +80,7 @@ function formatRelativeTime(dateInput: string | Date | number): string {
 
 // Map sub-routes directly to their required plan feature ID
 const ROUTE_FEATURE_MAP: Record<string, string> = {
+  notifications: 'orders',
   products: 'products',
   inventory: 'inventory',
   orders: 'orders',
@@ -146,6 +147,27 @@ export default function MerchantLayout({
     if (!notifsData || !currentStore) return;
     const dynamicNotifs: any[] = [];
     let unread = 0;
+
+    // 0. Active System Broadcasts & Platform Updates from Admin
+    const allBroadcasts = notifsData.systemBroadcasts || storeEngine.getBroadcasts() || [];
+    if (allBroadcasts.length > 0) {
+      allBroadcasts.forEach((bc: any) => {
+        const notifId = `broadcast-${bc.id}`;
+        const isRead = readNotifIds.has(notifId);
+        dynamicNotifs.push({
+          id: notifId,
+          type: bc.type === 'alert' ? 'danger' : bc.type === 'warning' ? 'warning' : 'system',
+          title: `تحديث من إدارة المنصة: ${bc.title}`,
+          message: bc.message,
+          time: formatRelativeTime(bc.createdAt || new Date()),
+          link: `/merchant/${slug}/notifications`,
+          isRead,
+          isBroadcast: true,
+        });
+
+        if (!isRead) unread++;
+      });
+    }
 
     // 1. New Orders Notifications (أحدث الطلبات الجديدة في الصدارة)
     if (notifsData.recentNewOrders && notifsData.recentNewOrders.length > 0) {
@@ -319,6 +341,21 @@ export default function MerchantLayout({
     handleNotifDataRef.current = handleNotifData;
   }, [handleNotifData]);
 
+  // Mark single notification as read
+  const handleMarkSingleAsRead = useCallback((notifId: string) => {
+    setReadNotifIds(prev => {
+      const updated = new Set(prev);
+      updated.add(notifId);
+      try {
+        localStorage.setItem(`seen_read_notifs_${slug}`, JSON.stringify(Array.from(updated)));
+      } catch {}
+      return updated;
+    });
+    setUnreadCount(prev => Math.max(0, prev - 1));
+    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, isRead: true } : n));
+    toast.success('تم تحديد الإشعار كمقروء ✅');
+  }, [slug]);
+
   useEffect(() => {
     setCurrentUser(authEngine.getCurrentUser());
     
@@ -341,6 +378,9 @@ export default function MerchantLayout({
               const notifsRes = await getStoreNotificationsAction(s.id);
               if (notifsRes && notifsRes.success && notifsRes.data) {
                 handleNotifDataRef.current(notifsRes.data, s);
+                if (notifsRes.data.systemBroadcasts && notifsRes.data.systemBroadcasts.length > 0) {
+                  setBroadcasts(notifsRes.data.systemBroadcasts);
+                }
               }
             } catch (notifErr) {
               console.warn('Notifications fetch skipped:', notifErr);
@@ -609,6 +649,13 @@ export default function MerchantLayout({
       exact: true,
     },
     {
+      id: 'notifications', 
+      title: 'التنبيهات والإشعارات',
+      href: `/merchant/${slug}/notifications`,
+      icon: Bell,
+      badge: unreadCount > 0 ? `${unreadCount} جديد` : undefined,
+    },
+    {
       id: 'products', 
       title: isServiceStore ? 'الخدمات والاستشارات' : 'المنتجات والتصنيفات',
       href: `/merchant/${slug}/products`,
@@ -709,7 +756,7 @@ export default function MerchantLayout({
   const storePlan = plans.find(p => p.id === store.planTier) || storeEngine.getPlans().find(p => p.id === store.planTier);
   const activeFeatures = storePlan?.features || [];
   const navItems = allNavItems
-    .filter(item => activeFeatures.includes(item.id))
+    .filter(item => item.id === 'notifications' || activeFeatures.includes(item.id))
     .filter(item => {
       if (isServiceStore) {
         if (['inventory', 'returns', 'abandoned_carts'].includes(item.id)) {
@@ -896,12 +943,21 @@ export default function MerchantLayout({
                   <div className="absolute top-full left-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-fadeIn text-right">
                     <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
                       <div className="flex items-center gap-2">
-                        <Bell className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                        <Bell className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                         <h4 className="font-bold text-slate-900 dark:text-white text-sm">التنبيهات والإشعارات</h4>
                       </div>
-                      <span className="text-[10px] text-brand-600 font-bold px-2 py-0.5 rounded-full bg-brand-50 dark:bg-brand-900/30">
-                        {unreadCount > 0 ? `${unreadCount} غير مقروء` : 'الكل مقروء'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <Link 
+                          href={`/merchant/${slug}/notifications`}
+                          onClick={() => setIsNotificationsOpen(false)}
+                          className="text-[10px] text-teal-600 dark:text-teal-400 font-bold hover:underline"
+                        >
+                          استعراض الكل ←
+                        </Link>
+                        <span className="text-[10px] text-teal-600 font-bold px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-900/30">
+                          {unreadCount > 0 ? `${unreadCount} جديد` : 'الكل مقروء'}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -920,8 +976,8 @@ export default function MerchantLayout({
                                 setIsNotificationsOpen(false);
                               }
                             }}
-                            className={`p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex gap-3 cursor-pointer ${
-                              !n.isRead ? 'bg-brand-50/20 dark:bg-brand-950/20' : ''
+                            className={`p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex items-start gap-3 cursor-pointer group ${
+                              !n.isRead ? 'bg-teal-50/20 dark:bg-teal-950/20' : ''
                             }`}
                           >
                             <div className={`mt-0.5 shrink-0 w-8 h-8 rounded-xl flex items-center justify-center shadow-xs ${
@@ -941,13 +997,27 @@ export default function MerchantLayout({
                                     <span className="text-[9px] bg-emerald-500 text-white font-bold px-1.5 py-0.2 rounded-full shrink-0">طلب جديد</span>
                                   )}
                                   {!n.isRead && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0"></span>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0"></span>
                                   )}
                                 </div>
                                 <span className="text-[9px] text-slate-400 font-mono shrink-0 ml-1">{n.time}</span>
                               </div>
                               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">{n.message}</p>
                             </div>
+
+                            {!n.isRead && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMarkSingleAsRead(n.id);
+                                }}
+                                className="p-1 rounded-lg text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors shrink-0"
+                                title="تحديد كمقروء"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         ))
                       )}
@@ -963,10 +1033,18 @@ export default function MerchantLayout({
                             localStorage.setItem(`seen_read_notifs_${slug}`, JSON.stringify(Array.from(allIds)));
                           } catch {}
                         }} 
-                        className="text-[11px] font-bold text-brand-600 hover:text-brand-700 transition-colors"
+                        className="text-[11px] font-bold text-teal-600 hover:text-teal-700 dark:text-teal-400 transition-colors"
                       >
                         تحديد الكل كمقروء
                       </button>
+
+                      <Link
+                        href={`/merchant/${slug}/notifications`}
+                        onClick={() => setIsNotificationsOpen(false)}
+                        className="text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:text-teal-600 flex items-center gap-1 transition-colors"
+                      >
+                        <span>صفحة الإشعارات 📋</span>
+                      </Link>
 
                       {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default' && (
                         <button

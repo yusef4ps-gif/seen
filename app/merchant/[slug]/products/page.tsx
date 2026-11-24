@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { 
   Package, Plus, Search, Filter, Edit, Trash2, Sparkles, 
   Bot, Image as ImageIcon, AlertTriangle, Check, X, Layers, Eye, DollarSign, Download, FileSpreadsheet, Database, RefreshCw,
-  Briefcase, FileText, UploadCloud
+  Briefcase, FileText, UploadCloud, CalendarCheck
 } from 'lucide-react';
 import { formatCurrency, convertCurrency } from '@/lib/currency-engine';
 import { Store, Product, ProductVariant } from '@/lib/types';
@@ -254,6 +254,13 @@ export default function MerchantProductsPage() {
   const [digitalFileUrl, setDigitalFileUrl] = useState('');
   const [digitalFileAccess, setDigitalFileAccess] = useState<'instant' | 'verified'>('instant');
 
+  // Consultation specific state
+  const [isConsultation, setIsConsultation] = useState(false);
+  const [sessionsCount, setSessionsCount] = useState<number>(1);
+  const [sessionDuration, setSessionDuration] = useState<number>(45);
+  const [sessionDurationUnit, setSessionDurationUnit] = useState<'minutes' | 'hours'>('minutes');
+  const [consultationDelivery, setConsultationDelivery] = useState<'online' | 'phone' | 'in_person'>('online');
+
   // AI loading state
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
@@ -272,8 +279,36 @@ export default function MerchantProductsPage() {
     mutate();
   };
 
+  const handleOpenConsultationModal = () => {
+    setEditingProductId(null);
+    setIsConsultation(true);
+    setName('');
+    setDescription('');
+    setMainCategory('استشارات وجلسات');
+    setSubCategory('استشارة متخصصة');
+    setPrice(100);
+    setComparePrice(undefined);
+    setImageUrl('https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&auto=format&fit=crop&q=80');
+    setStock(9999);
+    setLowStockAlert(0);
+    setIsFeatured(false);
+    setPricingModel('one_time');
+    setBillingCycle('monthly');
+    setSessionsCount(1);
+    setSessionDuration(45);
+    setSessionDurationUnit('minutes');
+    setConsultationDelivery('online');
+    setVariants([]);
+    setHasDigitalFile(false);
+    setDigitalFileName('');
+    setDigitalFileUrl('');
+    setDigitalFileAccess('instant');
+    setIsModalOpen(true);
+  };
+
   const handleOpenNewModal = () => {
     setEditingProductId(null);
+    setIsConsultation(false);
     setName('');
     setDescription('');
     setMainCategory(isServiceStore ? 'استشارات وخدمات' : 'عام');
@@ -290,6 +325,10 @@ export default function MerchantProductsPage() {
     setIsFeatured(false);
     setPricingModel('one_time');
     setBillingCycle('monthly');
+    setSessionsCount(1);
+    setSessionDuration(45);
+    setSessionDurationUnit('minutes');
+    setConsultationDelivery('online');
     setVariants([]);
     setHasDigitalFile(false);
     setDigitalFileName('');
@@ -330,6 +369,26 @@ export default function MerchantProductsPage() {
     setDigitalFileName(prod.digitalFileName || '');
     setDigitalFileUrl(prod.digitalFileUrl || '');
     setDigitalFileAccess(prod.digitalFileAccess || 'instant');
+
+    // Restore consultation state if product is a consultation
+    const isConsult = Boolean(prod.tags && prod.tags.some((t: string) => t === 'service:consultation' || t.startsWith('sessions:')));
+    setIsConsultation(isConsult);
+    if (isConsult) {
+      const sessTag = prod.tags?.find((t: string) => t.startsWith('sessions:'));
+      if (sessTag) setSessionsCount(Number(sessTag.split(':')[1]) || 1);
+      const durTag = prod.tags?.find((t: string) => t.startsWith('duration:'));
+      if (durTag) setSessionDuration(Number(durTag.split(':')[1]) || 45);
+      const unitTag = prod.tags?.find((t: string) => t.startsWith('duration_unit:'));
+      if (unitTag) setSessionDurationUnit(unitTag.split(':')[1] === 'hours' ? 'hours' : 'minutes');
+      const delivTag = prod.tags?.find((t: string) => t.startsWith('delivery:'));
+      if (delivTag) setConsultationDelivery(delivTag.split(':')[1] as any || 'online');
+    } else {
+      setSessionsCount(1);
+      setSessionDuration(45);
+      setSessionDurationUnit('minutes');
+      setConsultationDelivery('online');
+    }
+
     setIsModalOpen(true);
   };
 
@@ -374,6 +433,13 @@ export default function MerchantProductsPage() {
     setIsSaving(true);
 
     const productTags = [category];
+    if (isConsultation) {
+      productTags.push('service:consultation');
+      productTags.push(`sessions:${sessionsCount}`);
+      productTags.push(`duration:${sessionDuration}`);
+      productTags.push(`duration_unit:${sessionDurationUnit}`);
+      productTags.push(`delivery:${consultationDelivery}`);
+    }
     if (pricingModel === 'free') {
       productTags.push('pricing:free', 'is_free');
     } else if (isServiceStore && pricingModel === 'subscription') {
@@ -583,6 +649,16 @@ export default function MerchantProductsPage() {
             </button>
           )}
 
+          {isServiceStore && (
+            <button
+              onClick={handleOpenConsultationModal}
+              className="px-4 py-2.5 rounded-xl font-bold text-xs bg-amber-600 hover:bg-amber-500 text-white transition-all shadow-md shadow-amber-600/25 flex items-center justify-center gap-1.5 active:scale-95"
+            >
+              <CalendarCheck className="w-4 h-4" />
+              <span>إضافة استشارة 🗓️</span>
+            </button>
+          )}
+
           <button
             onClick={handleOpenNewModal}
             className={`px-4 py-2.5 rounded-xl font-bold text-xs ${
@@ -673,6 +749,12 @@ export default function MerchantProductsPage() {
                               <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 dark:bg-teal-950 dark:text-teal-300 text-[9px] font-bold inline-flex items-center gap-1 border border-teal-200 dark:border-teal-800">
                                 <FileText className="w-2.5 h-2.5" />
                                 <span>PDF مرفق ({prod.digitalFileAccess === 'verified' ? 'مشروط بالدفع' : 'فوري'})</span>
+                              </span>
+                            )}
+                            {prod.tags && (Array.isArray(prod.tags) ? prod.tags : []).some((t: string) => t === 'service:consultation' || t.startsWith('sessions:')) && (
+                              <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[9px] font-bold inline-flex items-center gap-1 border border-amber-200 dark:border-amber-800">
+                                <CalendarCheck className="w-2.5 h-2.5 text-amber-600" />
+                                <span>استشارة ({prod.tags?.find((t: string) => t.startsWith('sessions:'))?.split(':')[1] || '1'} جلسات • {prod.tags?.find((t: string) => t.startsWith('duration:'))?.split(':')[1] || '45'} {prod.tags?.find((t: string) => t.startsWith('duration_unit:'))?.split(':')[1] === 'hours' ? 'ساعة' : 'دقيقة'})</span>
                               </span>
                             )}
                           </div>
@@ -792,11 +874,17 @@ export default function MerchantProductsPage() {
             
             <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                {isServiceStore ? <Briefcase className="w-5 h-5 text-teal-600" /> : <Package className="w-5 h-5 text-brand-600" />}
+                {isConsultation ? (
+                  <CalendarCheck className="w-5 h-5 text-amber-600" />
+                ) : isServiceStore ? (
+                  <Briefcase className="w-5 h-5 text-teal-600" />
+                ) : (
+                  <Package className="w-5 h-5 text-brand-600" />
+                )}
                 <span>
                   {editingProductId 
-                    ? (isServiceStore ? 'تعديل الخدمة' : 'تعديل المنتج') 
-                    : (isServiceStore ? 'إضافة خدمة / استشارة جديدة' : 'إضافة منتج جديد')}
+                    ? (isConsultation ? 'تعديل الاستشارة والجلسات' : isServiceStore ? 'تعديل الخدمة' : 'تعديل المنتج') 
+                    : (isConsultation ? 'إضافة استشارة وجلسات موعد جديدة 🗓️' : isServiceStore ? 'إضافة خدمة جديدة' : 'إضافة منتج جديد')}
                 </span>
               </h3>
               <button
@@ -812,12 +900,12 @@ export default function MerchantProductsPage() {
               {/* Product Name */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  {isServiceStore ? 'اسم الخدمة / الاستشارة' : 'اسم المنتج'} <span className="text-red-500">*</span>
+                  {isConsultation ? 'عنوان الاستشارة والجلسة' : isServiceStore ? 'اسم الخدمة / الاستشارة' : 'اسم المنتج'} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder={isServiceStore ? "مثال: استشارة قانونية تجارية أو جلسة فحص واستشارة" : "مثال: فستان حرير ملكي بتطريز يدوي"}
+                  placeholder={isConsultation ? "مثال: استشارة تسويقية وبناء علامة تجارية / استشارة قانونية تجارية" : isServiceStore ? "مثال: استشارة قانونية تجارية أو جلسة فحص واستشارة" : "مثال: فستان حرير ملكي بتطريز يدوي"}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-brand-500"
@@ -828,7 +916,7 @@ export default function MerchantProductsPage() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    {isServiceStore ? 'تفاصيل ومحاور الخدمة' : 'وصف المنتج التسويقي'}
+                    {isConsultation ? 'محاور وتفاصيل الاستشارة وما تشمله' : isServiceStore ? 'تفاصيل ومحاور الخدمة' : 'وصف المنتج التسويقي'}
                   </label>
                   {isAiEnabled && (
                     <button
@@ -850,6 +938,133 @@ export default function MerchantProductsPage() {
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-brand-500"
                 />
               </div>
+
+              {/* Consultation Sessions Configuration */}
+              {(isConsultation || isServiceStore) && (
+                <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 space-y-3.5">
+                  <div className="flex items-center justify-between pb-2 border-b border-amber-200/60 dark:border-amber-800/40">
+                    <div className="flex items-center gap-2">
+                      <CalendarCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                        جلسات ومواعيد الاستشارة 🗓️
+                      </h4>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-amber-800 dark:text-amber-300">
+                      <input 
+                        type="checkbox" 
+                        checked={isConsultation} 
+                        onChange={(e) => setIsConsultation(e.target.checked)}
+                        className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                      />
+                      <span>تحديد كاستشارة وجلسات موعد</span>
+                    </label>
+                  </div>
+
+                  {isConsultation && (
+                    <div className="space-y-3.5 animate-fadeIn">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                            عدد الجلسات للاستشارة:
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={1}
+                              max={100}
+                              value={sessionsCount}
+                              onChange={(e) => setSessionsCount(Math.max(1, parseInt(e.target.value) || 1))}
+                              className="w-20 px-3 py-2 text-xs font-bold rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500 text-center font-mono"
+                            />
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 5].map((cnt) => (
+                                <button
+                                  key={cnt}
+                                  type="button"
+                                  onClick={() => setSessionsCount(cnt)}
+                                  className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+                                    sessionsCount === cnt
+                                      ? 'bg-amber-600 text-white shadow-xs'
+                                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                                  }`}
+                                >
+                                  {cnt} {cnt === 1 ? 'جلسة' : 'جلسات'}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                            مدة كل جلسة:
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={1}
+                              max={300}
+                              value={sessionDuration}
+                              onChange={(e) => setSessionDuration(Math.max(1, parseInt(e.target.value) || 1))}
+                              className="w-20 px-3 py-2 text-xs font-bold rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500 text-center font-mono"
+                            />
+                            <div className="grid grid-cols-2 gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-amber-200 dark:border-amber-800/50">
+                              <button
+                                type="button"
+                                onClick={() => setSessionDurationUnit('minutes')}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                  sessionDurationUnit === 'minutes'
+                                    ? 'bg-amber-600 text-white'
+                                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                                }`}
+                              >
+                                بالدقيقة
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSessionDurationUnit('hours')}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                  sessionDurationUnit === 'hours'
+                                    ? 'bg-amber-600 text-white'
+                                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                                }`}
+                              >
+                                بالساعة
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
+                          طريقة تقديم الاستشارة:
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          {[
+                            { id: 'online', label: 'أونلاين (Google Meet / Zoom) 💻' },
+                            { id: 'phone', label: 'اتصال هاتفي مباشر 📞' },
+                            { id: 'in_person', label: 'حضور شخصي في المقر 🏢' },
+                          ].map((deliv) => (
+                            <button
+                              key={deliv.id}
+                              type="button"
+                              onClick={() => setConsultationDelivery(deliv.id as any)}
+                              className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all text-center ${
+                                consultationDelivery === deliv.id
+                                  ? 'border-amber-500 bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-300 shadow-xs ring-2 ring-amber-500/20'
+                                  : 'border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                              }`}
+                            >
+                              {deliv.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Service Pricing Model Choice: Fixed Price vs Subscription vs Free */}
               {isServiceStore && (

@@ -14,6 +14,8 @@ import { isAiAllowedForStore, isAiPlanAllowedForStore } from '@/lib/ai-access';
 import { updateMerchantCredentialsAction, getMerchantUserAction } from '@/app/actions/auth';
 import { generateApiKeyAction, getApiKeysAction, deleteApiKeyAction } from '@/app/actions/apiKey';
 import { generateLegalPageAction } from '@/app/actions/ai';
+import { storeEngine } from '@/lib/store-engine';
+import toast from 'react-hot-toast';
 
 export default function MerchantSettingsPage() {
   const params = useParams();
@@ -358,12 +360,19 @@ export default function MerchantSettingsPage() {
 
     if (res.success && res.store) {
       setStore(res.store as any);
+      try {
+        storeEngine.updateStore(res.store as any);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`seen_store_primaryColor_${slug}`, primaryColor);
+        }
+      } catch (e) {}
       setIsSaving(false);
       setIsSaved(true);
+      toast.success('تم حفظ التعديلات وتحديث هوية المتجر بنجاح! 🎉');
       setTimeout(() => setIsSaved(false), 3000);
     } else {
       setIsSaving(false);
-      alert('فشل حفظ التعديلات: ' + (res.error || 'خطأ غير معروف'));
+      toast.error('فشل حفظ التعديلات: ' + (res.error || 'خطأ غير معروف'));
     }
   };
 
@@ -673,7 +682,7 @@ export default function MerchantSettingsPage() {
             </div>
 
             {/* Service & Consultant Executive Profile Section */}
-            {storeType === 'SERVICE' && (
+            {(storeType === 'SERVICE' || storeType === 'DIGITAL') && (
               <div className="p-5 rounded-2xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 space-y-4">
                 <div className="flex items-center gap-2 text-teal-800 dark:text-teal-300 font-bold text-xs">
                   <span>💼 بيانات البروفايل المهني والنبذة التعريفية (خاص بالخدمات والاستشارات)</span>

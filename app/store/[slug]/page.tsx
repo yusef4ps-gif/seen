@@ -183,7 +183,7 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
     );
   }
 
-  if (presetId === 'service-expert') {
+  if (presetId === 'service-expert' || isServiceStore) {
     const parsedThemeConfig = typeof store.themeConfig === 'string'
       ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })()
       : (store.themeConfig || {});
@@ -465,8 +465,24 @@ export default function CustomerStorefrontPage() {
     if (!store?.themeConfig) return {};
     try { return typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig) : store.themeConfig; } catch { return {}; }
   }, [store?.themeConfig]);
-  const storeType = parsedThemeConfigForType.storeType || 'PHYSICAL';
-  const isServiceStore = storeType === 'SERVICE' || storeType === 'DIGITAL' || parsedThemeConfigForType.presetId === 'service-expert';
+  const storeType = parsedThemeConfigForType.storeType || (store as any)?.storeType || 'PHYSICAL';
+  const isServiceStore = Boolean(
+    storeType === 'SERVICE' || 
+    storeType === 'DIGITAL' || 
+    parsedThemeConfigForType?.presetId === 'service-expert' ||
+    parsedThemeConfigForType?.presetId === 'service-legal-consulting' ||
+    parsedThemeConfigForType?.presetId === 'service-digital-freelancer' ||
+    (store as any)?.storeType === 'SERVICE' ||
+    (store as any)?.storeType === 'DIGITAL' ||
+    store?.category?.includes('خدمات') ||
+    store?.category?.includes('استشارات') ||
+    store?.category?.includes('تدريب') ||
+    store?.category?.includes('محاماة') ||
+    store?.category?.includes('عياد') ||
+    store?.category?.includes('تسويق') ||
+    store?.category?.includes('digital') ||
+    store?.category?.includes('service')
+  );
   const [activeServiceTab, setActiveServiceTab] = useState<'home' | 'services' | 'about' | 'contact'>('home');
   
   const [customerEmail, setCustomerEmail] = useState('');
@@ -690,16 +706,32 @@ export default function CustomerStorefrontPage() {
     );
   }
 
-  // Active theme configuration
-  const parsedThemeConfig = store.themeConfig;
-  const isThemeEmpty = !parsedThemeConfig || Object.keys(parsedThemeConfig).length === 0;
-  const theme: ThemeConfig = isThemeEmpty ? THEME_PRESETS[0].config : parsedThemeConfig;
-  const presetId = theme.presetId || 'fashion-luxury';
+  // Active theme configuration with safe recursive fallback to prevent client-side exception
+  const parsedThemeConfig = typeof store.themeConfig === 'string'
+    ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })()
+    : (store.themeConfig || {});
+
+  const basePreset = isServiceStore
+    ? (THEME_PRESETS.find(p => p.id === 'service-expert')?.config || THEME_PRESETS[0].config)
+    : (THEME_PRESETS.find(p => p.id === parsedThemeConfig.presetId)?.config || THEME_PRESETS[0].config);
+
+  const theme: ThemeConfig = {
+    ...basePreset,
+    ...parsedThemeConfig,
+    colors: { ...basePreset.colors, ...(parsedThemeConfig.colors || {}) },
+    typography: { ...basePreset.typography, ...(parsedThemeConfig.typography || {}) },
+    layout: { ...basePreset.layout, ...(parsedThemeConfig.layout || {}) },
+    sections: Array.isArray(parsedThemeConfig.sections) && parsedThemeConfig.sections.length > 0
+      ? parsedThemeConfig.sections
+      : basePreset.sections,
+  };
+
+  const presetId = theme.presetId || (isServiceStore ? 'service-expert' : 'fashion-luxury');
   const primaryColor = store.primaryColor || theme.colors?.primary || '#0d9488';
-  const secondaryColor = theme.colors.secondary || '#d97706';
-  const fontFamily = theme.typography.fontFamily || 'Tajawal';
-  const borderRadiusClass = theme.layout.borderRadius === 'pill' ? 'rounded-full' : theme.layout.borderRadius === 'curved' ? 'rounded-2xl' : 'rounded-none';
-  const buttonRadiusClass = theme.layout.borderRadius === 'pill' ? 'rounded-full' : theme.layout.borderRadius === 'curved' ? 'rounded-xl' : 'rounded-none';
+  const secondaryColor = theme.colors?.secondary || '#d97706';
+  const fontFamily = theme.typography?.fontFamily || 'Tajawal';
+  const borderRadiusClass = theme.layout?.borderRadius === 'pill' ? 'rounded-full' : theme.layout?.borderRadius === 'curved' ? 'rounded-2xl' : 'rounded-none';
+  const buttonRadiusClass = theme.layout?.borderRadius === 'pill' ? 'rounded-full' : theme.layout?.borderRadius === 'curved' ? 'rounded-xl' : 'rounded-none';
 
   // Parse social links
   let socialLinks: any = {};
@@ -1304,7 +1336,7 @@ export default function CustomerStorefrontPage() {
                       <button
                         onClick={() => {
                           setActiveServiceTab('about');
-                          const el = document.getElementById('about-section');
+                          const el = document.getElementById('bio-section') || document.getElementById('about-section');
                           if (el) el.scrollIntoView({ behavior: 'smooth' });
                         }}
                         className={`flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all ${
@@ -1542,7 +1574,7 @@ export default function CustomerStorefrontPage() {
                 <section id="products-grid" key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 space-y-4 scroll-mt-24">
                   {/* Executive Provider Bio Card for Service Platforms */}
                   {isServiceStore && (
-                    <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 text-white border border-slate-700 shadow-xl mb-6 relative overflow-hidden text-right">
+                    <div id="bio-section" className="scroll-mt-28 p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 text-white border border-slate-700 shadow-xl mb-6 relative overflow-hidden text-right">
                       <div className="absolute top-0 left-0 w-96 h-96 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: `${primaryColor}20` }} />
                       
                       <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6">
@@ -1805,6 +1837,12 @@ export default function CustomerStorefrontPage() {
                                         📥 ملف PDF مرفق
                                       </span>
                                     )}
+                                    {prod.tags && (Array.isArray(prod.tags) ? prod.tags : []).some((t: string) => t === 'service:consultation' || t.startsWith('sessions:')) && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[10px] font-bold">
+                                        <CalendarCheck className="w-2.5 h-2.5 text-amber-600" />
+                                        <span>استشارة ({prod.tags?.find((t: string) => t.startsWith('sessions:'))?.split(':')[1] || '1'} جلسات • {prod.tags?.find((t: string) => t.startsWith('duration:'))?.split(':')[1] || '45'} {prod.tags?.find((t: string) => t.startsWith('duration_unit:'))?.split(':')[1] === 'hours' ? 'ساعة' : 'دقيقة'})</span>
+                                      </span>
+                                    )}
                                   </div>
                                   <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white line-clamp-2">
                                     {prod.name}
@@ -1855,6 +1893,8 @@ export default function CustomerStorefrontPage() {
                                     <span>
                                       {isFree
                                         ? (prod.digitalFileUrl ? 'تحميل مجاني مباشر ⚡' : 'طلب الخدمة مجاناً 🎁')
+                                        : prod.tags && prod.tags.some((t: string) => t === 'service:consultation' || t.startsWith('sessions:'))
+                                        ? 'طلب حجز الاستشارة 🗓️'
                                         : prod.tags?.includes('subscription:monthly') || prod.tags?.includes('subscription:yearly')
                                         ? 'الاشتراك وتفعيل الباقة 🔄'
                                         : 'طلب الخدمة / حجز موعد 📅'}
@@ -2137,6 +2177,18 @@ export default function CustomerStorefrontPage() {
                     {getFormattedPrice(selectedVariant?.priceOverride || selectedProduct.price)}
                   </div>
                 </div>
+
+                {selectedProduct.tags && selectedProduct.tags.some((t: string) => t === 'service:consultation' || t.startsWith('sessions:')) && (
+                  <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between text-xs">
+                    <span className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                      <CalendarCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <span>تفاصيل الاستشارة والجلسات:</span>
+                    </span>
+                    <span className="font-bold text-amber-800 dark:text-amber-300">
+                      {selectedProduct.tags.find((t: string) => t.startsWith('sessions:'))?.split(':')[1] || '1'} جلسة • {selectedProduct.tags.find((t: string) => t.startsWith('duration:'))?.split(':')[1] || '45'} {selectedProduct.tags.find((t: string) => t.startsWith('duration_unit:'))?.split(':')[1] === 'hours' ? 'ساعة' : 'دقيقة'}
+                    </span>
+                  </div>
+                )}
 
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl">
                   {selectedProduct.description}
@@ -3015,7 +3067,7 @@ export default function CustomerStorefrontPage() {
           <button
             onClick={() => isServiceStore ? setIsCheckoutOpen(true) : setIsCartOpen(true)}
             className="w-full py-3.5 px-5 rounded-2xl text-white font-black text-xs shadow-2xl flex items-center justify-between border border-white/20 active:scale-95 transition-all"
-            style={{ backgroundColor: isServiceStore ? '#0d9488' : primaryColor }}
+            style={{ backgroundColor: primaryColor }}
           >
             <div className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-white/25 flex items-center justify-center text-xs font-black">

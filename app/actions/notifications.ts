@@ -82,6 +82,13 @@ export async function getStoreNotificationsAction(storeId: string) {
           storeId,
           status: 'pending_approval'
         }
+      }),
+
+      // 7. Active System Broadcasts & Platform Updates from Admin
+      prisma.systemBroadcast.findMany({
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' },
+        take: 10
       })
     ]);
 
@@ -102,7 +109,8 @@ export async function getStoreNotificationsAction(storeId: string) {
         storeDetails: store,
         newOrdersCount,
         recentNewOrders,
-        newReturnsCount
+        newReturnsCount,
+        systemBroadcasts: systemBroadcasts || []
       }
     };
   } catch (error) {

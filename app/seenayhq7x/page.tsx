@@ -274,7 +274,22 @@ export default function SuperAdminPage() {
     }
     setStores(fetchedStores as any);
     setStats(fetchedStats);
-    setBroadcasts(storeEngine.getBroadcasts());
+    
+    // Fetch active broadcasts from database & storeEngine
+    try {
+      fetch('/api/admin/broadcasts')
+        .then(res => res.json())
+        .then(dbBroadcasts => {
+          if (Array.isArray(dbBroadcasts) && dbBroadcasts.length > 0) {
+            setBroadcasts(dbBroadcasts);
+          } else {
+            setBroadcasts(storeEngine.getBroadcasts());
+          }
+        })
+        .catch(() => setBroadcasts(storeEngine.getBroadcasts()));
+    } catch {
+      setBroadcasts(storeEngine.getBroadcasts());
+    }
 
     // Fetch dynamic texts
     getSiteContentAction().then(res => {
@@ -463,10 +478,25 @@ export default function SuperAdminPage() {
     }
   };
 
-  // Submit Broadcast
-  const handlePublishBroadcast = (e: React.FormEvent) => {
+  // Submit Broadcast (Database + Local StoreEngine)
+  const handlePublishBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBroadcastTitle || !newBroadcastMsg) return;
+
+    try {
+      await fetch('/api/admin/broadcasts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newBroadcastTitle.trim(),
+          message: newBroadcastMsg.trim(),
+          type: broadcastType
+        })
+      });
+    } catch (apiErr) {
+      console.warn('API broadcast error:', apiErr);
+    }
+
     storeEngine.addBroadcast({
       title: newBroadcastTitle,
       message: newBroadcastMsg,
@@ -477,7 +507,10 @@ export default function SuperAdminPage() {
     refreshData();
   };
 
-  const handleDeleteBroadcast = (id: string) => {
+  const handleDeleteBroadcast = async (id: string) => {
+    try {
+      await fetch(`/api/admin/broadcasts?id=${id}`, { method: 'DELETE' });
+    } catch {}
     storeEngine.deleteBroadcast(id);
     refreshData();
   };
