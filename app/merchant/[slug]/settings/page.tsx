@@ -120,6 +120,7 @@ export default function MerchantSettingsPage() {
   const [primaryColor, setPrimaryColor] = useState('#0d9488');
   const [baseCurrency, setBaseCurrency] = useState<CurrencyCode>('SAR');
   const [storeType, setStoreType] = useState('PHYSICAL');
+  const [allowDigitalProducts, setAllowDigitalProducts] = useState(true);
   const [professionalTitle, setProfessionalTitle] = useState('');
   const [providerBio, setProviderBio] = useState('');
   const [experienceYears, setExperienceYears] = useState('');
@@ -245,6 +246,9 @@ export default function MerchantSettingsPage() {
               if (parsed.storeType) {
                 setStoreType(parsed.storeType);
               }
+              if (parsed.allowDigitalProducts !== undefined) {
+                setAllowDigitalProducts(parsed.allowDigitalProducts);
+              }
               if (parsed.professionalTitle) setProfessionalTitle(parsed.professionalTitle);
               if (parsed.providerBio) setProviderBio(parsed.providerBio);
               if (parsed.experienceYears) setExperienceYears(parsed.experienceYears);
@@ -315,10 +319,15 @@ export default function MerchantSettingsPage() {
 
     const updatedThemeConfig = { 
       ...currentThemeConfig, 
+      colors: {
+        ...(currentThemeConfig.colors || {}),
+        primary: primaryColor
+      },
       bannerUrl: banner || currentThemeConfig.bannerUrl,
       sections: syncedSections || currentThemeConfig.sections,
       legalPages, 
       storeType,
+      allowDigitalProducts,
       professionalTitle,
       providerBio,
       experienceYears,
@@ -638,6 +647,27 @@ export default function MerchantSettingsPage() {
                     <option value="SERVICE">منصة خدمات واستشارات مهنية (بروفايل خبير وحجوزات)</option>
                     <option value="DIGITAL">منتجات رقمية وملفات قابلة للتنزيل</option>
                   </select>
+                </div>
+
+                {/* Optional Digital Products Support */}
+                <div className="pt-2 flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                  <div>
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                      تمكين بيع وإرفاق المنتجات الرقمية (ملفات PDF والكتب والملفات)
+                    </label>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      يتيح إمكانية إرفاق ملفات رقمية يتم تسليمها للعميل تلقائياً فور الشراء
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={allowDigitalProducts}
+                      onChange={(e) => setAllowDigitalProducts(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
+                  </label>
                 </div>
               </div>
             </div>

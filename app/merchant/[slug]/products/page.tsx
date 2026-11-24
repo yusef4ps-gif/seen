@@ -235,9 +235,18 @@ export default function MerchantProductsPage() {
   const [stock, setStock] = useState<number>(20);
   const [lowStockAlert, setLowStockAlert] = useState<number>(5);
   const [isFeatured, setIsFeatured] = useState(false);
-  const [pricingModel, setPricingModel] = useState<'one_time' | 'subscription'>('one_time');
+  const [pricingModel, setPricingModel] = useState<'one_time' | 'subscription' | 'free'>('one_time');
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [variants, setVariants] = useState<ProductVariant[]>([]);
+
+  const allowDigitalProducts = (() => {
+    try {
+      const cfg = typeof store?.themeConfig === 'string' ? JSON.parse(store.themeConfig) : (store?.themeConfig || {});
+      return cfg?.allowDigitalProducts !== false;
+    } catch {
+      return true;
+    }
+  })();
 
   // Digital Delivery / PDF Attachment State
   const [hasDigitalFile, setHasDigitalFile] = useState(false);
@@ -302,7 +311,11 @@ export default function MerchantProductsPage() {
     setStock(prod.stock);
     setLowStockAlert(prod.lowStockAlert);
     setIsFeatured(!!prod.isFeatured);
-    if (prod.tags && prod.tags.includes('subscription:yearly')) {
+    const isFreeProd = prod.price === 0 || (prod.tags && prod.tags.some((t: string) => t === 'pricing:free' || t === 'is_free'));
+    if (isFreeProd) {
+      setPricingModel('free');
+      setPrice(0);
+    } else if (prod.tags && prod.tags.includes('subscription:yearly')) {
       setPricingModel('subscription');
       setBillingCycle('yearly');
     } else if (prod.tags && prod.tags.includes('subscription:monthly')) {
@@ -355,12 +368,15 @@ export default function MerchantProductsPage() {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const category = subCategory ? `${mainCategory.trim()} > ${subCategory.trim()}` : mainCategory.trim();
-    if (!store || !name || price <= 0 || isSaving) return;
+    const effectivePrice = pricingModel === 'free' ? 0 : Number(price);
+    if (!store || !name || (pricingModel !== 'free' && effectivePrice <= 0) || isSaving) return;
 
     setIsSaving(true);
 
     const productTags = [category];
-    if (isServiceStore && pricingModel === 'subscription') {
+    if (pricingModel === 'free') {
+      productTags.push('pricing:free', 'is_free');
+    } else if (isServiceStore && pricingModel === 'subscription') {
       productTags.push(`subscription:${billingCycle}`);
     }
     if (hasDigitalFile && digitalFileUrl) {
@@ -380,7 +396,7 @@ export default function MerchantProductsPage() {
           name,
           description,
           category,
-          price: Number(price),
+          price: effectivePrice,
           comparePrice: comparePrice ? Number(comparePrice) : null,
           images: [imageUrl || p.images?.[0] || ''],
           isFeatured,
@@ -397,7 +413,7 @@ export default function MerchantProductsPage() {
           name,
           description,
           category,
-          price,
+          price: effectivePrice,
           compareAtPrice: comparePrice || undefined,
           images: [imageUrl],
           stock: isServiceStore ? 9999 : stock,
@@ -435,7 +451,7 @@ export default function MerchantProductsPage() {
           name,
           description,
           category,
-          price: Number(price),
+          price: effectivePrice,
           comparePrice: comparePrice ? Number(comparePrice) : null,
           images: [imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'],
           stock: isServiceStore ? 9999 : stock,
@@ -460,7 +476,7 @@ export default function MerchantProductsPage() {
           name,
           description,
           category,
-          price,
+          price: effectivePrice,
           compareAtPrice: comparePrice || undefined,
           images: [imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'],
           stock: isServiceStore ? 9999 : stock,
@@ -835,13 +851,13 @@ export default function MerchantProductsPage() {
                 />
               </div>
 
-              {/* Service Pricing Model Choice: Fixed Price vs Subscription */}
+              {/* Service Pricing Model Choice: Fixed Price vs Subscription vs Free */}
               {isServiceStore && (
                 <div className="p-4 rounded-2xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/40 space-y-3">
                   <label className="block text-xs font-bold text-teal-900 dark:text-teal-200">
                     نموذج تسعير الخدمة:
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <label className={`cursor-pointer p-3 rounded-xl border flex items-center justify-between transition-all ${
                       pricingModel === 'one_time'
                         ? 'border-teal-500 bg-white dark:bg-slate-900 shadow-sm ring-2 ring-teal-500/20 text-teal-900 dark:text-white'
@@ -858,7 +874,7 @@ export default function MerchantProductsPage() {
                         />
                         <div>
                           <div className="text-xs font-bold">سعر محدد لمرة واحدة</div>
-                          <div className="text-[10px] text-slate-500">دفع المبلغ مرة واحدة عند طلب الخدمة</div>
+                          <div className="text-[10px] text-slate-500">دفع المبلغ مرة واحدة</div>
                         </div>
                       </div>
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 font-bold">دفع مباشر</span>
@@ -879,8 +895,8 @@ export default function MerchantProductsPage() {
                           className="w-4 h-4 text-teal-600"
                         />
                         <div>
-                          <div className="text-xs font-bold">اشتراك دوري متجدد 🔄</div>
-                          <div className="text-[10px] text-slate-500">تجديد الفوترة تلقائياً كل فترة</div>
+                          <div className="text-xs font-bold">اشتراك دوري 🔄</div>
+                          <div className="text-[10px] text-slate-500">تجديد الفوترة تلقائياً</div>
                         </div>
                       </div>
                       {pricingModel === 'subscription' && (
@@ -893,6 +909,31 @@ export default function MerchantProductsPage() {
                           <option value="yearly">سنوياً 🗓️</option>
                         </select>
                       )}
+                    </label>
+
+                    <label className={`cursor-pointer p-3 rounded-xl border flex items-center justify-between transition-all ${
+                      pricingModel === 'free'
+                        ? 'border-emerald-500 bg-white dark:bg-slate-900 shadow-sm ring-2 ring-emerald-500/20 text-emerald-900 dark:text-white'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-white/60 text-slate-600 dark:text-slate-400'
+                    }`}>
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="radio"
+                          name="pricingModel"
+                          value="free"
+                          checked={pricingModel === 'free'}
+                          onChange={() => {
+                            setPricingModel('free');
+                            setPrice(0);
+                          }}
+                          className="w-4 h-4 text-emerald-600"
+                        />
+                        <div>
+                          <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400">خدمة أو منتج مجاني 🎁</div>
+                          <div className="text-[10px] text-slate-500">بدون أي تكلفة للعميل</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-bold">مجاناً</span>
                     </label>
                   </div>
                 </div>
@@ -934,10 +975,11 @@ export default function MerchantProductsPage() {
                   <input
                     type="number"
                     required
-                    min={1}
-                    value={price}
+                    min={0}
+                    disabled={pricingModel === 'free'}
+                    value={pricingModel === 'free' ? 0 : price}
                     onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                    className={`w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none ${pricingModel === 'free' ? 'opacity-60 cursor-not-allowed bg-emerald-50/50 dark:bg-emerald-950/20' : ''}`}
                   />
                 </div>
 
@@ -948,9 +990,10 @@ export default function MerchantProductsPage() {
                   <input
                     type="number"
                     placeholder="مثال: 70"
-                    value={comparePrice || ''}
+                    disabled={pricingModel === 'free'}
+                    value={pricingModel === 'free' ? '' : (comparePrice || '')}
                     onChange={(e) => setComparePrice(parseFloat(e.target.value) || undefined)}
-                    className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                    className={`w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none ${pricingModel === 'free' ? 'opacity-60 cursor-not-allowed' : ''}`}
                   />
                 </div>
               </div>
@@ -959,7 +1002,13 @@ export default function MerchantProductsPage() {
               <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800/60 flex items-center justify-between text-xs text-brand-700 dark:text-brand-300">
                 <span className="font-medium">معاينة السعر في متجر العميل:</span>
                 <span className="font-bold">
-                  {formatCurrency(price, store?.baseCurrency || 'SAR')} = {formatCurrency(convertCurrency(price, store?.baseCurrency || 'SAR', 'YER_ADEN', store?.customRates), 'YER_ADEN')}
+                  {pricingModel === 'free' ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-black">مجاناً (Free 🎁)</span>
+                  ) : (
+                    <>
+                      {formatCurrency(price, store?.baseCurrency || 'SAR')} = {formatCurrency(convertCurrency(price, store?.baseCurrency || 'SAR', 'YER_ADEN', store?.customRates), 'YER_ADEN')}
+                    </>
+                  )}
                 </span>
               </div>
 
@@ -970,8 +1019,9 @@ export default function MerchantProductsPage() {
                 label={isServiceStore ? "صورة معبرة أو بنر تعريفي للخدمة" : "صورة المنتج الرئيسية (سحب وإفلات أو اختيار من الجهاز)"}
               />
 
-              {/* Digital Delivery / PDF Attachment Section */}
-              <div className="p-4 rounded-2xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/60 space-y-3.5">
+              {/* Digital Delivery / PDF Attachment Section (Rendered only if enabled in settings) */}
+              {allowDigitalProducts && (
+                <div className="p-4 rounded-2xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/60 space-y-3.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="p-2 rounded-xl bg-teal-600 text-white shadow-xs">
@@ -1125,6 +1175,7 @@ export default function MerchantProductsPage() {
                   </div>
                 )}
               </div>
+              )}
 
               {/* Stock and Alert Row (Only for Physical Stores) */}
               {!isServiceStore && (
