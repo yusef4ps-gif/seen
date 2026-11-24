@@ -175,21 +175,33 @@ function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, leg
   }
 
   if (presetId === 'service-expert') {
-    const profTitle = typeof store.themeConfig === 'string'
-      ? (() => { try { return JSON.parse(store.themeConfig).professionalTitle; } catch { return ''; } })()
-      : store.themeConfig?.professionalTitle;
+    const parsedThemeConfig = typeof store.themeConfig === 'string'
+      ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })()
+      : (store.themeConfig || {});
+    const profTitle = parsedThemeConfig?.professionalTitle;
+
+    const coverImage = store.banner || parsedThemeConfig?.bannerUrl || (slides[0]?.image) || null;
 
     return (
-      <section className="relative w-full bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white py-12 sm:py-20 px-4 sm:px-8 overflow-hidden">
+      <section id="about-section" className="relative w-full bg-slate-950 text-white py-12 sm:py-20 px-4 sm:px-8 overflow-hidden">
+        {/* Background Cover Image with High-Readability Overlay */}
+        {coverImage ? (
+          <>
+            <img
+              src={coverImage}
+              alt={store.name}
+              className="absolute inset-0 w-full h-full object-cover object-center scale-105"
+            />
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/70 to-slate-950/60" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900" />
+        )}
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#0d9488_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 relative z-10 text-right">
           
           <div className="flex-1 space-y-4">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-teal-500/15 border border-teal-500/30 text-teal-300 text-xs font-bold backdrop-blur-md">
-              <Briefcase className="w-4 h-4 text-teal-400" />
-              <span>بروفايل مهني واستشارات معتمدة</span>
-            </div>
-            
             <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white drop-shadow-md">
               {store.name}
             </h1>
@@ -869,12 +881,23 @@ export default function CustomerStorefrontPage() {
     }
   };
 
+  // Helper to normalize category name and prevent duplicate or typo tabs
+  const normalizeCatName = (name: string) => {
+    if (!name) return '';
+    let cleaned = name.trim();
+    if (cleaned.includes('منتحات')) {
+      cleaned = cleaned.replace(/منتحات/g, 'منتجات');
+    }
+    return cleaned;
+  };
+
   // Parse categories from products
   const categoryMap = new Map<string, Set<string>>();
   products.forEach(p => {
-    const parts = p.category.split(' > ');
-    const mainCat = parts[0]?.trim();
-    const subCat = parts[1]?.trim();
+    const rawCategory = normalizeCatName(p.category || '');
+    const parts = rawCategory.split(' > ');
+    const mainCat = normalizeCatName(parts[0]?.trim());
+    const subCat = parts[1]?.trim() ? normalizeCatName(parts[1]?.trim()) : '';
     if (mainCat) {
       if (!categoryMap.has(mainCat)) categoryMap.set(mainCat, new Set());
       if (subCat) categoryMap.get(mainCat)!.add(subCat);
@@ -896,7 +919,12 @@ export default function CustomerStorefrontPage() {
   };
 
   const filteredProducts = products.filter((p) => {
-    let matchesCategory = selectedCategory === 'all' || p.category === selectedCategory || p.category.startsWith(selectedCategory + ' > ');
+    const normProdCat = normalizeCatName(p.category || '');
+    let matchesCategory = selectedCategory === 'all' || 
+                          normProdCat === selectedCategory || 
+                          normProdCat.startsWith(selectedCategory + ' > ') ||
+                          p.category === selectedCategory ||
+                          p.category.startsWith(selectedCategory + ' > ');
     if (selectedCategory === 'subscriptions_only') {
       matchesCategory = Boolean(p.tags?.some(t => t.startsWith('subscription:')));
     }
@@ -1133,7 +1161,10 @@ export default function CustomerStorefrontPage() {
 
               const getCategoryCount = (mainCat: string) => {
                 if (mainCat === 'all') return products.length;
-                return products.filter(p => p.category === mainCat || p.category.startsWith(mainCat + ' > ')).length;
+                return products.filter(p => {
+                  const norm = normalizeCatName(p.category || '');
+                  return norm === mainCat || norm.startsWith(mainCat + ' > ') || p.category === mainCat || p.category.startsWith(mainCat + ' > ');
+                }).length;
               };
 
               return (
@@ -1169,6 +1200,21 @@ export default function CustomerStorefrontPage() {
                       </span>
                     </button>
 
+                    {/* Quick Jump: About Me (نبذة عني) */}
+                    <a
+                      href="#about-section"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const el = document.getElementById('about-section');
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shrink-0 transition-all hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer"
+                      style={{ borderRadius: presetId === 'minimal-clean' ? '0px' : '14px' }}
+                    >
+                      <User className="w-3.5 h-3.5 opacity-70" />
+                      <span>نبذة عني</span>
+                    </a>
+
                     {/* Service Subscriptions Quick Filter if service store */}
                     {isServiceStore && products.some(p => p.tags?.some(t => t.startsWith('subscription:'))) && (
                       <button
@@ -1185,7 +1231,7 @@ export default function CustomerStorefrontPage() {
                       </button>
                     )}
 
-                    {/* Category Pills */}
+                    {/* Category Pills (Cleanly deduplicated) */}
                     {parsedCategories.map((cat, idx) => {
                       const isSelected = selectedCategory === cat.main || selectedCategory.startsWith(cat.main + ' > ');
                       const count = getCategoryCount(cat.main);
@@ -1242,6 +1288,21 @@ export default function CustomerStorefrontPage() {
                         </div>
                       );
                     })}
+
+                    {/* Quick Jump: Reviews (التقييمات) */}
+                    <a
+                      href="#testimonials"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const el = document.getElementById('testimonials');
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shrink-0 transition-all hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer"
+                      style={{ borderRadius: presetId === 'minimal-clean' ? '0px' : '14px' }}
+                    >
+                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                      <span>التقييمات</span>
+                    </a>
                   </div>
                 </section>
               );
@@ -1479,9 +1540,9 @@ export default function CustomerStorefrontPage() {
                                   alt={prod.name} 
                                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                                 />
-                                <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-teal-600 text-white text-[10px] font-black shadow-md flex items-center gap-1">
-                                  <Briefcase className="w-3 h-3" />
-                                  <span>معاينة الخدمة</span>
+                                <div className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-teal-600/95 hover:bg-teal-600 text-white text-[10px] font-bold shadow-md flex items-center gap-1.5 backdrop-blur-xs transition-all">
+                                  <Sparkles className="w-3 h-3 text-teal-200" />
+                                  <span>مزيد من المعلومات حول الخدمة</span>
                                 </div>
                               </div>
 
@@ -1502,24 +1563,23 @@ export default function CustomerStorefrontPage() {
 
                                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-3">
                                   <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-[11px] font-bold text-slate-400">
-                                        {prod.tags?.includes('subscription:monthly') || prod.tags?.includes('subscription:yearly') ? 'قيمة الاشتراك:' : 'أتعاب الخدمة:'}
+                                    <div className="flex items-baseline gap-1">
+                                      <span className="text-base sm:text-lg font-black text-teal-600 dark:text-teal-400 font-mono">
+                                        {getFormattedPrice(prod.price)}
                                       </span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
                                       {prod.tags?.includes('subscription:monthly') && (
-                                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 font-black border border-teal-200 dark:border-teal-800">
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800">
                                           شهرياً 🔄
                                         </span>
                                       )}
                                       {prod.tags?.includes('subscription:yearly') && (
-                                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 font-black border border-purple-200 dark:border-purple-800">
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800">
                                           سنوياً 🗓️
                                         </span>
                                       )}
                                     </div>
-                                    <span className="text-sm sm:text-base font-black text-teal-600 dark:text-teal-400 font-mono">
-                                      {getFormattedPrice(prod.price)}
-                                    </span>
                                   </div>
 
                                   <button
@@ -1716,7 +1776,7 @@ export default function CustomerStorefrontPage() {
             // --- SECTION: CUSTOMER TESTIMONIALS ---
             if (section.type === 'testimonials') {
               return (
-                <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 space-y-4">
+                <section key={section.id} id="testimonials" className="max-w-7xl mx-auto px-3 sm:px-8 space-y-4 scroll-mt-24">
                   <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 text-center sm:text-right">
                     <div className="space-y-1">
                       <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest" style={{ color: primaryColor }}>

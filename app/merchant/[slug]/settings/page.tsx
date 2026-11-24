@@ -34,6 +34,46 @@ export default function MerchantSettingsPage() {
   });
   const [isGeneratingLegal, setIsGeneratingLegal] = useState<'privacy' | 'terms' | 'returns' | 'faq' | null>(null);
 
+  // Compress image client-side to prevent large base64 payload errors
+  const compressAndSetImage = (file: File, maxWidth: number, maxHeight: number, callback: (url: string) => void) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          callback(dataUrl);
+        } else {
+          callback(e.target?.result as string);
+        }
+      };
+      img.onerror = () => {
+        callback(e.target?.result as string);
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   
   const generateApiKey = async () => {
     if (!store) return;
@@ -233,8 +273,28 @@ export default function MerchantSettingsPage() {
     if (!store) return;
     
     const currentThemeConfig = typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig || '{}') : (store.themeConfig || {});
+    
+    // If banner is updated, also synchronize hero_slider section slides so Theme Builder and Storefront stay in sync
+    let syncedSections = currentThemeConfig.sections;
+    if (banner && Array.isArray(syncedSections)) {
+      syncedSections = syncedSections.map((sec: any) => {
+        if (sec.type === 'hero_slider') {
+          return {
+            ...sec,
+            settings: {
+              ...sec.settings,
+              bannerImageUrl: banner,
+              heroSlides: [{ image: banner, title: sec.settings?.bannerTitle || '', subtitle: sec.settings?.bannerSubtitle || '' }]
+            }
+          };
+        }
+        return sec;
+      });
+    }
+
     const updatedThemeConfig = { 
       ...currentThemeConfig, 
+      sections: syncedSections || currentThemeConfig.sections,
       legalPages, 
       storeType,
       professionalTitle,
@@ -746,7 +806,17 @@ export default function MerchantSettingsPage() {
                 </label>
                 <div className="flex items-center gap-3">
                   {logo && logo.trim() !== '' && (
-                    <img src={logo} className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0" alt="Logo" />
+                    <div className="relative group shrink-0">
+                      <img src={logo} className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700" alt="Logo" />
+                      <button
+                        type="button"
+                        onClick={() => setLogo('')}
+                        className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full p-0.5 opacity-90 hover:opacity-100 shadow transition-opacity"
+                        title="حذف الشعار"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
                   )}
                   <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-all bg-slate-50 dark:bg-slate-800 text-slate-500">
                     <ImageIcon className="w-4 h-4" />
@@ -758,9 +828,7 @@ export default function MerchantSettingsPage() {
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => setLogo(reader.result as string);
-                          reader.readAsDataURL(file);
+                          compressAndSetImage(file, 600, 600, (url) => setLogo(url));
                         }
                       }}
                     />
@@ -775,7 +843,17 @@ export default function MerchantSettingsPage() {
                 </label>
                 <div className="flex items-center gap-3">
                   {banner && banner.trim() !== '' && (
-                    <img src={banner} className="w-16 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0" alt="Banner" />
+                    <div className="relative group shrink-0">
+                      <img src={banner} className="w-16 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700" alt="Banner" />
+                      <button
+                        type="button"
+                        onClick={() => setBanner('')}
+                        className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full p-0.5 opacity-90 hover:opacity-100 shadow transition-opacity"
+                        title="حذف الغلاف"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
                   )}
                   <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-all bg-slate-50 dark:bg-slate-800 text-slate-500">
                     <ImageIcon className="w-4 h-4" />
@@ -787,9 +865,7 @@ export default function MerchantSettingsPage() {
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => setBanner(reader.result as string);
-                          reader.readAsDataURL(file);
+                          compressAndSetImage(file, 1600, 900, (url) => setBanner(url));
                         }
                       }}
                     />
