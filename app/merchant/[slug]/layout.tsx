@@ -309,6 +309,11 @@ export default function MerchantLayout({
     }
   }, [slug, readNotifIds, router]);
 
+  const handleNotifDataRef = useRef(handleNotifData);
+  useEffect(() => {
+    handleNotifDataRef.current = handleNotifData;
+  }, [handleNotifData]);
+
   useEffect(() => {
     setCurrentUser(authEngine.getCurrentUser());
     
@@ -330,7 +335,7 @@ export default function MerchantLayout({
             try {
               const notifsRes = await getStoreNotificationsAction(s.id);
               if (notifsRes && notifsRes.success && notifsRes.data) {
-                handleNotifData(notifsRes.data, s);
+                handleNotifDataRef.current(notifsRes.data, s);
               }
             } catch (notifErr) {
               console.warn('Notifications fetch skipped:', notifErr);
@@ -344,7 +349,7 @@ export default function MerchantLayout({
     
     loadData();
     setBroadcasts(storeEngine.getBroadcasts());
-  }, [slug, handleNotifData]);
+  }, [slug]);
 
   // ⛔ Guard: If logged in as CUSTOMER, prevent them from accessing merchant management
   useEffect(() => {
@@ -796,20 +801,17 @@ export default function MerchantLayout({
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2 bg-slate-50/50 dark:bg-slate-900/50">
-
+        <div className="p-3 border-t border-slate-700/60 bg-[#0b2138]">
           <button
             onClick={async () => {
               authEngine.logout();
               try { await fetch('/api/logout', { method: 'POST' }); } catch(e) {}
               router.push('/seenlogin5xa');
             }}
-            className="w-full flex items-center justify-between p-2 rounded-xl text-[11px] font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-black text-rose-200 bg-rose-950/70 hover:bg-rose-900/90 border border-rose-800/80 transition-all shadow-sm active:scale-98"
           >
-            <div className="flex items-center gap-1.5">
-              <LogOut className="w-4 h-4" />
-              <span>تسجيل الخروج</span>
-            </div>
+            <LogOut className="w-4 h-4 text-rose-300" />
+            <span>تسجيل الخروج</span>
           </button>
         </div>
       </aside>

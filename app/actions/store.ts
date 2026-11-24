@@ -255,7 +255,25 @@ export async function getPlatformStatsAction() {
   }
 }
 
+// In-Memory Performance Caches (short TTL to keep data fresh while eliminating duplicate roundtrips)
+const storeCache = new Map<string, { data: any; expires: number }>();
+let plansCache: { data: SubscriptionPlan[]; expires: number } | null = null;
+
+export async function invalidateStoreCache(slugOrId?: string) {
+  if (slugOrId) {
+    storeCache.delete(slugOrId);
+  } else {
+    storeCache.clear();
+  }
+}
+
 export async function getStoreBySlugAction(slug: string) {
+  const now = Date.now();
+  const cached = storeCache.get(slug);
+  if (cached && cached.expires > now) {
+    return cached.data;
+  }
+
   try {
     const isDomain = slug.includes('.');
     let store = null;
@@ -278,14 +296,24 @@ export async function getStoreBySlugAction(slug: string) {
 
     if (!store) return null;
 
-    return {
+    const result = {
       ...store,
       themeConfig: store.themeConfig ? JSON.parse(store.themeConfig) : null,
       storeServices: store.storeServices ? JSON.parse(store.storeServices) : [],
       customRates: store.customRates ? JSON.parse(store.customRates) : null,
-      paymentAccounts: store.paymentAccounts ? JSON.parse(store.paymentAccounts) : [],
       shippingMethods: store.shippingMethods ? JSON.parse(store.shippingMethods) : [],
+      paymentAccounts: store.paymentAccounts ? JSON.parse(store.paymentAccounts) : []
     };
+
+    storeCache.set(slug, { data: result, expires: now + 15_000 });
+    if (result.slug && result.slug !== slug) {
+      storeCache.set(result.slug, { data: result, expires: now + 15_000 });
+    }
+    if (result.id && result.id !== slug) {
+      storeCache.set(result.id, { data: result, expires: now + 15_000 });
+    }
+
+    return result;
   } catch (error) {
     console.error('Error fetching store by slug:', error);
     return null;
@@ -398,6 +426,7 @@ export async function updateStoreAction(storeId: string, data: any) {
       where: { id: storeId },
       data,
     });
+    storeCache.clear();
     revalidatePath('/seenayhq7x');
     revalidatePath(`/merchant/${updatedStore.slug}`, 'layout');
     revalidatePath(`/store/${updatedStore.slug}`, 'page');
@@ -625,12 +654,19 @@ export async function toggleStoreStatusAction(storeId: string, newStatus: string
 }
 
 export async function getPlansAction(): Promise<SubscriptionPlan[]> {
+  const now = Date.now();
+  if (plansCache && plansCache.expires > now) {
+    return plansCache.data;
+  }
+
   try {
     const item = await prisma.siteContent.findUnique({
       where: { key: 'system_subscription_plans' }
     });
     if (item && item.value) {
-      return JSON.parse(item.value);
+      const parsed = JSON.parse(item.value);
+      plansCache = { data: parsed, expires: now + 60_000 };
+      return parsed;
     }
   } catch (error) {
     console.error('Error fetching plans from DB:', error);
@@ -640,6 +676,7 @@ export async function getPlansAction(): Promise<SubscriptionPlan[]> {
 
 export async function updatePlansAction(plans: SubscriptionPlan[]) {
   try {
+    plansCache = null;
     await prisma.siteContent.upsert({
       where: { key: 'system_subscription_plans' },
       update: { value: JSON.stringify(plans) },

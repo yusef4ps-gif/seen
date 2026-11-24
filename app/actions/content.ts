@@ -4,8 +4,16 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { requireSuperAdmin } from '@/app/actions/auth';
 
+// In-Memory Content Cache
+let cachedSiteContent: { data: any; expires: number } | null = null;
+
 // Fetch all site content
 export async function getSiteContentAction() {
+  const now = Date.now();
+  if (cachedSiteContent && cachedSiteContent.expires > now) {
+    return cachedSiteContent.data;
+  }
+
   try {
     const items = await prisma.siteContent.findMany();
     // Convert array to key-value object for easy lookup in frontend
@@ -13,7 +21,9 @@ export async function getSiteContentAction() {
     items.forEach((item) => {
       dictionary[item.key] = item.value;
     });
-    return { success: true, dictionary, items };
+    const result = { success: true, dictionary, items };
+    cachedSiteContent = { data: result, expires: now + 60_000 };
+    return result;
   } catch (error: any) {
     console.error('Error fetching site content:', error);
     return { success: false, error: error.message };
@@ -24,6 +34,7 @@ export async function getSiteContentAction() {
 export async function updateSiteContentAction(
   updates: { key: string; value: string; group?: string; label?: string }[]
 ) {
+  cachedSiteContent = null;
   try {
     await requireSuperAdmin();
     for (const item of updates) {

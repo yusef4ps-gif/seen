@@ -21,6 +21,15 @@ export default function SubscriptionPage() {
   const [upgradeNotes, setUpgradeNotes] = useState('');
   const [isSubmittingUpgrade, setIsSubmittingUpgrade] = useState(false);
 
+  const parsedThemeConfig = React.useMemo(() => {
+    if (!store?.themeConfig) return {};
+    try {
+      return typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig) : store.themeConfig;
+    } catch {
+      return {};
+    }
+  }, [store?.themeConfig]);
+
   useEffect(() => {
     async function fetchStore() {
       if (slug) {
@@ -63,15 +72,6 @@ export default function SubscriptionPage() {
   const maxTrialDays = 14;
   
   const isExpired = store.planStatus === 'expired' || (remaining <= 0 && store.planStatus !== 'active' && store.planStatus !== 'trial' && store.planStatus !== 'pending_approval');
-
-  const parsedThemeConfig = React.useMemo(() => {
-    if (!store?.themeConfig) return {};
-    try {
-      return typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig) : store.themeConfig;
-    } catch {
-      return {};
-    }
-  }, [store?.themeConfig]);
 
   const pendingUpgrade = parsedThemeConfig.pendingPlanUpgrade;
 

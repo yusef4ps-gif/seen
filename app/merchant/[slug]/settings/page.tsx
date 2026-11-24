@@ -495,7 +495,7 @@ export default function MerchantSettingsPage() {
           { id: 'marketing', label: 'التسويق والبكسلات', icon: Target },
           { id: 'accounting', label: 'الربط المحاسبي (ERP)', icon: Database },
           { id: 'legal', label: 'الصفحات القانونية', icon: ShieldCheck },
-        ].filter(tab => !isServiceStore || tab.id !== 'accounting').map((tab) => {
+        ].filter(tab => !isServiceStore || (tab.id !== 'accounting' && tab.id !== 'shipping')).map((tab) => {
           const Icon = tab.icon;
           return (
             <button
@@ -1250,7 +1250,7 @@ export default function MerchantSettingsPage() {
         )}
 
         {/* Tab 4: Shipping Methods */}
-        {activeTab === 'shipping' && (
+        {!isServiceStore && activeTab === 'shipping' && (
           <div className="p-6 rounded-3xl bg-white dark:bg-slateDark-900 border border-slate-200 dark:border-slate-800 space-y-5">
             <div className="flex items-center justify-between">
               <div>
