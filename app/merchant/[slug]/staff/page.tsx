@@ -231,11 +231,17 @@ export default function MerchantStaffPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={member.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100'}
-                      alt={member.name}
-                      className={`w-12 h-12 rounded-2xl object-cover border ${isSuspended ? 'border-red-200 grayscale' : 'border-slate-200'} bg-slate-100`}
-                    />
+                    {member.avatarUrl ? (
+                      <img
+                        src={member.avatarUrl}
+                        alt={member.name}
+                        className={`w-12 h-12 rounded-2xl object-cover border ${isSuspended ? 'border-red-200 grayscale' : 'border-slate-200'} bg-slate-100`}
+                      />
+                    ) : (
+                      <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center font-black text-base ${isSuspended ? 'border-red-200 bg-red-50 text-red-500' : 'border-slate-200 dark:border-slate-700 bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300'}`}>
+                        {member.name?.charAt(0) || 'م'}
+                      </div>
+                    )}
                     <div>
                       <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                         {member.name}

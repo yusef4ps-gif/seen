@@ -5,6 +5,8 @@ import { CurrencyCode, OrderItem } from '@/lib/types';
 import { requireStoreOwner } from '@/app/actions/auth';
 import { sendEmail, EmailTemplates } from '@/lib/notification-engine';
 import { convertCurrency } from '@/lib/currency-engine';
+import { extractDigitalMetaFromTags } from '@/lib/digital-assets';
+import { invalidateCachedProducts } from '@/lib/server-cache';
 
 export async function createOrderAction(data: any) {
   try {
@@ -51,6 +53,7 @@ export async function createOrderAction(data: any) {
       if (dbProd) {
         const variant = item.variantId ? dbProd.variants.find(v => v.id === item.variantId) : undefined;
         const unitBase = variant?.priceOverride ?? dbProd.price;
+        const digitalMeta = extractDigitalMetaFromTags(dbProd.tags);
         authoritativeSubtotalBase += unitBase * qty;
         return {
           ...item,
@@ -58,6 +61,11 @@ export async function createOrderAction(data: any) {
           price: unitBase,
           quantity: qty,
           total: unitBase * qty,
+          digitalFileUrl: digitalMeta.digitalFileUrl || item?.digitalFileUrl || '',
+          digitalFileName: digitalMeta.digitalFileName || item?.digitalFileName || '',
+          digitalFileAccess: digitalMeta.digitalFileUrl
+            ? digitalMeta.digitalFileAccess
+            : (item?.digitalFileAccess || 'instant'),
         };
       }
       const fallbackPrice = Math.max(0, Number(item?.price) || 0);
@@ -135,8 +143,8 @@ export async function createOrderAction(data: any) {
         orderNumber: sequentialOrderNumber,
         storeId: effectiveStoreId,
         customerId: linkedCustomerId,
-        customerName: data.customerName,
-        customerPhone: data.customerPhone,
+        customerName: data.customerName || 'عميل المتجر',
+        customerPhone: data.customerPhone || 'غير مسجل',
         city: data.city,
         address: data.address,
         deliveryType: data.deliveryType,
@@ -219,7 +227,7 @@ export async function createOrderAction(data: any) {
       }).catch(err => console.error('Failed to send merchant order alert email:', err));
     }
 
-    // 4. Mark Abandoned Cart as recovered (if any)
+      // 4. Mark Abandoned Cart as recovered (if any)
     if (data.customerPhone && effectiveStoreId) {
       await prisma.abandonedCart.updateMany({
         where: {
@@ -232,6 +240,8 @@ export async function createOrderAction(data: any) {
         }
       });
     }
+
+    invalidateCachedProducts(effectiveStoreId);
 
     return { success: true, order };
   } catch (error) {
@@ -268,6 +278,7 @@ export async function updateOrderStatusAction(id: string, status: string) {
           });
         }
       }
+      invalidateCachedProducts(order.storeId);
 
       // Decrement customer stats if cancelled
       if (order.customerId) {
@@ -567,7 +578,61 @@ export async function getCustomerOrdersAction(storeId: string, identifier: strin
       where: whereClause,
       orderBy: { createdAt: 'desc' }
     });
-    return orders;
+
+    // Enrich any order items missing digitalFileUrl using the store's live catalog
+    // so older free/digital orders automatically display newly attached files.
+    const parsedLists = orders.map((o) => {
+      try {
+        return typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
+      } catch {
+        return [];
+      }
+    });
+    const missingProdIds = Array.from(
+      new Set(
+        parsedLists
+          .flat()
+          .filter((it: any) => it?.productId && !it?.digitalFileUrl)
+          .map((it: any) => String(it.productId))
+      )
+    );
+
+    if (missingProdIds.length === 0) {
+      return orders;
+    }
+
+    const liveProducts = await prisma.product.findMany({
+      where: { storeId, id: { in: missingProdIds } },
+      select: { id: true, tags: true },
+    });
+    const metaByProdId = new Map(
+      liveProducts.map((p) => [p.id, extractDigitalMetaFromTags(p.tags)])
+    );
+
+    return orders.map((o, idx) => {
+      const items = parsedLists[idx];
+      let changed = false;
+      const enriched = items.map((it: any) => {
+        if (!it?.digitalFileUrl && it?.productId) {
+          const meta = metaByProdId.get(it.productId);
+          if (meta?.digitalFileUrl) {
+            changed = true;
+            return {
+              ...it,
+              digitalFileUrl: meta.digitalFileUrl,
+              digitalFileName: meta.digitalFileName || it.digitalFileName || '',
+              digitalFileAccess: meta.digitalFileAccess || it.digitalFileAccess || 'instant',
+            };
+          }
+        }
+        return it;
+      });
+      if (!changed) return o;
+      return {
+        ...o,
+        items: typeof o.items === 'string' ? JSON.stringify(enriched) : enriched,
+      };
+    });
   } catch (error) {
     console.error('Error fetching customer orders:', error);
     return [];

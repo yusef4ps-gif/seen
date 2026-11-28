@@ -18,6 +18,7 @@ import FloatingWhatsApp from '@/components/FloatingWhatsApp';
 import { Toaster } from 'react-hot-toast';
 import { headers, cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
+import { isIpBlockedCached } from '@/lib/server-cache';
 import BanCookieSetter from '@/components/BanCookieSetter';
 import { ShieldAlert } from 'lucide-react';
 
@@ -53,8 +54,10 @@ export default async function RootLayout({
     
     if (ipAddress !== 'Unknown') {
       try {
-        const blocked = await prisma.blockedIP.findUnique({ where: { ipAddress } });
-        if (blocked) {
+        const blocked = await isIpBlockedCached(ipAddress, (ip) =>
+          prisma.blockedIP.findUnique({ where: { ipAddress: ip }, select: { reason: true } })
+        );
+        if (blocked.blocked) {
           isBanned = true;
         } else if (isDeviceBanned) {
           // If cookie says banned but DB says no, it means they were unblocked.

@@ -210,7 +210,7 @@ export default function MerchantProductsPage() {
           description: 'تمت مزامنة هذا المنتج من النظام المحاسبي المرتبط',
           category: 'ERP',
           price: 250,
-          images: ['https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800'],
+          images: [],
           stock: 50,
           lowStockAlert: 5,
           isFeatured: true,
@@ -322,7 +322,7 @@ export default function MerchantProductsPage() {
     setSubCategory('استشارة متخصصة');
     setPrice(100);
     setComparePrice(undefined);
-    setImageUrl('https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&auto=format&fit=crop&q=80');
+    setImageUrl('');
     setStock(9999);
     setLowStockAlert(0);
     setIsFeatured(false);
@@ -349,11 +349,7 @@ export default function MerchantProductsPage() {
     setSubCategory('');
     setPrice(isServiceStore ? 100 : 50);
     setComparePrice(undefined);
-    setImageUrl(
-      isServiceStore
-        ? 'https://images.unsplash.com/photo-1450133064473-71024230f91b?w=800&auto=format&fit=crop&q=80'
-        : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80'
-    );
+    setImageUrl('');
     setStock(isServiceStore ? 9999 : 20);
     setLowStockAlert(isServiceStore ? 0 : 5);
     setIsFeatured(false);
@@ -469,6 +465,11 @@ export default function MerchantProductsPage() {
       return;
     }
 
+    if (hasDigitalFile && !digitalFileUrl.trim()) {
+      toast.error('يرجى رفع الملف الرقمي (PDF أو Word أو Excel...) أو إدخال رابط التحميل الخارجي قبل الحفظ');
+      return;
+    }
+
     setIsSaving(true);
 
     const productTags = [category];
@@ -501,7 +502,7 @@ export default function MerchantProductsPage() {
           category,
           price: effectivePrice,
           compareAtPrice: comparePrice || undefined,
-          images: [imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'],
+          images: imageUrl ? [imageUrl] : [],
           stock: isServiceItem ? 9999 : stock,
           lowStockAlert: isServiceItem ? 0 : lowStockAlert,
           isFeatured,
@@ -542,7 +543,7 @@ export default function MerchantProductsPage() {
           category,
           price: effectivePrice,
           compareAtPrice: comparePrice || undefined,
-          images: [imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'],
+          images: imageUrl ? [imageUrl] : [],
           stock: isServiceItem ? 9999 : stock,
           lowStockAlert: isServiceItem ? 0 : lowStockAlert,
           isFeatured,
@@ -734,11 +735,17 @@ export default function MerchantProductsPage() {
                     {/* Image & Title */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
-                        <img 
-                          src={prod.images[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'} 
-                          alt={prod.name} 
-                          className="w-11 h-11 rounded-xl object-cover border border-slate-200 dark:border-slate-700 bg-slate-100" 
-                        />
+                        {prod.images?.[0] ? (
+                          <img 
+                            src={prod.images[0]} 
+                            alt={prod.name} 
+                            className="w-11 h-11 rounded-xl object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0" 
+                          />
+                        ) : (
+                          <div className="w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 shrink-0">
+                            {isServiceStore ? <Briefcase className="w-5 h-5" /> : <Package className="w-5 h-5" />}
+                          </div>
+                        )}
                         <div>
                           <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                             <span>{prod.name}</span>
@@ -750,7 +757,7 @@ export default function MerchantProductsPage() {
                             {prod.digitalFileUrl && (
                               <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 dark:bg-teal-950 dark:text-teal-300 text-[9px] font-bold inline-flex items-center gap-1 border border-teal-200 dark:border-teal-800">
                                 <FileText className="w-2.5 h-2.5" />
-                                <span>PDF مرفق ({prod.digitalFileAccess === 'verified' ? 'مشروط بالدفع' : 'فوري'})</span>
+                                <span>ملف رقمي مرفق ({prod.digitalFileAccess === 'verified' ? 'مشروط بالدفع' : 'فوري'})</span>
                               </span>
                             )}
                             {prod.tags && (Array.isArray(prod.tags) ? prod.tags : []).some((t: string) => t === 'service:consultation' || t.startsWith('sessions:')) && (
@@ -1386,7 +1393,7 @@ export default function MerchantProductsPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                          رفع ملف PDF / Word من جهازك:
+                          رفع ملف رقمي (PDF, Word, Excel, PowerPoint, ZIP) من جهازك:
                         </label>
                         <div className="flex items-center gap-2">
                           <label className={`flex-1 cursor-pointer flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-dashed border-teal-400 bg-white dark:bg-slate-900 hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-700 dark:text-teal-300 text-xs font-bold transition-all truncate ${isUploadingFile ? 'opacity-60 pointer-events-none' : ''}`}>
@@ -1397,24 +1404,24 @@ export default function MerchantProductsPage() {
                             )}
                             <span className="truncate">
                               {isUploadingFile 
-                                ? 'جارٍ رفع الملف إلى السحابة...' 
+                                ? 'جارٍ رفع الملف وحفظه...' 
                                 : digitalFileUrl 
-                                ? (digitalFileUrl.startsWith('/uploads/') ? 'تم رفع الملف بنجاح ✓' : 'رابط خارجي مضاف ✓') 
-                                : 'اختر ملف PDF أو Word...'}
+                                ? ((digitalFileUrl.startsWith('/uploads/') || digitalFileUrl.startsWith('/api/digital/')) ? 'تم رفع الملف وحفظه بنجاح ✓' : 'رابط خارجي مضاف ✓') 
+                                : 'اختر ملف PDF أو Word أو Excel...'}
                             </span>
                             <input
                               type="file"
-                              accept=".pdf,.doc,.docx,.zip,.rar,.epub"
+                              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.epub,.txt,.csv"
                               className="hidden"
                               disabled={isUploadingFile}
                               onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
-                                if (file.size > 50 * 1024 * 1024) {
-                                  toast.error('حجم الملف يتجاوز الحد المسموح (50MB). يُفضل وضع رابط Google Drive في الحقل المجاور.');
+                                if (file.size > 4.5 * 1024 * 1024) {
+                                  toast.error('حجم الملف يتجاوز حد الرفع المباشر (4.5MB). يُرجى رفعه على Google Drive ولصق الرابط في الحقل المجاور.');
+                                  e.target.value = '';
                                   return;
                                 }
-                                if (!digitalFileName) setDigitalFileName(file.name);
                                 setIsUploadingFile(true);
                                 try {
                                   const fd = new FormData();
@@ -1426,14 +1433,19 @@ export default function MerchantProductsPage() {
                                   const upData = await upRes.json();
                                   if (upData.success && upData.url) {
                                     setDigitalFileUrl(upData.url);
-                                    if (!digitalFileName) setDigitalFileName(upData.fileName || file.name);
-                                    toast.success('تم رفع الملف بنجاح! 📥');
+                                    setDigitalFileName((prev) =>
+                                      !prev || /\.[a-z0-9]{2,5}$/i.test(prev.trim())
+                                        ? (upData.fileName || file.name)
+                                        : prev
+                                    );
+                                    toast.success('تم رفع الملف وحفظه بنجاح! 📥');
                                   } else {
                                     toast.error(upData.error || 'فشل رفع الملف');
                                   }
                                 } catch (err: any) {
                                   toast.error(err.message || 'حدث خطأ أثناء رفع الملف');
                                 } finally {
+                                  e.target.value = '';
                                   setIsUploadingFile(false);
                                 }
                               }}
@@ -1453,6 +1465,9 @@ export default function MerchantProductsPage() {
                             </button>
                           )}
                         </div>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          الحد الأقصى للرفع المباشر 4.5 ميجابايت (أو استخدم Google Drive للملفات الأكبر).
+                        </p>
                       </div>
 
                       <div>
@@ -1462,11 +1477,11 @@ export default function MerchantProductsPage() {
                         <input
                           type="url"
                           placeholder="https://drive.google.com/..."
-                          value={digitalFileUrl.startsWith('/uploads/') || digitalFileUrl.startsWith('data:') ? '' : digitalFileUrl}
+                          value={(digitalFileUrl.startsWith('/uploads/') || digitalFileUrl.startsWith('/api/digital/') || digitalFileUrl.startsWith('data:')) ? '' : digitalFileUrl}
                           onChange={(e) => setDigitalFileUrl(e.target.value)}
                           className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-teal-500"
                         />
-                        {digitalFileUrl.startsWith('/uploads/') && (
+                        {(digitalFileUrl.startsWith('/uploads/') || digitalFileUrl.startsWith('/api/digital/')) && (
                           <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">
                             ✓ تم ربط الملف المرفوع: {digitalFileName || 'ملف رقمي'}
                           </p>

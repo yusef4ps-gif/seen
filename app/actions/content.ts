@@ -20,6 +20,7 @@ export async function getSiteContentAction() {
     const items = await prisma.siteContent.findMany({
       where: {
         key: { notIn: Array.from(SECRET_SITE_CONTENT_KEYS) },
+        group: { notIn: ['customer_messages', 'digital_assets'] },
       },
     });
     const dictionary: Record<string, string> = {};
@@ -39,7 +40,11 @@ export async function getSiteContentAction() {
 export async function getAdminSiteContentAction() {
   try {
     await requireSuperAdmin();
-    const items = await prisma.siteContent.findMany();
+    const items = await prisma.siteContent.findMany({
+      where: {
+        group: { notIn: ['customer_messages', 'digital_assets'] },
+      },
+    });
     const dictionary: Record<string, string> = {};
     items.forEach((item) => {
       dictionary[item.key] = item.value;

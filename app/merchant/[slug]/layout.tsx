@@ -19,6 +19,8 @@ import { getStoreBySlugAction, getPlansAction } from '@/app/actions/store';
 import { getStoreNotificationsAction } from '@/app/actions/notifications';
 import { getUserStoresAction, switchStoreAction } from '@/app/actions/auth';
 import LiveVisitorPill from '@/components/LiveVisitorPill';
+import { MerchantStoreProvider } from '@/components/MerchantStoreContext';
+import { mutate as swrMutate } from 'swr';
 import toast from 'react-hot-toast';
 
 import { authEngine } from '@/lib/auth-engine';
@@ -362,39 +364,36 @@ export default function MerchantLayout({
     async function loadData() {
       if (slug) {
         try {
-          const [s, dbPlans] = await Promise.all([
+          const [s, dbPlans, userStoresRes] = await Promise.all([
             getStoreBySlugAction(slug),
-            getPlansAction()
+            getPlansAction(),
+            getUserStoresAction().catch(() => null),
           ]);
           if (dbPlans && dbPlans.length > 0) {
             storeEngine.setPlans(dbPlans);
             setPlans(dbPlans);
           }
+          if (userStoresRes && userStoresRes.success && userStoresRes.stores && userStoresRes.stores.length > 1) {
+            setMerchantStores(userStoresRes.stores);
+          }
           if (s) {
             setStore(s as any);
+            // Seed SWR cache immediately so Overview/Products/Orders pages render without redundant network wait
+            swrMutate(`store-${slug}`, s, false);
             
-            // Fetch Real Notifications
-            try {
-              const notifsRes = await getStoreNotificationsAction(s.id);
-              if (notifsRes && notifsRes.success && notifsRes.data) {
-                handleNotifDataRef.current(notifsRes.data, s);
-                if (notifsRes.data.systemBroadcasts && notifsRes.data.systemBroadcasts.length > 0) {
-                  setBroadcasts(notifsRes.data.systemBroadcasts);
+            // Fetch Real Notifications non-blockingly
+            getStoreNotificationsAction(s.id)
+              .then((notifsRes) => {
+                if (notifsRes && notifsRes.success && notifsRes.data) {
+                  handleNotifDataRef.current(notifsRes.data, s);
+                  if (notifsRes.data.systemBroadcasts && notifsRes.data.systemBroadcasts.length > 0) {
+                    setBroadcasts(notifsRes.data.systemBroadcasts);
+                  }
                 }
-              }
-            } catch (notifErr) {
-              console.warn('Notifications fetch skipped:', notifErr);
-            }
-
-            // Fetch other stores for multi-store merchant switcher
-            try {
-              const userStoresRes = await getUserStoresAction();
-              if (userStoresRes && userStoresRes.success && userStoresRes.stores && userStoresRes.stores.length > 1) {
-                setMerchantStores(userStoresRes.stores);
-              }
-            } catch (storesErr) {
-              console.warn('User stores fetch skipped:', storesErr);
-            }
+              })
+              .catch((notifErr) => {
+                console.warn('Notifications fetch skipped:', notifErr);
+              });
           }
         } catch (err) {
           console.error('MerchantLayout loadData error:', err);
@@ -1217,7 +1216,9 @@ export default function MerchantLayout({
 
         {/* Page Children Container */}
         <main className="p-3 sm:p-8 flex-1">
-          {children}
+          <MerchantStoreProvider value={{ store, setStore, plans }}>
+            {children}
+          </MerchantStoreProvider>
         </main>
 
         {/* SEEN Platform Footer */}

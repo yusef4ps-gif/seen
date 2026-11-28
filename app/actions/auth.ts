@@ -11,6 +11,7 @@ import {
   createOtpChallengeToken,
   verifyOtpChallengeToken,
 } from '@/lib/session';
+import { isIpBlockedCached, invalidateBlockedIpCache } from '@/lib/server-cache';
 
 const REG_OTP_COOKIE = 'seen_reg_otp';
 
@@ -525,8 +526,10 @@ export async function verifyAdminIPAction() {
   let ipAddress = headersList.get('x-forwarded-for') || headersList.get('x-real-ip') || 'Unknown';
   if (ipAddress.includes(',')) ipAddress = ipAddress.split(',')[0].trim();
 
-  const blocked = await prisma.blockedIP.findUnique({ where: { ipAddress } });
-  if (blocked) {
+  const blocked = await isIpBlockedCached(ipAddress, (ip) =>
+    prisma.blockedIP.findUnique({ where: { ipAddress: ip }, select: { reason: true } })
+  );
+  if (blocked.blocked) {
     return { blocked: true, reason: blocked.reason, ipAddress };
   }
   return { blocked: false, ipAddress };
@@ -563,6 +566,7 @@ export async function logAdminLoginAttemptAction(username: string, success: bool
         await prisma.blockedIP.create({
           data: { ipAddress, reason },
         });
+        invalidateBlockedIpCache(ipAddress);
 
         await prisma.systemLog.create({
           data: {

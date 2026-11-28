@@ -263,7 +263,7 @@ export default function ImageUploader({
             <LinkIcon className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
             <input
               type="url"
-              placeholder="https://images.unsplash.com/photo-..."
+              placeholder="https://example.com/image.jpg"
               value={value}
               onChange={(e) => onChange(e.target.value)}
               className="w-full pr-9 pl-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-500"

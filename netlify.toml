@@ -1,8 +1,6 @@
 [build]
   command = "npm run build"
   publish = ".next"
-  # Stop automatic deployment on Netlify
-  ignore = "exit 0"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

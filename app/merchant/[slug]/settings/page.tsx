@@ -7,7 +7,7 @@ import {
   Save, CheckCircle2, Plus, Trash2, Building2, Phone, MapPin, Image as ImageIcon,
   Target, ShieldCheck, Sparkles, X, Share2, Globe, Linkedin
 } from 'lucide-react';
-import { Store, CurrencyCode, PaymentAccountConfig, ShippingMethod } from '@/lib/types';
+import { Store, CurrencyCode, PaymentAccountConfig, ShippingMethod, PortfolioItem } from '@/lib/types';
 import { getStoreBySlugAction, updateStoreAction, getPlansAction } from '@/app/actions/store';
 import { getSiteContentAction } from '@/app/actions/content';
 import { isAiAllowedForStore, isAiPlanAllowedForStore } from '@/lib/ai-access';
@@ -15,6 +15,7 @@ import { updateMerchantCredentialsAction, getMerchantUserAction } from '@/app/ac
 import { generateApiKeyAction, getApiKeysAction, deleteApiKeyAction } from '@/app/actions/apiKey';
 import { generateLegalPageAction } from '@/app/actions/ai';
 import { storeEngine } from '@/lib/store-engine';
+import PortfolioManager from '@/components/PortfolioManager';
 import toast from 'react-hot-toast';
 
 export default function MerchantSettingsPage() {
@@ -133,6 +134,7 @@ export default function MerchantSettingsPage() {
   const [hideBannerButtons, setHideBannerButtons] = useState(false);
   const [bannerOverlayStyle, setBannerOverlayStyle] = useState<'none' | 'light' | 'dark'>('light');
   const [showPortfolio, setShowPortfolio] = useState(false);
+  const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
   const [deliveryCurrency, setDeliveryCurrency] = useState<CurrencyCode>('YER_SANAA');
   const [activeYemeniMarket, setActiveYemeniMarket] = useState<'YER_ADEN' | 'YER_SANAA'>('YER_ADEN');
   const [ratesByBase, setRatesByBase] = useState<Record<string, any>>({
@@ -182,18 +184,26 @@ export default function MerchantSettingsPage() {
 
   useEffect(() => {
     async function init() {
-      const user = await getMerchantUserAction();
-      if (user) {
-        setAccountId(user.id);
-        setLoginEmail(user.email);
+      if (!slug) {
+        const user = await getMerchantUserAction();
+        if (user) {
+          setAccountId(user.id);
+          setLoginEmail(user.email);
+        }
+        return;
       }
 
       if (slug) {
-        const [s, dbPlans, siteContentRes] = await Promise.all([
+        const [user, s, dbPlans, siteContentRes] = await Promise.all([
+          getMerchantUserAction(),
           getStoreBySlugAction(slug),
           getPlansAction(),
           getSiteContentAction()
         ]);
+        if (user) {
+          setAccountId(user.id);
+          setLoginEmail(user.email);
+        }
         if (s) {
           setStore(s as any);
           setName(s.name || '');
@@ -266,6 +276,7 @@ export default function MerchantSettingsPage() {
               if (parsed.hideBannerButtons !== undefined) setHideBannerButtons(Boolean(parsed.hideBannerButtons));
               if (parsed.bannerOverlayStyle) setBannerOverlayStyle(parsed.bannerOverlayStyle);
               if (parsed.showPortfolio !== undefined) setShowPortfolio(Boolean(parsed.showPortfolio));
+              if (Array.isArray(parsed.portfolioItems)) setPortfolioItems(parsed.portfolioItems);
             } catch (e) {
               // ignore
             }
@@ -370,7 +381,8 @@ export default function MerchantSettingsPage() {
       hideTrustBadges,
       hideBannerButtons,
       bannerOverlayStyle,
-      showPortfolio
+      showPortfolio,
+      portfolioItems,
     };
 
     const res = await updateStoreAction(store.id, {
@@ -793,12 +805,12 @@ export default function MerchantSettingsPage() {
                   />
                 </div>
 
-                {/* Show Portfolio Toggle */}
-                <div className="pt-2 border-t border-teal-200/60 dark:border-teal-800/40">
+                {/* Show Portfolio Toggle + Real Portfolio Manager */}
+                <div className="pt-2 border-t border-teal-200/60 dark:border-teal-800/40 space-y-3">
                   <label className="flex items-center justify-between p-3 rounded-xl border border-teal-200 dark:border-teal-800 bg-white dark:bg-slate-900 cursor-pointer">
                     <div className="text-right">
                       <div className="text-xs font-bold text-slate-800 dark:text-slate-200">تفعيل تبويب وقسم معرض الأعمال وسابقة المشاريع (Portfolio)</div>
-                      <div className="text-[10px] text-slate-500">إظهار تبويب "معرض الأعمال" في الشريط العلوي بالمتجر لاستعراض سابقة أعمالك ونماذج المشاريع المنجزة</div>
+                      <div className="text-[10px] text-slate-500">إظهار تبويب «أعمال سابقة» في متجرك لعرض قائمة أعمالك وملفاتها التي تضيفها أدناه</div>
                     </div>
                     <input
                       type="checkbox"
@@ -807,6 +819,22 @@ export default function MerchantSettingsPage() {
                       className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500"
                     />
                   </label>
+
+                  {showPortfolio && (
+                    <>
+                      <PortfolioManager items={portfolioItems} onChange={setPortfolioItems} />
+                      <div className="flex justify-end">
+                        <button
+                          type="submit"
+                          disabled={isSaving}
+                          className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-black flex items-center gap-2 shadow-sm transition-all active:scale-95 disabled:opacity-60"
+                        >
+                          <Save className="w-4 h-4" />
+                          <span>{isSaving ? 'جارٍ الحفظ...' : 'حفظ قائمة الأعمال والإعدادات'}</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}

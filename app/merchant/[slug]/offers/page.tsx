@@ -9,8 +9,9 @@ import {
 import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
 import { 
   getStoreOffersAction, createStoreOfferAction, deleteStoreOfferAction, 
-  toggleStoreOfferAction, StoreOffer 
+  toggleStoreOfferAction, setOffersSidebarEnabledAction, StoreOffer 
 } from '@/app/actions/offers';
+import { isStoreOfferCurrentlyActive } from '@/lib/offers-utils';
 import { Store } from '@/lib/types';
 import { formatCurrency } from '@/lib/currency-engine';
 import toast from 'react-hot-toast';
@@ -23,6 +24,8 @@ export default function MerchantOffersPage() {
   const [storeProducts, setStoreProducts] = useState<any[]>([]);
   const [offers, setOffers] = useState<StoreOffer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sidebarEnabled, setSidebarEnabled] = useState(true);
+  const [isTogglingSidebar, setIsTogglingSidebar] = useState(false);
 
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,6 +39,7 @@ export default function MerchantOffersPage() {
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [activateSidebarOnCreate, setActivateSidebarOnCreate] = useState(true);
   
   // Dropdown & Search state
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -48,6 +52,12 @@ export default function MerchantOffersPage() {
         const s = await getStoreBySlugAction(slug);
         if (s) {
           setStore(s as any);
+          try {
+            const cfg = typeof s.themeConfig === 'string' ? JSON.parse(s.themeConfig) : (s.themeConfig || {});
+            setSidebarEnabled(cfg?.offersSidebarEnabled !== false);
+          } catch {
+            setSidebarEnabled(true);
+          }
           const [fetchedOffers, prods] = await Promise.all([
             getStoreOffersAction(s.id),
             getProductsByStoreAction(s.id)
@@ -60,6 +70,24 @@ export default function MerchantOffersPage() {
     }
     init();
   }, [slug]);
+
+  const handleToggleSidebarSetting = async () => {
+    if (!store || isTogglingSidebar) return;
+    setIsTogglingSidebar(true);
+    const nextVal = !sidebarEnabled;
+    const res = await setOffersSidebarEnabledAction(store.id, nextVal);
+    setIsTogglingSidebar(false);
+    if (res.success) {
+      setSidebarEnabled(nextVal);
+      toast.success(
+        nextVal
+          ? 'تم تفعيل الشريط الجانبي المتحرك للعروض والخصومات في المتجر 🔥'
+          : 'تم إيقاف وإخفاء الشريط الجانبي للعروض مؤقتاً'
+      );
+    } else {
+      toast.error(res.error || 'تعذر تحديث الإعداد');
+    }
+  };
 
   const handleCreateOffer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,13 +113,17 @@ export default function MerchantOffersPage() {
       scopeType,
       productIds: selectedProductIds,
       startDate: startDate || null,
-      endDate: endDate || null
+      endDate: endDate || null,
+      activateSidebar: activateSidebarOnCreate,
     });
     setIsSubmitting(false);
 
     if (res.success && res.offer) {
-      toast.success('تمت إضافة العرض الترويجي بنجاح! 🎉');
+      toast.success('تمت إضافة العرض وتحديث الشريط الجانبي بالمتجر! 🎉');
       setOffers([res.offer, ...offers]);
+      if (activateSidebarOnCreate) {
+        setSidebarEnabled(true);
+      }
       setIsModalOpen(false);
       // Reset form
       setTitle('');
@@ -138,7 +170,7 @@ export default function MerchantOffersPage() {
     if (offer.startDate && new Date(offer.startDate) > now) {
       return { label: 'مجدول ⏳', color: 'bg-amber-100 text-amber-800 border-amber-200' };
     }
-    if (offer.endDate && new Date(offer.endDate) < now) {
+    if (!isStoreOfferCurrentlyActive(offer, now)) {
       return { label: 'منتهي الصلاحية ⛔', color: 'bg-rose-100 text-rose-800 border-rose-200' };
     }
     return { label: 'نشط الآن 🟢', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' };
@@ -153,6 +185,12 @@ export default function MerchantOffersPage() {
   }
 
   if (!store) return null;
+
+  const activeOffersCount = offers.filter((o) => isStoreOfferCurrentlyActive(o)).length;
+  const discountedProductsCount = storeProducts.filter(
+    (p) => Number(p?.comparePrice) > Number(p?.price) && Number(p?.comparePrice) > 0
+  ).length;
+  const hasLiveDeals = activeOffersCount > 0 || discountedProductsCount > 0;
 
   return (
     <div className="space-y-6 animate-fadeIn pb-20">
@@ -174,6 +212,62 @@ export default function MerchantOffersPage() {
         >
           <Plus className="w-4 h-4" />
           <span>إنشاء عرض جديد 🎁</span>
+        </button>
+      </div>
+
+      {/* Animated Storefront Offers Sidebar Trigger & Status Card */}
+      <div className={`p-4 sm:p-5 rounded-3xl border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
+        sidebarEnabled && hasLiveDeals
+          ? 'bg-gradient-to-l from-emerald-50/90 to-teal-50/70 dark:from-emerald-950/30 dark:to-teal-950/20 border-emerald-200 dark:border-emerald-800'
+          : 'bg-white dark:bg-slateDark-900 border-slate-200 dark:border-slate-800'
+      }`}>
+        <div className="flex items-start gap-3.5 text-right">
+          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+            sidebarEnabled && hasLiveDeals
+              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+          }`}>
+            <Sparkles className={`w-5 h-5 ${sidebarEnabled && hasLiveDeals ? 'animate-pulse' : ''}`} />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-black text-slate-900 dark:text-white">
+                الشريط الجانبي المتحرك للعروض والخصومات بالمتجر
+              </h2>
+              {sidebarEnabled ? (
+                hasLiveDeals ? (
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-black border border-emerald-200 dark:border-emerald-800">
+                    ظاهر ومتحرك للعملاء الآن 🟢
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 text-[10px] font-bold border border-amber-200 dark:border-amber-800">
+                    محفّز ومخفي تلقائياً (لا توجد عروض مفعلة حالياً) ⚪
+                  </span>
+                )
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 text-[10px] font-bold">
+                  مخفي يدوياً 🔴
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              يظهر تلقائياً على جانب صفحة متجرك عند وجود عروض نشطة ({activeOffersCount}) أو تخفيضات مباشرة ({discountedProductsCount})، ويختفي تلقائياً عند إيقاف أو انتهاء جميع العروض.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          disabled={isTogglingSidebar}
+          onClick={handleToggleSidebarSetting}
+          className={`px-4 py-2.5 rounded-xl text-xs font-black shrink-0 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60 ${
+            sidebarEnabled
+              ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
+              : 'bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 text-white'
+          }`}
+        >
+          {sidebarEnabled ? <CheckCircle2 className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+          <span>{sidebarEnabled ? 'مُحفّز (إيقاف الشريط)' : 'تحفيز وإظهار الشريط ⚡'}</span>
         </button>
       </div>
 
@@ -566,6 +660,25 @@ export default function MerchantOffersPage() {
                   />
                 </div>
               </div>
+
+              {/* Activate Animated Offers Sidebar Checkbox */}
+              <label className="flex items-center justify-between gap-3 p-3.5 rounded-2xl border border-emerald-200 dark:border-emerald-800/70 bg-emerald-50/70 dark:bg-emerald-950/30 cursor-pointer">
+                <div className="space-y-0.5 text-right">
+                  <div className="text-xs font-black text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-emerald-600" />
+                    <span>تحفيز وإظهار الشريط الجانبي المتحرك للعروض بالمتجر</span>
+                  </div>
+                  <p className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                    يظهر الشريط الجانبي للعملاء عند وجود عروض نشطة ويختفي تلقائياً عند عدم وجود عروض.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={activateSidebarOnCreate}
+                  onChange={(e) => setActivateSidebarOnCreate(e.target.checked)}
+                  className="w-4 h-4 accent-emerald-600 rounded shrink-0"
+                />
+              </label>
 
               {/* Submit Buttons */}
               <div className="pt-3 flex items-center gap-3">

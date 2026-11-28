@@ -315,11 +315,17 @@ export default function AdminUsersPage() {
                       {/* Name & Contact */}
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
-                            alt={user.name}
-                            className="w-9 h-9 rounded-xl object-cover border border-slate-200 dark:border-slate-700 bg-slate-100"
-                          />
+                          {user.avatarUrl ? (
+                            <img
+                              src={user.avatarUrl}
+                              alt={user.name}
+                              className="w-9 h-9 rounded-xl object-cover border border-slate-200 dark:border-slate-700 bg-slate-100"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 flex items-center justify-center font-black text-xs shrink-0">
+                              {user.name?.charAt(0) || 'م'}
+                            </div>
+                          )}
                           <div>
                             <div className="font-bold text-slate-900 dark:text-white">{user.name}</div>
                             <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2 mt-0.5">

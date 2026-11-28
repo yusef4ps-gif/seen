@@ -280,8 +280,8 @@ export default function HomePage() {
                    
                    {/* Banner Slider */}
                    <div className="px-5 mb-6">
-                     <div className="w-full h-36 rounded-[1.25rem] bg-gradient-to-r from-emerald-600 to-teal-500 overflow-hidden relative shadow-md shadow-emerald-500/20" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400)', backgroundSize: 'cover' }}>
-                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                     <div className="w-full h-36 rounded-[1.25rem] bg-gradient-to-br from-emerald-700 via-teal-600 to-slate-900 overflow-hidden relative shadow-md shadow-emerald-500/20">
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                        <div className="absolute inset-0 p-4 flex flex-col justify-end items-end text-white text-right">
                          <h3 className="font-black text-lg mb-0.5 text-white drop-shadow-md">ساعات فاخرة</h3>
                          <p className="text-[10px] mb-3 text-slate-200 font-medium">دقة متناهية وفخامة تليق بمعصمك</p>
@@ -294,8 +294,8 @@ export default function HomePage() {
                    <div className="px-5 mb-6 flex justify-end gap-3 overflow-x-auto">
                      {['ملابس', 'عطور', 'تجميل', 'حقائب'].reverse().map((cat, i) => (
                        <div key={i} className="flex flex-col items-center gap-2 shrink-0">
-                         <div className="w-14 h-14 rounded-[1.1rem] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-center p-0.5">
-                           <img src="https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=50" className="w-full h-full object-cover rounded-2xl" alt="" />
+                         <div className="w-14 h-14 rounded-[1.1rem] bg-gradient-to-br from-brand-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-center text-brand-600 dark:text-brand-400">
+                           <Sparkles className="w-5 h-5" />
                          </div>
                          <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{cat}</span>
                        </div>
@@ -311,18 +311,18 @@ export default function HomePage() {
                      <div className="grid grid-cols-2 gap-3.5">
                        <div className="bg-white dark:bg-slate-800/80 rounded-2xl p-2.5 border border-slate-100 dark:border-slate-700/50 shadow-sm relative">
                          <div className="absolute top-3 right-3 bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-md z-10 shadow-sm">خصم 20%</div>
-                         <div className="w-full h-28 bg-slate-100 dark:bg-slate-700 rounded-xl mb-2.5 overflow-hidden">
-                           <img src="https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=200" className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
+                         <div className="w-full h-28 bg-gradient-to-br from-amber-50 to-orange-100 dark:from-slate-700 dark:to-slate-800 rounded-xl mb-2.5 flex items-center justify-center text-amber-600">
+                           <Sparkles className="w-8 h-8" />
                          </div>
                          <div className="text-[10px] font-bold text-slate-800 dark:text-slate-200 mb-0.5">عطر كلاسيك</div>
                          <div className="text-brand-600 dark:text-brand-400 text-xs font-black">12,500 ر.ي</div>
                        </div>
                        <div className="bg-white dark:bg-slate-800/80 rounded-2xl p-2.5 border border-slate-100 dark:border-slate-700/50 shadow-sm relative">
                          <div className="absolute top-3 right-3 bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-md z-10 shadow-sm">خصم 15%</div>
-                         <div className="w-full h-28 bg-slate-100 dark:bg-slate-700 rounded-xl mb-2.5 overflow-hidden">
-                           <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200" className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
+                         <div className="w-full h-28 bg-gradient-to-br from-teal-50 to-emerald-100 dark:from-slate-700 dark:to-slate-800 rounded-xl mb-2.5 flex items-center justify-center text-teal-600">
+                           <StoreIcon className="w-8 h-8" />
                          </div>
-                         <div className="text-[10px] font-bold text-slate-800 dark:text-slate-200 mb-0.5">فستان سهرة</div>
+                         <div className="text-[10px] font-bold text-slate-800 dark:text-slate-200 mb-0.5">باقة متكاملة</div>
                          <div className="text-brand-600 dark:text-brand-400 text-xs font-black">45,000 ر.ي</div>
                        </div>
                      </div>
@@ -753,13 +753,13 @@ export default function HomePage() {
                 <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
                 <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
               </div>
-              {/* Dynamic Scrolling Image Container */}
-              <div className="h-[350px] overflow-hidden relative bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shrink-0 cursor-pointer">
-                <div className="absolute inset-0 w-full h-[800px] transition-transform duration-[4s] ease-linear group-hover:-translate-y-[calc(100%-350px)]">
-                  <img src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=600&auto=format&fit=crop" alt="Fashion Theme" className="w-full h-full object-cover object-top opacity-90 group-hover:opacity-100 transition-opacity" />
+              <div className="h-[220px] overflow-hidden relative bg-gradient-to-br from-teal-600/15 via-emerald-500/10 to-amber-500/15 border-b border-slate-100 dark:border-slate-800 shrink-0 flex flex-col items-center justify-center gap-3 p-6">
+                <div className="w-16 h-16 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-lg">
+                  <ShoppingBag className="w-8 h-8" />
                 </div>
-                {/* Overlay Gradient for visual depth */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <span className="text-xs font-bold text-teal-800 dark:text-teal-300 bg-white/80 dark:bg-slate-900/80 px-3 py-1 rounded-full border border-teal-200 dark:border-teal-800">
+                  معاينة واجهة المتجر المتكاملة
+                </span>
               </div>
               {/* Info */}
               <div className="p-5 text-right flex-1 flex flex-col justify-between">
@@ -777,11 +777,13 @@ export default function HomePage() {
                 <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
                 <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
               </div>
-              <div className="h-[350px] overflow-hidden relative bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shrink-0 cursor-pointer">
-                <div className="absolute inset-0 w-full h-[800px] transition-transform duration-[4s] ease-linear group-hover:-translate-y-[calc(100%-350px)]">
-                  <img src="https://images.unsplash.com/photo-1589465885857-44edb59bbff2?q=80&w=600&auto=format&fit=crop" alt="Abayas Theme" className="w-full h-full object-cover object-top opacity-90 group-hover:opacity-100 transition-opacity" />
+              <div className="h-[220px] overflow-hidden relative bg-gradient-to-br from-slate-900/15 via-slate-700/10 to-amber-500/15 border-b border-slate-100 dark:border-slate-800 shrink-0 flex flex-col items-center justify-center gap-3 p-6">
+                <div className="w-16 h-16 rounded-2xl bg-slate-900 text-amber-400 flex items-center justify-center shadow-lg">
+                  <Sparkles className="w-8 h-8" />
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 bg-white/80 dark:bg-slate-900/80 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700">
+                  تصميم أنيق لعرض المنتجات
+                </span>
               </div>
               <div className="p-5 text-right flex-1 flex flex-col justify-between">
                 <div>
@@ -798,11 +800,13 @@ export default function HomePage() {
                 <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
                 <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
               </div>
-              <div className="h-[350px] overflow-hidden relative bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 shrink-0 cursor-pointer">
-                <div className="absolute inset-0 w-full h-[800px] transition-transform duration-[4s] ease-linear group-hover:-translate-y-[calc(100%-350px)]">
-                  <img src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=600&auto=format&fit=crop" alt="Cosmetics Theme" className="w-full h-full object-cover object-top opacity-90 group-hover:opacity-100 transition-opacity" />
+              <div className="h-[220px] overflow-hidden relative bg-gradient-to-br from-rose-500/15 via-pink-500/10 to-purple-500/15 border-b border-slate-100 dark:border-slate-800 shrink-0 flex flex-col items-center justify-center gap-3 p-6">
+                <div className="w-16 h-16 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-lg">
+                  <StoreIcon className="w-8 h-8" />
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <span className="text-xs font-bold text-rose-800 dark:text-rose-200 bg-white/80 dark:bg-slate-900/80 px-3 py-1 rounded-full border border-rose-200 dark:border-rose-800">
+                  هوية مخصصة لبراندك الخاص
+                </span>
               </div>
               <div className="p-5 text-right flex-1 flex flex-col justify-between">
                 <div>

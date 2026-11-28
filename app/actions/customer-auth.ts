@@ -45,36 +45,55 @@ async function issueCustomerSessionCookie(sessionData: {
 
 export async function registerCustomerAction(storeId: string, name: string, email: string, phone: string, password?: string) {
   try {
-    if (!name || (!email && !phone)) {
+    const cleanEmail = email?.trim() || '';
+    const cleanPhone = phone?.trim() || '';
+    if (!name || (!cleanEmail && !cleanPhone)) {
       return { success: false, error: 'الاسم ورقم الهاتف أو الإيميل مطلوبة' };
     }
 
-    if (email) {
-      const existingEmail = await prisma.customer.findUnique({
-        where: { storeId_email: { storeId, email } },
-      });
-      if (existingEmail) return { success: false, error: 'هذا الإيميل مسجل مسبقاً في هذا المتجر' };
+    const existingEmail = cleanEmail
+      ? await prisma.customer.findUnique({ where: { storeId_email: { storeId, email: cleanEmail } } })
+      : null;
+    if (existingEmail && (existingEmail.authProvider !== 'guest' || existingEmail.password)) {
+      return { success: false, error: 'هذا الإيميل مسجل مسبقاً في هذا المتجر' };
     }
 
-    if (phone) {
-      const existingPhone = await prisma.customer.findUnique({
-        where: { storeId_phone: { storeId, phone } },
-      });
-      if (existingPhone) return { success: false, error: 'رقم الهاتف مسجل مسبقاً في هذا المتجر' };
+    const existingPhone = cleanPhone
+      ? await prisma.customer.findUnique({ where: { storeId_phone: { storeId, phone: cleanPhone } } })
+      : null;
+    if (existingPhone && (existingPhone.authProvider !== 'guest' || existingPhone.password)) {
+      return { success: false, error: 'رقم الهاتف مسجل مسبقاً في هذا المتجر' };
+    }
+
+    if (existingEmail && existingPhone && existingEmail.id !== existingPhone.id) {
+      return { success: false, error: 'بيانات البريد الإلكتروني ورقم الهاتف مرتبطة بحسابين مختلفين' };
     }
 
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
+    const guestToUpgrade = existingPhone || existingEmail;
 
-    const newCustomer = await prisma.customer.create({
-      data: {
-        storeId,
-        name,
-        email: email || null,
-        phone: phone || null,
-        password: hashedPassword,
-        authProvider: password ? 'credentials' : 'google',
-      },
-    });
+    const newCustomer = guestToUpgrade
+      ? await prisma.customer.update({
+          where: { id: guestToUpgrade.id },
+          data: {
+            name,
+            email: cleanEmail || guestToUpgrade.email || null,
+            phone: cleanPhone || guestToUpgrade.phone || null,
+            password: hashedPassword,
+            authProvider: password ? 'credentials' : 'google',
+            lastLoginAt: new Date(),
+          },
+        })
+      : await prisma.customer.create({
+          data: {
+            storeId,
+            name,
+            email: cleanEmail || null,
+            phone: cleanPhone || null,
+            password: hashedPassword,
+            authProvider: password ? 'credentials' : 'google',
+          },
+        });
 
     const sessionData = {
       customerId: newCustomer.id,
@@ -191,17 +210,10 @@ export async function changeCustomerPasswordAction(oldPassword: string, newPassw
 }
 
 export async function deleteCustomerAccountAction() {
-  try {
-    const session = await getCurrentCustomerAction();
-    if (!session) return { success: false, error: 'غير مسجل الدخول' };
-
-    await prisma.customer.delete({ where: { id: session.customerId } });
-    cookies().delete(CUSTOMER_SESSION_COOKIE);
-
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message };
-  }
+  return {
+    success: false,
+    error: 'خاصية حذف الحساب غير متاحة، يمكنك تسجيل الخروج من حسابك فقط.',
+  };
 }
 
 export async function customerForgotPasswordAction(storeId: string, email: string) {
@@ -325,6 +337,11 @@ export async function verifyCustomerOtpAction(emailOrPhone: string, code: string
       return { success: false, error: 'الحساب غير موجود' };
     }
 
+    await prisma.customer.update({
+      where: { id: customer.id },
+      data: { lastLoginAt: new Date() },
+    }).catch(() => {});
+
     const sessionData = {
       customerId: customer.id,
       storeId: customer.storeId,
@@ -338,5 +355,30 @@ export async function verifyCustomerOtpAction(emailOrPhone: string, code: string
     return { success: true, customer: sessionData };
   } catch {
     return { success: false, error: 'حدث خطأ أثناء التحقق من الرمز' };
+  }
+}
+
+export async function recordCustomerVisitAction(storeId: string) {
+  try {
+    const session = await getCurrentCustomerAction();
+    if (!session || session.storeId !== storeId) {
+      return { success: false };
+    }
+    const cust = await prisma.customer.findUnique({
+      where: { id: session.customerId },
+      select: { id: true, lastLoginAt: true },
+    });
+    if (!cust) return { success: false };
+
+    const lastMs = cust.lastLoginAt ? new Date(cust.lastLoginAt).getTime() : 0;
+    if (Date.now() - lastMs > 3 * 60 * 1000) {
+      await prisma.customer.update({
+        where: { id: cust.id },
+        data: { lastLoginAt: new Date() },
+      });
+    }
+    return { success: true };
+  } catch {
+    return { success: false };
   }
 }

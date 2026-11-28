@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { requireStoreOwner } from '@/app/actions/auth';
+import { invalidateCachedStore } from '@/lib/server-cache';
 
 export async function getApiKeysAction(storeId: string) {
   try {
@@ -59,7 +60,8 @@ export async function generateApiKeyAction(storeId: string, label: string = 'Def
       where: { id: storeId },
       data: { apiKeys: JSON.stringify(keys) }
     });
-    
+
+    invalidateCachedStore(storeId);
     revalidatePath(`/merchant/[slug]/settings`);
     return newKeyObj;
   } catch (error) {
@@ -91,7 +93,8 @@ export async function deleteApiKeyAction(storeId: string, keyId: string) {
       where: { id: storeId },
       data: { apiKeys: JSON.stringify(keys) }
     });
-    
+
+    invalidateCachedStore(storeId);
     revalidatePath(`/merchant/[slug]/settings`);
     return true;
   } catch (error) {

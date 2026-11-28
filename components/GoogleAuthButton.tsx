@@ -34,19 +34,19 @@ export default function GoogleAuthButton({
     {
       name: 'يوسف يعقوب (المالك والمدير العام)',
       email: 'yusef.yaqoub@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: '',
       badge: 'المالك والمدير العام',
     },
     {
       name: 'عباس الأغبر (المالك والشريك المؤسس)',
       email: 'abbas.alaghbar@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+      avatar: '',
       badge: 'المالك والشريك المؤسس',
     },
     {
       name: 'سارة عبد الرحمن (تاجر موثق)',
       email: 'sara.aden.boutique@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80',
+      avatar: '',
       badge: 'متجر عدن بوتيك',
     },
   ];

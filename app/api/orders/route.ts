@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireStoreOwner, requireSuperAdmin } from '@/app/actions/auth';
 import { convertCurrency } from '@/lib/currency-engine';
 import { CurrencyCode } from '@/lib/types';
+import { extractDigitalMetaFromTags } from '@/lib/digital-assets';
 
 // GET /api/orders - Protected: requires Super Admin or Store Owner
 export async function GET(request: Request) {
@@ -89,6 +90,7 @@ export async function POST(request: Request) {
       const qty = Math.max(1, Math.round(Number(it.quantity) || 1));
       const variant = it.variantId ? dbProd.variants.find((v) => v.id === it.variantId) : undefined;
       const unitBase = variant?.priceOverride ?? dbProd.price;
+      const digitalMeta = extractDigitalMetaFromTags(dbProd.tags);
       subtotalBase += unitBase * qty;
       verifiedItems.push({
         productId: dbProd.id,
@@ -98,6 +100,9 @@ export async function POST(request: Request) {
         price: unitBase,
         quantity: qty,
         total: unitBase * qty,
+        digitalFileUrl: digitalMeta.digitalFileUrl || '',
+        digitalFileName: digitalMeta.digitalFileName || '',
+        digitalFileAccess: digitalMeta.digitalFileAccess || 'instant',
       });
     }
 

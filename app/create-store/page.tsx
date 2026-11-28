@@ -1226,8 +1226,8 @@ export default function CreateStorePage() {
               {/* Sample Product Cards */}
               <div className="grid grid-cols-2 gap-2 pt-2">
                 {[
-                  { name: 'منتج تجريبي فاخر #1', price: 120, img: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300' },
-                  { name: 'منتج تجريبي عصري #2', price: 85, img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300' },
+                  { name: 'عنصر تجريبي #1', price: 120 },
+                  { name: 'عنصر تجريبي #2', price: 85 },
                 ].map((item, idx) => (
                   <div 
                     key={idx}
@@ -1237,7 +1237,12 @@ export default function CreateStorePage() {
                       'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl shadow-xs'
                     }`}
                   >
-                    <img src={item.img} alt={item.name} className="aspect-square object-cover rounded-lg w-full mb-1.5" />
+                    <div
+                      className="aspect-square rounded-lg w-full mb-1.5 flex items-center justify-center text-xs font-bold opacity-60"
+                      style={{ backgroundColor: `${customPrimaryColor}15`, color: customPrimaryColor }}
+                    >
+                      صورتك هنا
+                    </div>
                     <div className="text-[10px] font-bold truncate">{item.name}</div>
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-[11px] font-black" style={{ color: customPrimaryColor }}>

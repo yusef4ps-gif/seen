@@ -125,11 +125,17 @@ export default function UnifiedProfilePage() {
         <div className="bg-white dark:bg-slateDark-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm text-right flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
           
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-right">
-            <img
-              src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
-              alt={currentUser.name}
-              className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-4 border-white dark:border-slate-800 shadow-lg bg-slate-100"
-            />
+            {currentUser.avatarUrl ? (
+              <img
+                src={currentUser.avatarUrl}
+                alt={currentUser.name}
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-4 border-white dark:border-slate-800 shadow-lg bg-slate-100"
+              />
+            ) : (
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border-4 border-white dark:border-slate-800 shadow-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white flex items-center justify-center text-3xl font-black">
+                {currentUser.name?.charAt(0) || 'م'}
+              </div>
+            )}
             
             <div className="space-y-1.5">
               <div className="flex items-center justify-center sm:justify-start gap-2">

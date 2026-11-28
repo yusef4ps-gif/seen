@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { requireStoreOwner, requireAuth } from '@/app/actions/auth';
+import { invalidateCachedProducts } from '@/lib/server-cache';
 
 export async function createProductAction(data: any) {
   try {
@@ -42,6 +43,8 @@ export async function createProductAction(data: any) {
         }
       }
     });
+
+    invalidateCachedProducts(data.storeId);
 
     try {
       if (store.slug) {
@@ -102,6 +105,7 @@ export async function updateProductAction(id: string, data: any) {
       where: { id },
       data: updateData
     });
+    invalidateCachedProducts(existingProduct.storeId);
     try {
       revalidatePath(`/merchant/[slug]/inventory`, 'page');
       revalidatePath(`/merchant/[slug]/products`, 'page');
@@ -125,6 +129,7 @@ export async function deleteProductAction(id: string) {
     await prisma.product.delete({
       where: { id }
     });
+    invalidateCachedProducts(existingProduct.storeId);
     return { success: true };
   } catch (error) {
     console.error('Error deleting product:', error);

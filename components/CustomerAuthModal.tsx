@@ -14,11 +14,20 @@ interface Props {
   storeId: string;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
+  defaultMode?: 'login' | 'register';
+  subtitleNote?: string;
 }
 
-export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess }: Props) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+export default function CustomerAuthModal({
+  storeId,
+  isOpen,
+  onClose,
+  onSuccess,
+  defaultMode = 'login',
+  subtitleNote,
+}: Props) {
+  const [mode, setMode] = useState<'login' | 'register'>(defaultMode);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -38,9 +47,11 @@ export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      setMode(defaultMode);
+    } else {
       // Reset state when modal closes
-      setMode('login');
+      setMode(defaultMode);
       setLoading(false);
       setError('');
       setName('');
@@ -53,7 +64,7 @@ export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess 
       setOtpInput(['', '', '', '']);
       setSessionData(null);
     }
-  }, [isOpen]);
+  }, [isOpen, defaultMode]);
 
   if (!isOpen) return null;
 
@@ -165,6 +176,12 @@ export default function CustomerAuthModal({ storeId, isOpen, onClose, onSuccess 
 
         <div className="p-6 space-y-6">
           
+          {subtitleNote && (
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200 text-xs rounded-xl font-bold border border-emerald-200 dark:border-emerald-800/60 leading-relaxed">
+              {subtitleNote}
+            </div>
+          )}
+
           {error && (
             <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm rounded-xl font-bold border border-red-100 dark:border-red-800/50">
               {error}

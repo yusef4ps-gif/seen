@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { getCurrentCustomerAction } from './customer-auth';
 import { requireStoreOwner } from '@/app/actions/auth';
+import { getCachedReviews, setCachedReviews, invalidateCachedReviews } from '@/lib/server-cache';
 
 // --- Customer Actions ---
 
@@ -42,6 +43,11 @@ export async function submitStoreReviewAction(storeId: string, rating: number, c
  * Get published reviews for storefront
  */
 export async function getPublishedReviewsAction(storeId: string) {
+  const cached = getCachedReviews(storeId);
+  if (cached) {
+    return { success: true, data: cached };
+  }
+
   try {
     const reviews = await prisma.storeReview.findMany({
       where: {
@@ -62,6 +68,7 @@ export async function getPublishedReviewsAction(storeId: string) {
       take: 20 // limit to 20 for storefront
     });
 
+    setCachedReviews(storeId, reviews);
     return { success: true, data: reviews };
   } catch (error) {
     console.error('Error fetching published reviews:', error);
@@ -112,6 +119,7 @@ export async function updateReviewStatusAction(reviewId: string, storeId: string
       data: { status }
     });
 
+    invalidateCachedReviews(storeId);
     const store = await prisma.store.findUnique({ where: { id: storeId }, select: { slug: true } });
     if (store) {
       revalidatePath(`/store/${store.slug}`, 'page');
@@ -135,6 +143,7 @@ export async function deleteReviewAction(reviewId: string, storeId: string) {
       where: { id: reviewId, storeId }
     });
 
+    invalidateCachedReviews(storeId);
     const store = await prisma.store.findUnique({ where: { id: storeId }, select: { slug: true } });
     if (store) {
       revalidatePath(`/store/${store.slug}`, 'page');

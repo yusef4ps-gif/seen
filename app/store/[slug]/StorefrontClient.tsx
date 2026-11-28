@@ -1,0 +1,3883 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { 
+  Store as StoreIcon, ShoppingCart, ShoppingBag, Search, Filter, 
+  Sparkles, CheckCircle2, ChevronDown, ArrowLeft, Phone, 
+  MapPin, Clock, ShieldCheck, X, Plus, Minus, Send, 
+  Wallet, Image as ImageIcon, QrCode, ExternalLink, Flame, 
+  Truck, RefreshCw, Star, Tag, Ticket, Cpu, Zap, Award, Coffee, Heart,
+  Facebook, Instagram, Twitter, Youtube, Linkedin, MessageCircle, Mail, User, Settings, Lock,
+  Briefcase, CalendarCheck, Share2, Trash2, Home, Download
+} from 'lucide-react';
+import ShareStoreModal from '@/components/ShareStoreModal';
+import CustomServiceRequestModal from '@/components/CustomServiceRequestModal';
+import { Store, Product, ProductVariant, OrderItem, CurrencyCode, PaymentMethodType, ThemeConfig } from '@/lib/types';
+import { getStoreBySlugAction, getProductsByStoreAction } from '@/app/actions/store';
+import { createOrderAction, captureAbandonedCartAction, getCustomerOrdersAction } from '@/app/actions/order';
+import { validateCouponAction } from '@/app/actions/coupon';
+import { getCurrentCustomerAction, logoutCustomerAction, recordCustomerVisitAction } from '@/app/actions/customer-auth';
+import CustomerAuthModal from '@/components/CustomerAuthModal';
+import BrandLogo from '@/components/BrandLogo';
+import LegalPagesModal from '@/components/LegalPagesModal';
+import { submitStoreReviewAction, getPublishedReviewsAction } from '@/app/actions/review';
+import { formatCurrency, convertCurrency, DEFAULT_CURRENCIES } from '@/lib/currency-engine';
+import { generateWhatsAppOrderMessage } from '@/lib/ai-generator';
+import { THEME_PRESETS } from '@/lib/theme-presets';
+import { resolveStorePalette } from '@/lib/theme-colors';
+import toast from 'react-hot-toast';
+import WhatsAppSupportButton, { formatWhatsAppUrl } from '@/components/WhatsAppSupportButton';
+import ImageUploader from '@/components/ImageUploader';
+import OffersSidebar from '@/components/OffersSidebar';
+import {
+  StoreOfferItem,
+  doesOfferApplyToProduct,
+  resolveStorefrontOffersData,
+} from '@/lib/offers-utils';
+
+function HeroSectionRenderer({ section, presetId, store, legacyBannerImages, legacyBannerInterval, secondaryColor, primaryColor = '#0d9488', onOpenCustomRequest, isServiceStore }: any) {
+  const isService = Boolean(
+    isServiceStore ||
+    presetId === 'service-expert' ||
+    (store?.themeConfig && (typeof store.themeConfig === 'string' ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })() : store.themeConfig)?.storeType === 'SERVICE') ||
+    (store as any)?.storeType === 'SERVICE'
+  );
+
+  let slides = (section.settings?.heroSlides && section.settings.heroSlides.length > 0)
+    ? section.settings.heroSlides
+    : ((section.settings?.bannerImages && section.settings.bannerImages.length > 0)
+        ? section.settings.bannerImages.map((img: string) => ({ image: img, title: section.settings?.bannerTitle, subtitle: section.settings?.bannerSubtitle }))
+        : (section.settings?.bannerImageUrl ? [{ image: section.settings.bannerImageUrl, title: section.settings?.bannerTitle, subtitle: section.settings?.bannerSubtitle }] : []));
+
+  slides = slides.filter((s: any) => Boolean(s?.image && String(s.image).trim() !== ''));
+
+  // Fallback if slides is empty: check store.banner or legacyBannerImages
+  if (slides.length === 0) {
+    if (store.banner && store.banner.trim() !== '' && !store.banner.trim().startsWith('[') && !store.banner.trim().startsWith('{')) {
+      slides = [{ image: store.banner, title: section.settings?.bannerTitle || store.name, subtitle: section.settings?.bannerSubtitle || store.description }];
+    } else if (legacyBannerImages && legacyBannerImages.length > 0) {
+      slides = legacyBannerImages.map((img: string) => ({ image: img, title: section.settings?.bannerTitle || store.name, subtitle: section.settings?.bannerSubtitle || store.description }));
+    }
+  }
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState(0);
+  const interval = section.settings?.bannerInterval || legacyBannerInterval || 5;
+
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % slides.length);
+    }, interval * 1000);
+    return () => clearInterval(timer);
+  }, [slides.length, interval]);
+
+  const handleTouchStart = (e: React.TouchEvent) => setTouchStart(e.touches[0].clientX);
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touchEnd = e.changedTouches[0].clientX;
+    if (touchStart - touchEnd > 50) {
+      setCurrentIndex(prev => (prev + 1) % slides.length);
+    } else if (touchStart - touchEnd < -50) {
+      setCurrentIndex(prev => (prev - 1 + slides.length) % slides.length);
+    }
+  };
+
+  if (presetId !== 'service-expert' && slides.length === 0) {
+    if (isService) {
+      // Allow rendering the clean service gradient banner when no custom cover was uploaded
+    } else {
+      return (
+        <section className="max-w-7xl mx-auto px-3 sm:px-8 pt-4">
+          <div
+            className="rounded-3xl p-6 sm:p-10 text-white shadow-lg relative overflow-hidden"
+            style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
+          >
+            <div className="max-w-2xl space-y-2 text-right relative z-10">
+              <h2 className="text-xl sm:text-3xl font-black">{section.settings?.bannerTitle || store.name}</h2>
+              <p className="text-xs sm:text-sm text-white/90">{section.settings?.bannerSubtitle || store.description}</p>
+            </div>
+          </div>
+        </section>
+      );
+    }
+  }
+
+  const currentSlide = slides[currentIndex] || {};
+  const title = currentSlide.title || section.settings?.bannerTitle || store.name;
+  const subtitle = currentSlide.subtitle || section.settings?.bannerSubtitle || store.description;
+
+  const renderSliderImages = (imgClassName: string) => {
+    if (slides.length === 0) return null;
+    const isDimmed = imgClassName.includes('opacity-60');
+    return (
+      <div 
+        className="relative overflow-hidden w-full h-full"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Blurred Background Layer (prevents empty sides when using object-contain) */}
+        {slides.map((slide: any, idx: number) => (
+          <img
+            key={`bg-${idx}`}
+            src={slide.image}
+            alt=""
+            className={`absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-50 transition-opacity duration-700 ease-in-out ${idx === currentIndex ? 'z-0' : '-z-10'}`}
+            style={{ opacity: idx === currentIndex ? (isDimmed ? 0.3 : 0.6) : 0 }}
+          />
+        ))}
+
+        {/* Foreground Image Layer (object-contain prevents cropping) */}
+        {slides.map((slide: any, idx: number) => (
+          <img
+            key={idx}
+            src={slide.image}
+            alt={`Slide ${idx + 1}`}
+            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${imgClassName.replace('opacity-60', '')} ${idx === currentIndex ? 'z-10' : 'z-0'} object-[50%_25%]`}
+            style={{ opacity: idx === currentIndex ? (isDimmed ? 0.6 : 1) : 0 }}
+          />
+        ))}
+        {slides.length > 1 && (
+          <div className="absolute bottom-3 left-0 right-0 z-20 flex justify-center gap-2" dir="ltr">
+            {slides.map((_: any, idx: number) => (
+              <button 
+                key={idx} 
+                onClick={(e) => { e.stopPropagation(); setCurrentIndex(idx); }}
+                className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-6 bg-white' : 'w-2 bg-white/50 hover:bg-white/80'}`}
+                aria-label={`Go to slide ${idx + 1}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (presetId === 'tech-modern') {
+    return (
+      <section className="relative w-full h-[250px] sm:h-[320px] lg:h-[400px] bg-slate-950 overflow-hidden">
+        {renderSliderImages("w-full h-full object-cover")}
+        <div className="absolute inset-0 bg-slate-950/40" />
+        <div className="absolute inset-0 bg-gradient-to-l from-slate-950 via-slate-900/80 to-transparent pointer-events-none" />
+        
+        <div className="absolute inset-0 flex items-center">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8 w-full text-right pointer-events-auto">
+            <div className="relative z-10 space-y-5 max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] sm:text-xs font-mono font-bold shadow-[0_0_15px_rgba(59,130,246,0.3)] backdrop-blur-md">
+                <Zap className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
+                <span>الجيل القادم 2026</span>
+              </div>
+              <h2 className="text-2xl sm:text-5xl lg:text-6xl font-black text-white leading-tight animate-in fade-in slide-in-from-right-8 duration-700 drop-shadow-[0_0_30px_rgba(59,130,246,0.3)]" key={`title-${currentIndex}`}>
+                {title}
+              </h2>
+              <p className="text-sm sm:text-lg text-slate-300 leading-relaxed animate-in fade-in slide-in-from-right-8 duration-700 delay-100" key={`sub-${currentIndex}`}>
+                {subtitle}
+              </p>
+              <div className="flex flex-wrap gap-3 pt-2 font-mono text-[10px] sm:text-xs animate-in fade-in slide-in-from-right-8 duration-700 delay-200">
+                <span className="px-3 py-1.5 rounded-lg bg-slate-900/60 border border-slate-700/50 text-slate-300 backdrop-blur-sm">⚡ 5G ULTRA</span>
+                <span className="px-3 py-1.5 rounded-lg bg-slate-900/60 border border-slate-700/50 text-slate-300 backdrop-blur-sm">🛡️ ضمان سنتين</span>
+                <span className="px-3 py-1.5 rounded-lg bg-slate-900/60 border border-slate-700/50 text-slate-300 backdrop-blur-sm">🚚 شحن فوري</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (presetId === 'yemen-roastery') {
+    return (
+      <section className="relative w-full h-[250px] sm:h-[320px] lg:h-[400px] bg-[#2a1306] overflow-hidden">
+        {renderSliderImages("w-full h-full object-cover")}
+        <div className="absolute inset-0 bg-[#2a1306]/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1a0b02] via-[#2a1306]/50 to-transparent pointer-events-none" />
+        
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="max-w-4xl mx-auto px-4 sm:px-8 w-full text-center pointer-events-auto">
+            <div className="space-y-5 relative z-10 flex flex-col items-center">
+              <div className="inline-flex items-center gap-2 px-5 py-2 rounded-sm bg-amber-950/40 border border-amber-700/50 text-amber-400 text-xs sm:text-sm font-bold shadow-xl backdrop-blur-md">
+                <Coffee className="w-4 h-4" />
+                <span>أصالة البن اليماني المختص</span>
+              </div>
+              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black leading-tight text-amber-50 animate-in fade-in slide-in-from-bottom-8 duration-700 drop-shadow-2xl" key={`title-${currentIndex}`}>
+                {title}
+              </h2>
+              <p className="text-sm sm:text-lg text-amber-200/80 leading-relaxed max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150 drop-shadow-md" key={`sub-${currentIndex}`}>
+                {subtitle}
+              </p>
+              <div className="pt-4 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+                <button className="px-8 py-3 bg-amber-700 hover:bg-amber-600 text-amber-50 font-bold rounded-sm transition-colors border-b-2 border-amber-900">
+                  تسوق الآن
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (presetId === 'service-expert' || isService) {
+    const parsedThemeConfig = typeof store.themeConfig === 'string'
+      ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })()
+      : (store.themeConfig || {});
+    const profTitle = parsedThemeConfig?.professionalTitle;
+    const hideBannerTexts = Boolean(parsedThemeConfig?.hideBannerTexts);
+    const hideTrustBadges = Boolean(parsedThemeConfig?.hideTrustBadges);
+    const hideBannerButtons = Boolean(parsedThemeConfig?.hideBannerButtons);
+    const bannerOverlayStyle = parsedThemeConfig?.bannerOverlayStyle || 'light';
+
+    let resolvedBanner = store.banner;
+    if (resolvedBanner && (resolvedBanner.startsWith('[') || resolvedBanner.startsWith('{'))) {
+      try {
+        const p = JSON.parse(resolvedBanner);
+        if (Array.isArray(p) && p.length > 0) resolvedBanner = p[0];
+        else if (p && p.images && p.images.length > 0) resolvedBanner = p.images[0];
+      } catch {}
+    }
+    const coverImage = resolvedBanner || parsedThemeConfig?.bannerUrl || (slides[0]?.image) || null;
+
+    return (
+      <section id="about-section" className="relative w-full bg-slate-950 text-white pt-8 sm:pt-12 pb-3 sm:pb-5 px-3 sm:px-8 overflow-hidden min-h-[250px] sm:min-h-[340px] flex flex-col justify-between">
+        {/* Background Cover Image with High-Readability Overlay */}
+        {coverImage ? (
+          <>
+            <img
+              src={coverImage}
+              alt={store.name}
+              className="absolute inset-0 w-full h-full object-cover object-top sm:object-center scale-100"
+            />
+            {/* Configurable overlay: none = 100% natural image, light = balanced, dark = high contrast */}
+            {bannerOverlayStyle !== 'none' && (
+              <>
+                <div className={`absolute inset-0 ${bannerOverlayStyle === 'dark' ? 'bg-slate-950/75 backdrop-blur-[1px]' : 'bg-slate-950/35'}`} />
+                <div className={`absolute inset-0 bg-gradient-to-t ${bannerOverlayStyle === 'dark' ? 'from-slate-950 via-slate-950/60 to-slate-950/30' : 'from-slate-950/85 via-slate-950/30 to-transparent'}`} />
+              </>
+            )}
+            {bannerOverlayStyle === 'none' && !hideBannerButtons && (
+              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/75 to-transparent pointer-events-none" />
+            )}
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900" />
+        )}
+        <div 
+          className="absolute inset-0 opacity-15 pointer-events-none" 
+          style={{ backgroundImage: `radial-gradient(${primaryColor} 1px, transparent 1px)`, backgroundSize: '16px 16px' }}
+        />
+
+        {/* Upper/Middle Content (Optional banner text & trust badges; leaves portrait/design clean when hidden) */}
+        <div className="max-w-5xl mx-auto relative z-10 text-right w-full flex-1 flex items-center">
+          {(!hideBannerTexts || !hideTrustBadges) ? (
+            <div className="space-y-4 max-w-2xl pb-3">
+              {!hideBannerTexts && (
+                <div className="flex items-center gap-4 sm:gap-5">
+                  {/* Profile Avatar placed right in the corner beside the name */}
+                  <div className="relative shrink-0">
+                    <div 
+                      className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden border-2 shadow-2xl bg-slate-800 relative group flex items-center justify-center"
+                      style={{ borderColor: `${primaryColor}90` }}
+                    >
+                      {(store.logo || slides[0]?.image) ? (
+                        <img
+                          src={store.logo || slides[0]?.image}
+                          alt={store.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <span className="text-3xl sm:text-4xl font-black text-white">
+                          {store.name?.charAt(0) || 'م'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white drop-shadow-md">
+                      {store.name}
+                    </h1>
+
+                    {profTitle && (
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950/55 border border-white/15 text-xs sm:text-sm font-bold text-white backdrop-blur-sm shadow-sm">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <span>{profTitle}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {!hideBannerTexts && (
+                <p className="text-xs sm:text-sm text-slate-100 leading-relaxed max-w-xl drop-shadow-sm">
+                  {subtitle || store.description || 'نقدم خدمات واستشارات مهنية متخصصة بأعلى معايير الجودة والسرية والاحترافية لخدمة عملائنا الكرام.'}
+                </p>
+              )}
+
+              {!hideTrustBadges && (
+                <div className="flex flex-wrap gap-2 pt-1 text-[11px] text-white/95 font-medium">
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950/50 border border-white/10 backdrop-blur-sm"><ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> خصوصية وسرية تامة</span>
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950/50 border border-white/10 backdrop-blur-sm"><Clock className="w-3.5 h-3.5 text-emerald-400" /> دقة في المواعيد</span>
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950/50 border border-white/10 backdrop-blur-sm"><Award className="w-3.5 h-3.5 text-emerald-400" /> خبرة معتمدة</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="min-h-[155px] sm:min-h-[230px] w-full" aria-hidden="true" />
+          )}
+        </div>
+
+        {/* Bottom Docked Single Row: 3 Action Buttons Side-by-Side Below the Design */}
+        {!hideBannerButtons && (
+          <div className="max-w-5xl mx-auto relative z-10 w-full pt-2">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
+              <a
+                href="#products-grid"
+                className="py-2 sm:py-2.5 px-2 sm:px-4 rounded-xl sm:rounded-2xl text-white font-bold text-[10px] sm:text-xs md:text-sm shadow-lg transition-all flex items-center justify-center gap-1 sm:gap-2 active:scale-95 min-w-0 backdrop-blur-md"
+                style={{ backgroundColor: primaryColor, boxShadow: `0 8px 20px -4px ${primaryColor}50` }}
+              >
+                <CalendarCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="truncate">طلب خدمة / الباقات</span>
+              </a>
+
+              {onOpenCustomRequest ? (
+                <button
+                  type="button"
+                  onClick={onOpenCustomRequest}
+                  className="py-2 sm:py-2.5 px-2 sm:px-4 rounded-xl sm:rounded-2xl bg-slate-950/75 hover:bg-slate-950/90 border border-white/25 text-white font-bold text-[10px] sm:text-xs md:text-sm transition-all flex items-center justify-center gap-1 sm:gap-2 shadow-lg active:scale-95 backdrop-blur-md min-w-0"
+                >
+                  <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-300 shrink-0" />
+                  <span className="truncate">طلب مخصص / استشارة</span>
+                </button>
+              ) : (
+                <div />
+              )}
+
+              {(store.whatsapp || store.phone) ? (
+                <a
+                  href={formatWhatsAppUrl(store.whatsapp || store.phone, `مرحباً ${store.name}`) || '#'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="py-2 sm:py-2.5 px-2 sm:px-4 rounded-xl sm:rounded-2xl bg-emerald-950/85 hover:bg-emerald-900/95 border border-emerald-400/45 text-emerald-100 font-bold text-[10px] sm:text-xs md:text-sm transition-all flex items-center justify-center gap-1 sm:gap-2 shadow-lg active:scale-95 backdrop-blur-md min-w-0"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
+                  <span className="truncate">تواصل واتساب مباشر</span>
+                </a>
+              ) : (
+                <div />
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  if (presetId === 'minimal-clean') {
+    return (
+      <section className="max-w-7xl mx-auto px-3 sm:px-8 pt-4">
+        <div className="border-2 border-black p-6 sm:p-12 text-black bg-white space-y-4">
+          <div className="text-xs font-mono font-bold uppercase tracking-widest">[01] COLLECTION // 2026</div>
+          <h2 className="text-2xl sm:text-5xl font-black tracking-tight">{title}</h2>
+          <p className="text-xs sm:text-base text-slate-600 max-w-xl">{subtitle}</p>
+        </div>
+      </section>
+    );
+  }
+
+  // Default / Fashion Luxury Lookbook Hero
+  return (
+    <section className="relative w-full h-[250px] sm:h-[320px] lg:h-[400px] bg-slate-950 overflow-hidden group">
+      {renderSliderImages("w-full h-full object-cover")}
+      <div className="absolute inset-0 bg-black/20 transition-colors group-hover:bg-black/30" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+      
+      <div className="absolute inset-0 flex items-end pointer-events-none">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-8 sm:pb-12 w-full text-white space-y-3 pointer-events-auto relative z-10 text-right">
+          <span 
+            className="inline-block text-[10px] sm:text-xs font-black uppercase px-4 py-1.5 rounded-full text-white shadow-lg animate-in fade-in duration-500"
+            style={{ backgroundColor: secondaryColor }}
+          >
+            تشكيلة الموسم الفاخرة
+          </span>
+          <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black animate-in fade-in slide-in-from-bottom-4 duration-500 drop-shadow-2xl" key={`title-${currentIndex}`}>
+            {title}
+          </h2>
+          <p className="text-sm sm:text-base text-slate-200 max-w-2xl line-clamp-2 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 drop-shadow-md" key={`sub-${currentIndex}`}>
+            {subtitle}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export interface StorefrontClientProps {
+  initialStore?: Store | null;
+  initialProducts?: Product[];
+  initialReviews?: any[];
+  initialCustomer?: any | null;
+  serverFetched?: boolean;
+}
+
+export default function CustomerStorefrontPage({
+  initialStore = null,
+  initialProducts = [],
+  initialReviews = [],
+  initialCustomer = null,
+  serverFetched = false,
+}: StorefrontClientProps = {}) {
+  const params = useParams();
+  const router = useRouter();
+  const slug = params.slug as string;
+
+  const [store, setStore] = useState<Store | null>(initialStore);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(!serverFetched && !initialStore);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedOfferFilter, setSelectedOfferFilter] = useState<StoreOfferItem | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  // Customer Auth State
+  const [currentCustomer, setCurrentCustomer] = useState<any>(initialCustomer);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authPromptMode, setAuthPromptMode] = useState<'login' | 'register'>('login');
+  const [authPromptNote, setAuthPromptNote] = useState<string | undefined>(undefined);
+  const [pendingFreeDownloadProduct, setPendingFreeDownloadProduct] = useState<Product | null>(null);
+  const [pendingCheckoutAfterAuth, setPendingCheckoutAfterAuth] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isCustomRequestModalOpen, setIsCustomRequestModalOpen] = useState(false);
+
+  // Legal Pages State
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+  const [legalPageType, setLegalPageType] = useState<'privacy' | 'terms' | 'returns' | 'faq' | null>(null);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+  const [activeCurrency, setActiveCurrency] = useState<CurrencyCode>(
+    (initialStore?.baseCurrency as CurrencyCode) || 'YER_ADEN'
+  );
+
+  // Cart state
+  const [cart, setCart] = useState<OrderItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Product detail modal state
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [itemQuantity, setItemQuantity] = useState<number>(1);
+
+  // Checkout modal state
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [showEditCustomerFields, setShowEditCustomerFields] = useState(false);
+  const [customerName, setCustomerName] = useState(initialCustomer?.name || '');
+  const [customerPhone, setCustomerPhone] = useState(initialCustomer?.phone || '');
+
+  const parsedThemeConfigForType = React.useMemo(() => {
+    if (!store?.themeConfig) return {};
+    try { return typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig) : store.themeConfig; } catch { return {}; }
+  }, [store?.themeConfig]);
+  const storeType = parsedThemeConfigForType.storeType || (store as any)?.storeType || 'PHYSICAL';
+  const isServiceStore = Boolean(
+    storeType === 'SERVICE' || 
+    storeType === 'DIGITAL' || 
+    parsedThemeConfigForType?.presetId === 'service-expert' ||
+    parsedThemeConfigForType?.presetId === 'service-legal-consulting' ||
+    parsedThemeConfigForType?.presetId === 'service-digital-freelancer' ||
+    (store as any)?.storeType === 'SERVICE' ||
+    (store as any)?.storeType === 'DIGITAL' ||
+    store?.category?.includes('خدمات') ||
+    store?.category?.includes('استشارات') ||
+    store?.category?.includes('تدريب') ||
+    store?.category?.includes('محاماة') ||
+    store?.category?.includes('عياد') ||
+    store?.category?.includes('تسويق') ||
+    store?.category?.includes('digital') ||
+    store?.category?.includes('service')
+  );
+  const [activeServiceTab, setActiveServiceTab] = useState<'home' | 'services' | 'about' | 'portfolio' | 'contact'>('home');
+  
+  const [customerEmail, setCustomerEmail] = useState(initialCustomer?.email || '');
+
+  const [city, setCity] = useState(initialStore?.city || '');
+  const [address, setAddress] = useState('');
+  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
+  const [selectedPayment, setSelectedPayment] = useState<PaymentMethodType>(() => {
+    const activeAcc = initialStore?.paymentAccounts?.find((a: any) => a.isActive);
+    return (activeAcc?.type as PaymentMethodType) || 'kuraimi';
+  });
+  const [paymentProofUrl, setPaymentProofUrl] = useState('');
+  const [notes, setNotes] = useState('');
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  
+  // Coupon states
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [couponError, setCouponError] = useState('');
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  
+  const [orderSuccess, setOrderSuccess] = useState<any>(null);
+
+  // Reviews states
+  const [storeReviews, setStoreReviews] = useState<any[]>(initialReviews);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewContent, setReviewContent] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  const hydratedSlugRef = React.useRef<string | null>(
+    serverFetched && initialStore ? (initialStore.slug || initialStore.id || slug) : null
+  );
+
+  useEffect(() => {
+    async function loadStorefront() {
+      if (!slug) return;
+      // Fast SSR path: initialStore + products + reviews already streamed on first byte!
+      if (serverFetched && hydratedSlugRef.current && (hydratedSlugRef.current === slug || initialStore?.slug === slug || initialStore?.id === slug)) {
+        hydratedSlugRef.current = null;
+        if (!initialStore) {
+          setIsLoadingProducts(false);
+          return;
+        }
+        const s = initialStore;
+        let customer = initialCustomer;
+        if (!customer && typeof window !== 'undefined') {
+          try {
+            const cached = localStorage.getItem(`seen_customer_${s.id}`) || localStorage.getItem(`seen_customer_${slug}`);
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              if (parsed && (parsed.storeId === s.id || !parsed.storeId)) {
+                customer = parsed;
+                setCurrentCustomer(parsed);
+                if (parsed.name) setCustomerName(parsed.name);
+                if (parsed.phone) setCustomerPhone(parsed.phone);
+                if (parsed.email) setCustomerEmail(parsed.email);
+              }
+            }
+          } catch {}
+        }
+        if (customer && typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(`seen_customer_${s.id}`, JSON.stringify(customer));
+            const visitKey = `seen_visit_${s.id}_${customer.customerId}`;
+            const lastVisitTs = Number(localStorage.getItem(visitKey) || 0);
+            if (Date.now() - lastVisitTs > 3 * 60 * 1000) {
+              localStorage.setItem(visitKey, String(Date.now()));
+              recordCustomerVisitAction(s.id).catch(() => null);
+            }
+          } catch {}
+          getCustomerOrdersAction(s.id, customer.customerId, 'id')
+            .then((orders) => {
+              if (orders && orders.length > 0) {
+                setCity(orders[0].city || s.city || '');
+                setAddress(orders[0].address || '');
+              }
+            })
+            .catch(() => null);
+        }
+        return;
+      }
+
+      if (serverFetched && !initialStore) {
+        setIsLoadingProducts(false);
+        return;
+      }
+
+      setIsLoadingProducts(true);
+      let s: any = null;
+      try {
+        s = await getStoreBySlugAction(slug);
+        if (s) {
+          setStore(s as any);
+          setCity(s.city);
+          if (s.paymentAccounts && s.paymentAccounts.length > 0) {
+            const activeAcc = s.paymentAccounts.find((a: any) => a.isActive);
+            if (activeAcc) setSelectedPayment(activeAcc.type);
+          }
+          if (s.baseCurrency) {
+            setActiveCurrency(s.baseCurrency as CurrencyCode);
+          }
+
+          const [prods, revRes] = await Promise.all([
+            getProductsByStoreAction(s.id),
+            getPublishedReviewsAction(s.id),
+          ]);
+          setProducts(prods as any);
+          setIsLoadingProducts(false);
+
+          if (revRes.success && revRes.data) {
+            setStoreReviews(revRes.data);
+          }
+
+          // 1. Immediately hydrate customer from localStorage (guarantees session persistence on browser Back/Forward)
+          if (typeof window !== 'undefined') {
+            try {
+              const cached = localStorage.getItem(`seen_customer_${s.id}`) || localStorage.getItem(`seen_customer_${slug}`);
+              if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed && (parsed.storeId === s.id || !parsed.storeId)) {
+                  setCurrentCustomer(parsed);
+                  if (parsed.name) setCustomerName(parsed.name);
+                  if (parsed.phone) setCustomerPhone(parsed.phone);
+                  if (parsed.email) setCustomerEmail(parsed.email);
+                }
+              }
+            } catch (e) {}
+          }
+        }
+      } finally {
+        setIsLoadingProducts(false);
+      }
+
+      const customer = await getCurrentCustomerAction();
+      if (customer && customer.storeId === s?.id) {
+        setCurrentCustomer(customer);
+        if (typeof window !== 'undefined' && s) {
+          try {
+            localStorage.setItem(`seen_customer_${s.id}`, JSON.stringify(customer));
+            const visitKey = `seen_visit_${s.id}_${customer.customerId}`;
+            const lastVisitTs = Number(localStorage.getItem(visitKey) || 0);
+            if (Date.now() - lastVisitTs > 3 * 60 * 1000) {
+              localStorage.setItem(visitKey, String(Date.now()));
+              recordCustomerVisitAction(s.id).catch(() => null);
+            }
+          } catch (e) {}
+        }
+        // Pre-fill checkout fields if available
+        setCustomerName(customer.name || '');
+        setCustomerPhone(customer.phone || '');
+        setCustomerEmail(customer.email || '');
+
+        // Try to fetch last order to get city and address
+        if (s) {
+          const orders = await getCustomerOrdersAction(s.id, customer.customerId, 'id');
+          if (orders && orders.length > 0) {
+            setCity(orders[0].city || s.city || '');
+            setAddress(orders[0].address || '');
+          }
+        }
+      }
+    }
+    loadStorefront();
+  }, [slug]);
+
+  // Live Refresh on Tab Focus or Settings Update (throttled to prevent redundant reloads)
+  useEffect(() => {
+    if (!slug) return;
+    let lastRefreshAt = Date.now();
+    let isRefreshing = false;
+
+    const handleRefresh = async (force = false) => {
+      const now = Date.now();
+      if (isRefreshing || (!force && now - lastRefreshAt < 60000)) return;
+      isRefreshing = true;
+      lastRefreshAt = now;
+      try {
+        const s = await getStoreBySlugAction(slug);
+        if (s) {
+          setStore(s as any);
+          const prods = await getProductsByStoreAction(s.id);
+          if (prods) setProducts(prods as any);
+        }
+      } catch (e) {
+      } finally {
+        isRefreshing = false;
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        handleRefresh(false);
+      }
+    };
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key?.includes('seen_store') || e.key?.includes('seen_clean_stores') || !e.key) {
+        handleRefresh(true);
+      }
+    };
+
+    const onFocus = () => handleRefresh(false);
+
+    window.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      window.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [slug]);
+
+  // Visitor Tracking Ping
+  useEffect(() => {
+    if (!slug) return;
+    
+    let visitorId = sessionStorage.getItem(`seen_visitor_${slug}`);
+    if (!visitorId) {
+      visitorId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      sessionStorage.setItem(`seen_visitor_${slug}`, visitorId);
+    }
+    
+    const ping = () => {
+      fetch('/api/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId: slug, visitorId })
+      }).catch(() => {});
+    };
+
+    ping();
+    const interval = setInterval(ping, 5000);
+    return () => clearInterval(interval);
+  }, [slug]);
+
+  // Silent Lead Capture for Abandoned Carts
+  useEffect(() => {
+    if (!store?.id || cart.length === 0 || customerPhone.length < 8) return;
+    
+    const timeout = setTimeout(() => {
+      const cartTotalBase = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      captureAbandonedCartAction({
+        storeId: store.id,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        items: cart,
+        total: cartTotalBase,
+        currency: store.baseCurrency || 'SAR'
+      }).catch(console.error);
+    }, 3000); // 3 seconds debounce after typing
+
+    return () => clearTimeout(timeout);
+  }, [customerName, customerPhone, cart, store?.id, store?.baseCurrency]);
+
+  const offersData = React.useMemo(
+    () => (store ? resolveStorefrontOffersData(store, products) : { activeOffers: [], discountedProducts: [], shouldShowSidebar: false }),
+    [store, products]
+  );
+
+  const handleSubmitReview = async () => {
+    if (!store || !currentCustomer) {
+      setShowReviewModal(false);
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (!reviewContent.trim()) {
+      alert('الرجاء كتابة التقييم');
+      return;
+    }
+    setIsSubmittingReview(true);
+    const res = await submitStoreReviewAction(store.id, reviewRating, reviewContent);
+    setIsSubmittingReview(false);
+    if (res.success) {
+      alert('تم إرسال تقييمك بنجاح وهو قيد المراجعة');
+      setShowReviewModal(false);
+      setReviewContent('');
+      setReviewRating(5);
+    } else {
+      alert(res.error || 'حدث خطأ');
+    }
+  };
+
+  if (!store) {
+    if (serverFetched) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6 text-center bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white">
+          <div className="space-y-4 max-w-sm">
+            <StoreIcon className="w-12 h-12 text-slate-400 mx-auto" />
+            <h2 className="text-xl font-black">عذراً، هذا المتجر غير موجود</h2>
+            <p className="text-xs text-slate-500">تأكد من صحة رابط المنصة أو عد إلى الصفحة الرئيسية.</p>
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-brand-600 text-white text-xs font-bold shadow-sm hover:bg-brand-700 transition-colors"
+            >
+              العودة للرئيسية
+            </Link>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 text-center">
+        <div className="space-y-4">
+          <StoreIcon className="w-12 h-12 text-slate-400 mx-auto animate-pulse" />
+          <h2 className="text-xl font-bold">جاري فتح المنصة...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  // ⛔ Suspended Store Guard: If store is suspended, block storefront and show notice
+  if (store.planStatus === 'suspended') {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white font-sans flex items-center justify-center p-4 sm:p-6 text-center select-none relative overflow-hidden">
+        {/* Ambient Glow */}
+        <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden opacity-30">
+          <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] rounded-full bg-red-600/20 blur-[100px] animate-pulse" />
+        </div>
+
+        <div className="relative z-10 max-w-md w-full bg-slate-800/90 backdrop-blur-2xl rounded-3xl p-8 sm:p-10 border border-red-500/30 shadow-2xl space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 mx-auto flex items-center justify-center shadow-lg shadow-red-500/10">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-xl sm:text-2xl font-black text-white">المتجر مغلق مؤقتاً</h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              تم تعليق متجر ({store.name}) مؤقتاً من قبل إدارة منصة سِين. يرجى مراجعة إدارة المنصة لإعادة التفعيل.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-700/60 text-right text-xs space-y-1.5">
+            <div className="flex justify-between">
+              <span className="text-slate-400">اسم المتجر:</span>
+              <span className="font-bold text-white">{store.name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">الحالة:</span>
+              <span className="text-red-400 font-bold">معلق مؤقتاً 🔒</span>
+            </div>
+          </div>
+
+          <div className="pt-2 flex flex-col gap-3">
+            <a
+              href={`https://wa.me/967774448016?text=${encodeURIComponent(`مرحباً إدارة منصة سِين، بخصوص متجر ${store.name} المعلق، أود الاستفسار عن حالة المتجر.`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2"
+            >
+              تواصل مع مالك المنصة 💬
+            </a>
+            <Link
+              href="/"
+              className="w-full py-3 rounded-2xl bg-slate-700/80 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all"
+            >
+              العودة للرئيسية
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Active theme configuration with safe recursive fallback to prevent client-side exception
+  const parsedThemeConfig = typeof store.themeConfig === 'string'
+    ? (() => { try { return JSON.parse(store.themeConfig); } catch { return {}; } })()
+    : (store.themeConfig || {});
+
+  const matchedConfiguredPreset = parsedThemeConfig?.presetId
+    ? THEME_PRESETS.find(p => p.id === parsedThemeConfig.presetId)?.config
+    : undefined;
+  const fallbackPreset = isServiceStore
+    ? (THEME_PRESETS.find(p => p.id === 'service-expert')?.config || THEME_PRESETS[0].config)
+    : THEME_PRESETS[0].config;
+  const basePreset = matchedConfiguredPreset || fallbackPreset;
+
+  const theme: ThemeConfig = {
+    ...basePreset,
+    ...parsedThemeConfig,
+    colors: {
+      ...basePreset.colors,
+      ...(store.primaryColor && !parsedThemeConfig?.colors?.primary ? { primary: store.primaryColor } : {}),
+      ...(parsedThemeConfig.colors || {}),
+    },
+    typography: { ...basePreset.typography, ...(parsedThemeConfig.typography || {}) },
+    layout: { ...basePreset.layout, ...(parsedThemeConfig.layout || {}) },
+    sections: Array.isArray(parsedThemeConfig.sections) && parsedThemeConfig.sections.length > 0
+      ? parsedThemeConfig.sections
+      : basePreset.sections,
+  };
+
+  const presetId = theme.presetId || (isServiceStore ? 'service-expert' : 'fashion-luxury');
+  const primaryColor = parsedThemeConfig?.colors?.primary || store.primaryColor || theme.colors?.primary || '#0d9488';
+  const secondaryColor = theme.colors?.secondary || '#d97706';
+  const palette = resolveStorePalette({ ...theme.colors, primary: primaryColor, secondary: secondaryColor }, primaryColor);
+  const fontFamily = theme.typography?.fontFamily || 'Tajawal';
+  const borderRadiusClass = theme.layout?.borderRadius === 'pill' ? 'rounded-full' : theme.layout?.borderRadius === 'curved' ? 'rounded-2xl' : 'rounded-none';
+  const buttonRadiusClass = theme.layout?.borderRadius === 'pill' ? 'rounded-full' : theme.layout?.borderRadius === 'curved' ? 'rounded-xl' : 'rounded-none';
+
+  // Parse social links
+  let socialLinks: any = {};
+  if (store.socialLinks) {
+    try {
+      socialLinks = JSON.parse(store.socialLinks);
+    } catch(e) {}
+  }
+
+  // Legacy Banner Support (for backwards compatibility with settings page uploads)
+  let legacyBannerImages: string[] = [];
+  let legacyBannerInterval = 5;
+  if (store.banner && store.banner.trim() !== '') {
+    try {
+      const parsed = JSON.parse(store.banner);
+      if (Array.isArray(parsed)) {
+        legacyBannerImages = parsed.filter(url => url && url.trim() !== '');
+      } else if (parsed && typeof parsed === 'object' && parsed.images) {
+        legacyBannerImages = (parsed.images as string[]).filter(url => url && url.trim() !== '');
+        legacyBannerInterval = parsed.interval || 5;
+      } else {
+        legacyBannerImages = [store.banner];
+      }
+    } catch(e) {
+      legacyBannerImages = [store.banner];
+    }
+  }
+
+  // Currency conversion helper for current active currency
+  const getConvertedPrice = (priceInBase: number) => {
+    return convertCurrency(priceInBase, store.baseCurrency, activeCurrency, store.customRates);
+  };
+
+  const getFormattedPrice = (priceInBase: number) => {
+    const converted = getConvertedPrice(priceInBase);
+    return formatCurrency(converted, activeCurrency);
+  };
+
+  // Add to cart handler
+  const handleAddToCart = (product: Product, variant?: ProductVariant, quantity: number = 1) => {
+    const basePrice = variant?.priceOverride || product.price;
+    const variantId = variant?.id;
+    const variantName = variant?.name;
+
+    // For service stores, quantity is strictly locked to 1
+    const finalQuantity = isServiceStore ? 1 : quantity;
+
+    const existingIndex = cart.findIndex(
+      (item) => item.productId === product.id && item.variantId === variantId
+    );
+
+    if (existingIndex > -1) {
+      if (isServiceStore) {
+        // Enforce strictly 1 for services without increasing count
+        const updated = [...cart];
+        updated[existingIndex].quantity = 1;
+        updated[existingIndex].total = basePrice;
+        setCart(updated);
+        setSelectedProduct(null);
+        setIsCheckoutOpen(true);
+        toast.success('تم تحديد الخدمة للحجز', { icon: '💼' });
+        return;
+      }
+      const updated = [...cart];
+      updated[existingIndex].quantity += finalQuantity;
+      updated[existingIndex].total = updated[existingIndex].quantity * basePrice;
+      setCart(updated);
+    } else {
+      const newItem: OrderItem = {
+        productId: product.id,
+        productName: product.name,
+        productImage: product.images[0] || '',
+        variantId,
+        variantName,
+        price: basePrice,
+        quantity: finalQuantity,
+        total: basePrice * finalQuantity,
+        digitalFileUrl: product.digitalFileUrl,
+        digitalFileName: product.digitalFileName,
+        digitalFileAccess: product.digitalFileAccess,
+      };
+      setCart([...cart, newItem]);
+    }
+
+    setSelectedProduct(null);
+    if (isServiceStore) {
+      toast.success('تم اختيار الخدمة وتجهيزها للحجز', {
+        icon: '💼',
+      });
+      setIsCheckoutOpen(true);
+    } else {
+      toast.success('تم إضافة المنتج إلى السلة بنجاح', {
+        icon: '🛒',
+      });
+    }
+  };
+
+  const handleUpdateCartQuantity = (index: number, delta: number) => {
+    if (isServiceStore) {
+      // In service profiles, quantity cannot be incremented or decremented - delta < 0 removes it
+      if (delta < 0) {
+        setCart(cart.filter((_, i) => i !== index));
+      }
+      return;
+    }
+    const updated = [...cart];
+    updated[index].quantity += delta;
+    if (updated[index].quantity <= 0) {
+      setCart(cart.filter((_, i) => i !== index));
+    } else {
+      updated[index].total = updated[index].quantity * updated[index].price;
+      setCart(updated);
+    }
+  };
+
+  // Totals calculations
+  const cartSubtotalBase = cart.reduce((sum, item) => sum + item.total, 0);
+  const cartSubtotalConverted = getConvertedPrice(cartSubtotalBase);
+  
+  let discountConverted = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.type === 'percentage') {
+      discountConverted = cartSubtotalConverted * (appliedCoupon.discount / 100);
+    } else if (appliedCoupon.type === 'fixed') {
+      discountConverted = getConvertedPrice(appliedCoupon.discount);
+    }
+  }
+
+  const selectedShipping = isServiceStore ? null : store.shippingMethods.find(m => m.isActive && (deliveryType === 'pickup' ? m.isPickup : !m.isPickup));
+  let shippingCostConverted = isServiceStore ? 0 : (deliveryType === 'pickup' ? 0 : (selectedShipping?.cost || 3000));
+  
+  if (appliedCoupon?.type === 'shipping') {
+    shippingCostConverted = 0;
+  }
+
+  const cartTotalConverted = Math.max(0, cartSubtotalConverted + shippingCostConverted - discountConverted);
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode) return;
+    setIsValidatingCoupon(true);
+    setCouponError('');
+    const cartProductIds = cart.map(i => i.productId);
+    const res = await validateCouponAction(couponCode, store.id, cartProductIds);
+    if (res.valid) {
+      setAppliedCoupon(res.coupon);
+      setCouponError('');
+    } else {
+      setAppliedCoupon(null);
+      setCouponError(res.error || 'كود الخصم غير صحيح');
+    }
+    setIsValidatingCoupon(false);
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setCouponError('');
+  };
+
+  const executeFreeDigitalClaim = async (prod: Product, cust: any) => {
+    if (!store || !prod?.digitalFileUrl || isSubmittingOrder) return;
+    setIsSubmittingOrder(true);
+    try {
+      const claimedItem: OrderItem = {
+        productId: prod.id,
+        productName: prod.name,
+        productImage: prod.images[0] || '',
+        price: 0,
+        quantity: 1,
+        total: 0,
+        digitalFileUrl: prod.digitalFileUrl,
+        digitalFileName: prod.digitalFileName,
+        digitalFileAccess: 'instant',
+      };
+      const orderId = `ord_${Date.now()}`;
+      const orderNumber = `#${Math.floor(1000 + Math.random() * 9000)}`;
+      const finalName = cust?.name || customerName || 'عميل المتجر';
+      const finalPhone = cust?.phone || customerPhone || 'غير مسجل';
+      const finalEmail = cust?.email || customerEmail || undefined;
+
+      const result = await createOrderAction({
+        id: orderId,
+        orderNumber,
+        storeId: store.id,
+        customerId: cust?.customerId || null,
+        customerName: finalName,
+        customerPhone: finalPhone,
+        customerEmail: finalEmail,
+        city: store.city || 'طلب رقمي',
+        address: 'تحميل رقمي مباشر',
+        deliveryType: 'pickup',
+        items: [claimedItem],
+        subtotal: 0,
+        shippingCost: 0,
+        discount: 0,
+        total: 0,
+        currency: activeCurrency,
+        paymentMethod: 'free',
+        status: 'new',
+        notes: 'حصول فوري على منتج رقمي مجاني',
+      });
+
+      if (result.success) {
+        const newOrder = result.order;
+        const whatsAppMessage = generateWhatsAppOrderMessage({
+          storeName: store.name,
+          orderNumber: newOrder?.orderNumber || orderNumber,
+          customerName: finalName,
+          customerPhone: finalPhone,
+          items: [{ name: prod.name, quantity: 1, priceFormatted: formatCurrency(0, activeCurrency) }],
+          totalFormatted: formatCurrency(0, activeCurrency),
+          paymentMethodName: 'مجاني 🎁',
+          city: store.city || 'طلب رقمي',
+          address: 'تحميل رقمي مباشر',
+        });
+        const waUrl = formatWhatsAppUrl(store.whatsapp || store.phone, store.name, whatsAppMessage);
+
+        setCart((prev) => prev.filter((item) => item.productId !== prod.id));
+        setSelectedProduct(null);
+        setIsCheckoutOpen(false);
+        setOrderSuccess({ ...(newOrder || {}), items: [claimedItem], waUrl, isFreeDigitalClaim: true });
+        toast.success('تم تأكيد طلبك وتجهيز زر التحميل المباشر! 📥', { icon: '🎉' });
+      } else {
+        toast.error(result.error || 'تعذر تجهيز الطلب، حاول مرة أخرى');
+      }
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+  };
+
+  const handleFreeDigitalProductClick = async (prod: Product) => {
+    if (!currentCustomer) {
+      setPendingFreeDownloadProduct(prod);
+      setPendingCheckoutAfterAuth(false);
+      setAuthPromptMode('register');
+      setAuthPromptNote('أنشئ حساباً مجانياً أو سجّل دخولك ليظهر لك زر تحميل الملف مباشرة فور التسجيل 📥');
+      setIsAuthModalOpen(true);
+      toast('يرجى تسجيل الدخول أو إنشاء حساب مجاني ليظهر لك رابط التحميل 📥', { icon: '🔐' });
+      return;
+    }
+    await executeFreeDigitalClaim(prod, currentCustomer);
+  };
+
+  // Checkout submission (reusable both from form submit and post-auth auto-submit)
+  const submitOrderWithCustomer = async (customerOverride?: any) => {
+    if (!store) return;
+    const activeCustomer = customerOverride || currentCustomer;
+    if (!activeCustomer) {
+      setPendingCheckoutAfterAuth(true);
+      setPendingFreeDownloadProduct(null);
+      setAuthPromptMode('register');
+      setAuthPromptNote('سجّل دخولك أو أنشئ حساباً مجانياً لإتمام الطلب والحصول على ملفاتك فوراً 📥');
+      setIsAuthModalOpen(true);
+      toast('يرجى تسجيل الدخول أو إنشاء حساب لإتمام الطلب', { icon: '🔐' });
+      return;
+    }
+
+    const finalName = (customerName || activeCustomer?.name || '').trim();
+    const finalPhone = (customerPhone || activeCustomer?.phone || '').trim();
+    const finalEmail = (customerEmail || activeCustomer?.email || '').trim();
+    const isFreeDigitalOnly = cartTotalConverted <= 0 && cart.some((it) => Boolean(it.digitalFileUrl));
+    const hasContactMethod = (finalPhone && finalPhone.length >= 8) || Boolean(finalEmail);
+
+    if (!finalName || !hasContactMethod) {
+      toast.error('الرجاء استكمال بيانات الاسم ووسيلة التواصل (رقم الهاتف أو البريد الإلكتروني)');
+      setShowEditCustomerFields(true);
+      return;
+    }
+
+    if (cart.length === 0) {
+      toast.error('السلة فارغة!');
+      return;
+    }
+
+    setIsSubmittingOrder(true);
+
+    const orderId = `ord_${Date.now()}`;
+    const orderNumber = `#${Math.floor(1000 + Math.random() * 9000)}`;
+    const safePhone = finalPhone || 'غير مسجل';
+
+    const result = await createOrderAction({
+      id: orderId,
+      orderNumber,
+      storeId: store.id,
+      customerId: activeCustomer?.customerId || null,
+      customerName: finalName,
+      customerPhone: safePhone,
+      customerEmail: finalEmail || undefined,
+      city: isServiceStore ? 'خدمة واستشارة مهنية' : (city || store.city),
+      address: isServiceStore ? 'تقديم واستلام الخدمة مباشرة' : (deliveryType === 'pickup' ? 'استلام من الفرع' : address),
+      deliveryType,
+      items: cart,
+      subtotal: cartSubtotalConverted,
+      shippingCost: shippingCostConverted,
+      discount: discountConverted,
+      total: cartTotalConverted,
+      currency: activeCurrency,
+      paymentMethod: cartTotalConverted <= 0 ? 'free' : selectedPayment,
+      paymentProofUrl: cartTotalConverted <= 0 ? undefined : (paymentProofUrl || undefined),
+      paymentProofStatus: cartTotalConverted <= 0 ? undefined : (paymentProofUrl ? 'unverified' : undefined),
+      status: (cartTotalConverted <= 0 || selectedPayment === 'cod') ? 'new' : 'pending_payment',
+      notes,
+      couponCode: appliedCoupon?.code || undefined,
+    });
+
+    if (result.success) {
+      const newOrder = result.order;
+
+      // Register or update customer in CRM
+      import('@/lib/auth-engine').then(({ authEngine }) => {
+        const custRes = authEngine.registerCustomer({
+          name: finalName,
+          phone: safePhone,
+          email: finalEmail,
+          storeId: store.id,
+          storeSlug: store.slug,
+          storeName: store.name,
+        });
+        if (custRes.session?.user) {
+          const user = custRes.session.user;
+          authEngine.updateUser(user.id, {
+            ordersCount: (user.ordersCount || 0) + 1,
+            totalSpent: (user.totalSpent || 0) + cartTotalConverted
+          });
+        }
+      });
+      // Prepare items list for WhatsApp formatting
+      const formattedItems = cart.map((i) => ({
+        name: i.variantName ? `${i.productName} (${i.variantName})` : i.productName,
+        quantity: i.quantity,
+        priceFormatted: formatCurrency(getConvertedPrice(i.price * i.quantity), activeCurrency),
+      }));
+
+      const activeAccount = store.paymentAccounts.find(a => a.type === selectedPayment);
+      const paymentName = activeAccount?.name || (selectedPayment === 'cod' ? 'الدفع عند الاستلام (COD)' : selectedPayment);
+
+      // Build WhatsApp order message for the store owner
+      const whatsAppMessage = generateWhatsAppOrderMessage({
+        storeName: store.name,
+        orderNumber: newOrder?.orderNumber || '---',
+        customerName: finalName,
+        customerPhone: safePhone,
+        items: formattedItems,
+        totalFormatted: formatCurrency(cartTotalConverted, activeCurrency),
+        discountFormatted: appliedCoupon && discountConverted > 0 ? formatCurrency(discountConverted, activeCurrency) : undefined,
+        paymentMethodName: paymentName,
+        city: isServiceStore ? 'خدمة واستشارة مهنية' : (city || store.city || 'اليمن'),
+        address: isServiceStore ? 'تقديم واستلام الخدمة مباشرة' : (deliveryType === 'pickup' ? 'استلام من الفرع' : address),
+        notes,
+        paymentProofUrl: paymentProofUrl || undefined,
+      });
+
+      const waUrl = formatWhatsAppUrl(
+        store.whatsapp || store.phone,
+        store.name,
+        whatsAppMessage
+      );
+
+      // For paid/manual orders open WhatsApp directly; for free digital files keep customer focused on download button
+      if (waUrl && typeof window !== 'undefined' && !isFreeDigitalOnly) {
+        try {
+          window.open(waUrl, '_blank');
+        } catch (e) {
+          console.error('Failed to auto-open WhatsApp:', e);
+        }
+      }
+
+      const orderedItems = [...cart];
+      setCart([]);
+      setIsCheckoutOpen(false);
+      setIsSubmittingOrder(false);
+
+      // Show success modal with WhatsApp action button and digital attachments
+      setOrderSuccess({ ...(newOrder || {}), items: orderedItems, waUrl, isFreeDigitalClaim: isFreeDigitalOnly });
+    } else {
+      setIsSubmittingOrder(false);
+      toast.error('حدث خطأ أثناء إنشاء الطلب. حاول مرة أخرى.');
+    }
+  };
+
+  const handlePlaceOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitOrderWithCustomer();
+  };
+
+  // Helper to normalize category name and prevent duplicate or typo tabs
+  const normalizeCatName = (name: string) => {
+    if (!name) return '';
+    let cleaned = name.trim().replace(/\s+/g, ' ');
+    if (cleaned.includes('منتحات')) {
+      cleaned = cleaned.replace(/منتحات/g, 'منتجات');
+    }
+    return cleaned;
+  };
+
+  // Parse categories from products
+  const categoryMap = new Map<string, Set<string>>();
+  products.forEach(p => {
+    const rawCategory = normalizeCatName(p.category || '');
+    const parts = rawCategory.split(' > ');
+    const mainCat = normalizeCatName(parts[0]?.trim());
+    const subCat = parts[1]?.trim() ? normalizeCatName(parts[1]?.trim()) : '';
+    if (mainCat) {
+      if (!categoryMap.has(mainCat)) categoryMap.set(mainCat, new Set());
+      if (subCat) categoryMap.get(mainCat)!.add(subCat);
+    }
+  });
+
+  const parsedCategories = Array.from(categoryMap.entries()).map(([main, subs]) => ({
+    main,
+    subs: Array.from(subs)
+  }));
+
+  const getBrandLogo = (brandName: string) => {
+    const n = brandName.toLowerCase();
+    if (n.includes('samsung') || n.includes('سامسونج')) return 'https://api.iconify.design/simple-icons:samsung.svg';
+    if (n.includes('apple') || n.includes('ابل') || n.includes('آبل') || n.includes('ايفون')) return 'https://api.iconify.design/simple-icons:apple.svg';
+    if (n.includes('xiaomi') || n.includes('شاومي') || n.includes('ريدمي') || n.includes('redmi')) return 'https://api.iconify.design/simple-icons:xiaomi.svg';
+    if (n.includes('huawei') || n.includes('هواوي')) return 'https://api.iconify.design/simple-icons:huawei.svg';
+    return null;
+  };
+
+  const filteredProducts = products.filter((p) => {
+    // 1. Digital products optionality check: if merchant disabled digital products, hide them
+    const allowDigital = parsedThemeConfigForType?.allowDigitalProducts !== false;
+    if (!allowDigital && (p.digitalFileUrl || p.category?.includes('رقمي') || (p.tags && p.tags.some((t: string) => t.includes('digital') || t.includes('رقمي'))))) {
+      return false;
+    }
+
+    if (selectedOfferFilter && !doesOfferApplyToProduct(selectedOfferFilter, p.id)) {
+      return false;
+    }
+
+    const normProdCat = normalizeCatName(p.category || '');
+    let matchesCategory = selectedCategory === 'all' || 
+                          normProdCat === selectedCategory || 
+                          normProdCat.startsWith(selectedCategory + ' > ') ||
+                          p.category === selectedCategory ||
+                          p.category.startsWith(selectedCategory + ' > ');
+    if (selectedCategory === 'subscriptions_only') {
+      matchesCategory = Boolean(p.tags?.some(t => t.startsWith('subscription:')));
+    }
+    const matchesSearch = p.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                          (p.description || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  return (
+    <div 
+      className="min-h-screen flex flex-col w-full transition-colors duration-300"
+      style={{
+        fontFamily,
+        backgroundColor: palette.background,
+        color: palette.textMain,
+      }}
+    >
+      <style dangerouslySetInnerHTML={{ __html: `:root { --store-primary: ${primaryColor}; }` }} />
+      
+      {/* 1. ANNOUNCEMENT BAR (Customized per theme) */}
+      {(() => {
+        const annSec = theme.sections?.find(s => s.type === 'announcement_bar');
+        if (annSec && annSec.isVisible) {
+          return (
+            <div 
+              className={`py-1.5 sm:py-2 px-3 text-center flex items-center justify-center gap-2 text-[10px] sm:text-xs font-bold text-white shadow-xs ${
+                presetId === 'tech-modern' ? 'border-b border-cyan-500/30 font-mono' : ''
+              }`}
+              style={{ backgroundColor: primaryColor }}
+            >
+              {presetId === 'tech-modern' ? (
+                <Zap className="w-3.5 h-3.5 text-cyan-300 animate-pulse shrink-0" />
+              ) : presetId === 'yemen-roastery' ? (
+                <Coffee className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+              )}
+              <span className="truncate">{annSec.settings.bannerTitle || 'توصيل سريع لجميع المحافظات | الدفع عند الاستلام'}</span>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
+      {/* 2. THEME-SPECIFIC HEADER NAVIGATION BAR */}
+      <header
+        className="sticky top-0 z-40 backdrop-blur-md border-b transition-all"
+        style={{
+          backgroundColor: palette.headerBg,
+          borderColor: palette.border,
+          color: palette.textMain,
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-20 gap-2 sm:gap-4">
+            
+            {/* Logo & Branding */}
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              {store.logo ? (
+                <img 
+                  src={store.logo} 
+                  alt={store.name}
+                  className={`w-9 h-9 sm:w-12 sm:h-12 object-cover shadow-xs shrink-0 ${
+                    presetId === 'minimal-clean' 
+                      ? 'rounded-none border-2 border-black' 
+                      : 'rounded-xl sm:rounded-2xl border'
+                  }`}
+                  style={{ borderColor: presetId === 'minimal-clean' ? '#000000' : palette.border, backgroundColor: palette.surface }}
+                />
+              ) : (
+                <div
+                  className={`w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center text-white font-black text-sm sm:text-base shadow-xs shrink-0 ${
+                    presetId === 'minimal-clean'
+                      ? 'rounded-none border-2 border-black'
+                      : 'rounded-xl sm:rounded-2xl'
+                  }`}
+                  style={{ backgroundColor: presetId === 'minimal-clean' ? '#000000' : primaryColor }}
+                >
+                  {store.name?.charAt(0) || 'م'}
+                </div>
+              )}
+              <div className="min-w-0">
+                <h1 className="text-xs sm:text-base font-black leading-tight truncate" style={{ color: palette.textMain }}>
+                  {store.name}
+                </h1>
+                <p className="text-[9px] sm:text-[10px] font-medium truncate" style={{ color: palette.textMuted }}>
+                  {presetId === 'yemen-roastery' ? '☕ محمصة يمنية حرفية' : presetId === 'tech-modern' ? '⚡ Cyber Tech Store' : `📍 ${store.city} - ${store.category}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Currency Selector & Cart Trigger */}
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+              
+              {/* Customer Account Button */}
+              {currentCustomer ? (
+                <div className="relative group">
+                  <button
+                    className="flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-3 sm:py-2 text-[11px] sm:text-xs font-bold border rounded-full transition-opacity hover:opacity-90"
+                    style={{
+                      backgroundColor: palette.surfaceAlt,
+                      borderColor: palette.border,
+                      color: palette.textMain,
+                    }}
+                  >
+                    <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: primaryColor }} />
+                    <span className="hidden sm:inline max-w-[80px] truncate">{currentCustomer.name}</span>
+                    <ChevronDown className="w-3 h-3 opacity-50" />
+                  </button>
+                  <div
+                    className="absolute right-0 top-full mt-2 w-48 border rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col overflow-hidden z-50"
+                    style={{
+                      backgroundColor: palette.surface,
+                      borderColor: palette.border,
+                      color: palette.textMain,
+                    }}
+                  >
+                    <div className="px-4 py-3 border-b" style={{ borderColor: palette.border }}>
+                      <p className="text-sm font-bold truncate" style={{ color: palette.textMain }}>{currentCustomer.name}</p>
+                      <p className="text-xs truncate mt-0.5" dir="ltr" style={{ color: palette.textMuted }}>{currentCustomer.phone}</p>
+                    </div>
+                    <Link href={`/store/${store.slug}/account?tab=purchases`} className="px-4 py-2.5 text-xs font-bold hover:opacity-80 text-right flex items-center justify-end gap-2">
+                      <span>{isServiceStore ? 'حجوزاتي وخدماتي' : 'مشترياتك'}</span>
+                      <ShoppingBag className="w-3.5 h-3.5" style={{ color: palette.textMuted }} />
+                    </Link>
+                    <Link href={`/store/${store.slug}/account?tab=messages`} className="px-4 py-2.5 text-xs font-bold hover:opacity-80 text-right flex items-center justify-end gap-2">
+                      <span>الرسائل والتواصل</span>
+                      <MessageCircle className="w-3.5 h-3.5 text-sky-500" />
+                    </Link>
+                    <Link href={`/store/${store.slug}/account?tab=settings`} className="px-4 py-2.5 text-xs font-bold hover:opacity-80 text-right flex items-center justify-end gap-2 border-b" style={{ borderColor: palette.border }}>
+                      <span>إعدادات الحساب</span>
+                      <Settings className="w-3.5 h-3.5" style={{ color: palette.textMuted }} />
+                    </Link>
+                    <button 
+                      onClick={async () => {
+                        await logoutCustomerAction();
+                        if (typeof window !== 'undefined') {
+                          localStorage.removeItem(`seen_customer_${store.id}`);
+                          localStorage.removeItem(`seen_customer_${slug}`);
+                        }
+                        setCurrentCustomer(null);
+                        window.location.reload();
+                      }}
+                      className="px-4 py-3 text-sm font-bold hover:opacity-80 text-red-500 text-right"
+                    >
+                      تسجيل خروج
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs font-bold border hover:opacity-90 rounded-full transition-opacity flex items-center gap-1.5"
+                  style={{
+                    backgroundColor: palette.surfaceAlt,
+                    borderColor: palette.border,
+                    color: palette.textMain,
+                  }}
+                >
+                  <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">دخول</span>
+                </button>
+              )}
+
+              {/* Share Platform Link Button */}
+              <button
+                onClick={() => setIsShareModalOpen(true)}
+                className="px-2.5 py-1.5 sm:px-3 sm:py-2 text-[11px] sm:text-xs font-bold border hover:opacity-90 rounded-full transition-opacity flex items-center gap-1.5 shadow-xs"
+                style={{
+                  backgroundColor: palette.surfaceAlt,
+                  borderColor: palette.border,
+                  color: palette.textMain,
+                }}
+                title="مشاركة رابط المنصة"
+              >
+                <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: primaryColor }} />
+                <span className="hidden md:inline">مشاركة</span>
+              </button>
+
+              {/* Service Platform Direct Custom Request Button */}
+              {isServiceStore && (
+                <button
+                  onClick={() => setIsCustomRequestModalOpen(true)}
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold rounded-full transition-colors shadow-xs"
+                  style={{
+                    color: primaryColor,
+                    backgroundColor: `${primaryColor}15`,
+                    borderColor: `${primaryColor}30`,
+                    borderWidth: '1px'
+                  }}
+                  title="طلب خدمة مخصصة أو استشارة خاصة"
+                >
+                  <Briefcase className="w-3.5 h-3.5" style={{ color: primaryColor }} />
+                  <span>طلب مخصص ✍️</span>
+                </button>
+              )}
+
+              {/* Cart / Booking Drawer Trigger Button */}
+              {isServiceStore ? (
+                <button
+                  onClick={() => setIsCheckoutOpen(true)}
+                  className="relative px-3 py-1.5 sm:px-4 sm:py-2.5 font-bold text-xs sm:text-sm text-white flex items-center gap-1.5 shadow-md active:scale-95 transition-all rounded-2xl"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">حجز خدمة</span>
+                  {cart.length > 0 && (
+                    <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white text-[10px] sm:text-xs font-black flex items-center justify-center shadow-xs" style={{ color: primaryColor }}>
+                      {cart.reduce((s, i) => s + i.quantity, 0)}
+                    </span>
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsCartOpen(true)}
+                  className={`relative px-3 py-1.5 sm:px-4 sm:py-2.5 font-bold text-xs sm:text-sm text-white flex items-center gap-1.5 shadow-md active:scale-95 transition-all ${
+                    presetId === 'minimal-clean' ? 'rounded-none border-2 border-black bg-black text-white' : ''
+                  }`}
+                  style={{ 
+                    backgroundColor: presetId === 'minimal-clean' ? '#000000' : primaryColor,
+                    borderRadius: presetId === 'minimal-clean' ? '0px' : buttonRadiusClass === 'rounded-full' ? '9999px' : '14px',
+                  }}
+                >
+                  <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">السلة</span>
+                  {cart.length > 0 && (
+                    <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white text-slate-950 text-[10px] sm:text-xs font-black flex items-center justify-center shadow-xs">
+                      {cart.reduce((s, i) => s + i.quantity, 0)}
+                    </span>
+                  )}
+                </button>
+              )}
+
+            </div>
+
+          </div>
+        </div>
+      </header>
+
+      {/* 3. DYNAMIC HOMEPAGE SECTIONS - ARCHITECTURALLY DIFFERENT PER THEME */}
+      <div className="space-y-6 sm:space-y-12">
+        {(theme.sections || [])
+          .filter(s => s.isVisible && s.type !== 'announcement_bar')
+          .map((section) => {
+            
+            // --- SECTION: HERO BANNER ---
+            if (section.type === 'hero_slider') {
+              return (
+                <HeroSectionRenderer 
+                  key={section.id} 
+                  section={section} 
+                  presetId={presetId} 
+                  store={store} 
+                  legacyBannerImages={legacyBannerImages} 
+                  legacyBannerInterval={legacyBannerInterval} 
+                  secondaryColor={secondaryColor} 
+                  primaryColor={primaryColor}
+                  onOpenCustomRequest={() => setIsCustomRequestModalOpen(true)}
+                  isServiceStore={isServiceStore}
+                />
+              );
+            }
+
+            // --- SECTION: FEATURES STRIP (Modern Dynamic Platform Categories Navigation) ---
+            if (section.type === 'features_strip') {
+              if (isServiceStore) {
+                return (
+                  <section key={section.id} className="max-w-4xl mx-auto px-3 sm:px-8 mt-3 sm:mt-5 sticky top-14 sm:top-20 z-30 pt-1 pb-2">
+                    <div
+                      className="p-1.5 sm:p-2 rounded-2xl sm:rounded-3xl flex items-center justify-center gap-1.5 sm:gap-2.5 border shadow-md backdrop-blur-md transition-colors"
+                      style={{
+                        backgroundColor: palette.headerBg,
+                        borderColor: palette.border,
+                        color: palette.textMain,
+                      }}
+                    >
+                      {/* 1. الرئيسية */}
+                      <button
+                        onClick={() => {
+                          setActiveServiceTab('home');
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className={`flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all ${
+                          activeServiceTab === 'home' ? 'text-white shadow-md' : 'hover:opacity-80'
+                        }`}
+                        style={{
+                          backgroundColor: activeServiceTab === 'home' ? primaryColor : 'transparent',
+                          color: activeServiceTab === 'home' ? '#ffffff' : palette.textMain,
+                        }}
+                      >
+                        <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <span>الرئيسية</span>
+                      </button>
+
+                      {/* 2. خدماتي */}
+                      <button
+                        onClick={() => {
+                          setActiveServiceTab('services');
+                          const el = document.getElementById('products-grid');
+                          if (el) el.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                        className={`flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all ${
+                          activeServiceTab === 'services' ? 'text-white shadow-md' : 'hover:opacity-80'
+                        }`}
+                        style={{
+                          backgroundColor: activeServiceTab === 'services' ? primaryColor : 'transparent',
+                          color: activeServiceTab === 'services' ? '#ffffff' : palette.textMain,
+                        }}
+                      >
+                        <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <span>خدماتي</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${activeServiceTab === 'services' ? 'bg-white/20 text-white' : ''}`}
+                          style={activeServiceTab !== 'services' ? { backgroundColor: palette.surfaceAlt, color: palette.textMuted } : undefined}
+                        >
+                          {products.length}
+                        </span>
+                      </button>
+
+                      {/* 3. نبذة تعريفية */}
+                      <button
+                        onClick={() => {
+                          setActiveServiceTab('about');
+                          const el = document.getElementById('bio-section') || document.getElementById('about-section');
+                          if (el) el.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                        className={`flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all ${
+                          activeServiceTab === 'about' ? 'text-white shadow-md' : 'hover:opacity-80'
+                        }`}
+                        style={{
+                          backgroundColor: activeServiceTab === 'about' ? primaryColor : 'transparent',
+                          color: activeServiceTab === 'about' ? '#ffffff' : palette.textMain,
+                        }}
+                      >
+                        <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <span>نبذة تعريفية</span>
+                      </button>
+
+                      {/* 4. معرض أعمال سابقة (فقط عند التفعيل ووجود أعمال مضافة فعلياً) */}
+                      {parsedThemeConfigForType.showPortfolio &&
+                        Array.isArray(parsedThemeConfigForType.portfolioItems) &&
+                        parsedThemeConfigForType.portfolioItems.length > 0 && (
+                        <button
+                          onClick={() => {
+                            setActiveServiceTab('portfolio');
+                            const el = document.getElementById('portfolio-section');
+                            if (el) el.scrollIntoView({ behavior: 'smooth' });
+                          }}
+                          className={`flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all ${
+                            activeServiceTab === 'portfolio' ? 'text-white shadow-md' : 'hover:opacity-80'
+                          }`}
+                          style={{
+                            backgroundColor: activeServiceTab === 'portfolio' ? primaryColor : 'transparent',
+                            color: activeServiceTab === 'portfolio' ? '#ffffff' : palette.textMain,
+                          }}
+                        >
+                          <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          <span>أعمال سابقة</span>
+                        </button>
+                      )}
+
+                      {/* 5. تواصل معي */}
+                      <button
+                        onClick={() => {
+                          setActiveServiceTab('contact');
+                          const el = document.getElementById('contact-section');
+                          if (el) el.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                        className={`flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all ${
+                          activeServiceTab === 'contact' ? 'text-white shadow-md' : 'hover:opacity-80'
+                        }`}
+                        style={{
+                          backgroundColor: activeServiceTab === 'contact' ? primaryColor : 'transparent',
+                          color: activeServiceTab === 'contact' ? '#ffffff' : palette.textMain,
+                        }}
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <span>تواصل معي</span>
+                      </button>
+                    </div>
+                  </section>
+                );
+              }
+
+              const getCategoryIcon = (catName: string) => {
+                if (catName.includes('محاماة') || catName.includes('قانون') || catName.includes('عقود')) return '⚖️';
+                if (catName.includes('استشارات') || catName.includes('أعمال') || catName.includes('إدارة')) return '💼';
+                if (catName.includes('طب') || catName.includes('عياد') || catName.includes('صحة')) return '🩺';
+                if (catName.includes('برمج') || catName.includes('تقني') || catName.includes('ويب') || catName.includes('موقع')) return '💻';
+                if (catName.includes('تصميم') || catName.includes('جرافيك') || catName.includes('شعار')) return '🎨';
+                if (catName.includes('تدريب') || catName.includes('تعليم') || catName.includes('كورس') || catName.includes('أكاديم')) return '📚';
+                if (catName.includes('تسويق') || catName.includes('إعلان')) return '📈';
+                if (catName.includes('بن') || catName.includes('مقه') || catName.includes('قهوة')) return '☕';
+                if (catName.includes('أزياء') || catName.includes('ملابس') || catName.includes('عباي')) return '👗';
+                if (catName.includes('إلكترون') || catName.includes('هاتف') || catName.includes('جوال')) return '📱';
+                if (catName.includes('عطور') || catName.includes('تجميل')) return '🌸';
+                if (catName.includes('هدايا') || catName.includes('تحف')) return '🎁';
+                return '🏷️';
+              };
+
+              const getCategoryCount = (mainCat: string) => {
+                if (mainCat === 'all') return products.length;
+                return products.filter(p => {
+                  const norm = normalizeCatName(p.category || '');
+                  return norm === mainCat || norm.startsWith(mainCat + ' > ') || p.category === mainCat || p.category.startsWith(mainCat + ' > ');
+                }).length;
+              };
+
+              return (
+                <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 mt-3 sm:mt-5 sticky top-14 sm:top-20 z-30 pt-1 pb-2">
+                  <div
+                    className={`p-2 rounded-2xl sm:rounded-3xl flex items-center gap-2 overflow-x-auto no-scrollbar shadow-sm backdrop-blur-md transition-all border ${
+                      presetId === 'minimal-clean' ? 'border-2 border-black rounded-none' : ''
+                    }`}
+                    style={{
+                      backgroundColor: palette.headerBg,
+                      borderColor: presetId === 'minimal-clean' ? '#000000' : palette.border,
+                      color: palette.textMain,
+                    }}
+                  >
+                    {/* "All" Pill */}
+                    <button
+                      onClick={() => setSelectedCategory('all')}
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shrink-0 transition-all ${
+                        selectedCategory === 'all' ? 'shadow-sm text-white' : 'hover:opacity-80'
+                      }`}
+                      style={{
+                        backgroundColor: selectedCategory === 'all' ? (presetId === 'minimal-clean' ? '#000' : primaryColor) : 'transparent',
+                        color: selectedCategory === 'all' ? '#ffffff' : palette.textMain,
+                        borderRadius: presetId === 'minimal-clean' ? '0px' : '14px'
+                      }}
+                    >
+                      <span>⚡</span>
+                      <span>كافة {isServiceStore ? 'الخدمات' : 'الأقسام'}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${selectedCategory === 'all' ? 'bg-white/20 text-white' : ''}`}
+                        style={selectedCategory !== 'all' ? { backgroundColor: palette.surfaceAlt, color: palette.textMuted } : undefined}
+                      >
+                        {products.length}
+                      </span>
+                    </button>
+
+                    {/* Quick Jump: About Me (نبذة عني) */}
+                    <a
+                      href="#about-section"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const el = document.getElementById('about-section');
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shrink-0 transition-all hover:opacity-80 cursor-pointer"
+                      style={{ color: palette.textMain, borderRadius: presetId === 'minimal-clean' ? '0px' : '14px' }}
+                    >
+                      <User className="w-3.5 h-3.5 opacity-70" />
+                      <span>نبذة عني</span>
+                    </a>
+
+                    {/* Service Subscriptions Quick Filter if service store */}
+                    {isServiceStore && products.some(p => p.tags?.some(t => t.startsWith('subscription:'))) && (
+                      <button
+                        onClick={() => setSelectedCategory('subscriptions_only')}
+                        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shrink-0 transition-all ${
+                          selectedCategory === 'subscriptions_only' ? 'shadow-sm text-white' : 'border hover:opacity-80'
+                        }`}
+                        style={{
+                          backgroundColor: selectedCategory === 'subscriptions_only' ? primaryColor : 'transparent',
+                          color: selectedCategory === 'subscriptions_only' ? '#ffffff' : palette.textMain,
+                          borderColor: palette.border,
+                          borderRadius: '14px'
+                        }}
+                      >
+                        <span>🔄</span>
+                        <span>باقات واشتراكات</span>
+                      </button>
+                    )}
+
+                    {/* Category Pills (Cleanly deduplicated) */}
+                    {parsedCategories.map((cat, idx) => {
+                      const isSelected = selectedCategory === cat.main || selectedCategory.startsWith(cat.main + ' > ');
+                      const count = getCategoryCount(cat.main);
+                      return (
+                        <div key={idx} className="relative group shrink-0">
+                          <button
+                            onClick={() => setSelectedCategory(cat.main)}
+                            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shrink-0 transition-all ${
+                              isSelected ? 'shadow-sm text-white' : 'hover:opacity-80'
+                            }`}
+                            style={{
+                              backgroundColor: isSelected ? (presetId === 'minimal-clean' ? '#000' : primaryColor) : 'transparent',
+                              color: isSelected ? '#ffffff' : palette.textMain,
+                              borderRadius: presetId === 'minimal-clean' ? '0px' : '14px'
+                            }}
+                          >
+                            <span>{getCategoryIcon(cat.main)}</span>
+                            <span>{cat.main}</span>
+                            {count > 0 && (
+                              <span
+                                className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${isSelected ? 'bg-white/20 text-white' : ''}`}
+                                style={!isSelected ? { backgroundColor: palette.surfaceAlt, color: palette.textMuted } : undefined}
+                              >
+                                {count}
+                              </span>
+                            )}
+                            {cat.subs.length > 0 && <ChevronDown className="w-3 h-3 opacity-60" />}
+                          </button>
+
+                          {/* Dropdown for Subcategories */}
+                          {cat.subs.length > 0 && (
+                            <div
+                              className="absolute top-full right-0 mt-2 w-56 border rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden translate-y-2 group-hover:translate-y-0"
+                              style={{
+                                backgroundColor: palette.surface,
+                                borderColor: palette.border,
+                                borderRadius: presetId === 'minimal-clean' ? '0px' : '16px',
+                              }}
+                            >
+                              <div className="py-2">
+                                {cat.subs.map(sub => {
+                                  const fullCat = `${cat.main} > ${sub}`;
+                                  const isSubSelected = selectedCategory === fullCat;
+                                  return (
+                                    <button
+                                      key={sub}
+                                      onClick={() => setSelectedCategory(fullCat)}
+                                      className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold transition-colors hover:opacity-80"
+                                      style={{
+                                        color: isSubSelected ? primaryColor : palette.textMain,
+                                        backgroundColor: isSubSelected ? `${primaryColor}15` : 'transparent',
+                                      }}
+                                    >
+                                      <span>{sub}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Quick Jump: Reviews (التقييمات) */}
+                    <a
+                      href="#testimonials"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const el = document.getElementById('testimonials');
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shrink-0 transition-all hover:opacity-80 cursor-pointer"
+                      style={{ color: palette.textMain, borderRadius: presetId === 'minimal-clean' ? '0px' : '14px' }}
+                    >
+                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                      <span>التقييمات</span>
+                    </a>
+                  </div>
+                </section>
+              );
+            }
+
+            // --- SECTION: CATEGORIES & SEARCH ---
+            if (section.type === 'featured_categories') {
+              return (
+                <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 space-y-3">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3">
+                    
+                    {/* Search Box */}
+                    <div className="relative w-full sm:w-80">
+                      <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-50 absolute right-3.5 top-3" style={{ color: palette.textMuted }} />
+                      <input
+                        type="text"
+                        placeholder="ابحث عن منتج بالاسم..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className={`w-full pr-9 pl-4 py-2 sm:py-2.5 text-xs sm:text-sm outline-none shadow-xs border transition-colors ${
+                          presetId === 'minimal-clean' ? 'border-2 rounded-none' : 'rounded-2xl'
+                        }`}
+                        style={{
+                          backgroundColor: palette.surface,
+                          borderColor: presetId === 'minimal-clean' ? '#000000' : palette.border,
+                          color: palette.textMain,
+                        }}
+                      />
+                    </div>
+
+
+
+                  </div>
+                </section>
+              );
+            }
+
+            // --- SECTION: PRODUCTS GRID (Visually different per template) ---
+            if (section.type === 'products_grid') {
+              return (
+                <section id="products-grid" key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8 space-y-4 scroll-mt-24">
+                  {/* Executive Provider Bio Card for Service Platforms */}
+                  {isServiceStore && (
+                    <div
+                      id="bio-section"
+                      className="scroll-mt-28 p-6 sm:p-8 rounded-3xl border shadow-sm mb-6 text-right space-y-4 transition-colors"
+                      style={{
+                        backgroundColor: palette.surface,
+                        borderColor: palette.border,
+                        color: palette.textMain,
+                      }}
+                    >
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-4" style={{ borderColor: palette.border }}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-sm" style={{ backgroundColor: primaryColor }}>
+                            <User className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="text-base sm:text-lg font-black" style={{ color: palette.textMain }}>نبذة تعريفية وسيرة مهنية</h3>
+                            <p className="text-xs font-medium" style={{ color: palette.textMuted }}>الخبرات والاعتمادات الرسمية</p>
+                          </div>
+                        </div>
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shrink-0" style={{ color: primaryColor, backgroundColor: `${primaryColor}15`, borderColor: `${primaryColor}30` }}>
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>بروفايل معتمد وموثق</span>
+                        </div>
+                      </div>
+
+                      <p className="text-xs sm:text-sm leading-relaxed max-w-4xl pt-1" style={{ color: palette.textMuted }}>
+                        {parsedThemeConfigForType.providerBio || store.description || 'نقدم خدمات واستشارات مهنية متخصصة قائمة على الخبرة والحلول الدقيقة التي تضمن تحقيق أهدافكم بكل كفاءة وسرية.'}
+                      </p>
+
+                      {/* Credentials & Stats Row */}
+                      <div className="flex flex-wrap items-center gap-2.5 pt-2">
+                        {parsedThemeConfigForType.experienceYears && (
+                          <span
+                            className="px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-2"
+                            style={{ backgroundColor: palette.surfaceAlt, borderColor: palette.border, color: palette.textMain }}
+                          >
+                            <Clock className="w-4 h-4" style={{ color: primaryColor }} />
+                            <span>سنوات الخبرة: <b>{parsedThemeConfigForType.experienceYears}</b></span>
+                          </span>
+                        )}
+
+                        {parsedThemeConfigForType.consultationsCount && (
+                          <span
+                            className="px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-2"
+                            style={{ backgroundColor: palette.surfaceAlt, borderColor: palette.border, color: palette.textMain }}
+                          >
+                            <Award className="w-4 h-4" style={{ color: primaryColor }} />
+                            <span>جلسات واستشارات منجزة: <b>{parsedThemeConfigForType.consultationsCount}</b></span>
+                          </span>
+                        )}
+
+                        {parsedThemeConfigForType.certifications && (
+                          <span
+                            className="px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-2"
+                            style={{ backgroundColor: palette.surfaceAlt, borderColor: palette.border, color: palette.textMain }}
+                          >
+                            <ShieldCheck className="w-4 h-4" style={{ color: primaryColor }} />
+                            <span>الاعتمادات: <b>{parsedThemeConfigForType.certifications}</b></span>
+                          </span>
+                        )}
+
+                        <button
+                          onClick={() => setIsCustomRequestModalOpen(true)}
+                          className="mr-auto px-4 py-2 rounded-xl text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+                          style={{ backgroundColor: primaryColor }}
+                        >
+                          <Briefcase className="w-3.5 h-3.5" />
+                          <span>طلب مخصص أو استشارة ✍️</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Real Merchant Portfolio Section (Only when enabled AND merchant added items) */}
+                  {isServiceStore &&
+                    parsedThemeConfigForType.showPortfolio &&
+                    Array.isArray(parsedThemeConfigForType.portfolioItems) &&
+                    parsedThemeConfigForType.portfolioItems.length > 0 && (
+                    <div
+                      id="portfolio-section"
+                      className="scroll-mt-28 p-6 sm:p-8 rounded-3xl border shadow-md mb-6 text-right space-y-4 transition-colors"
+                      style={{
+                        backgroundColor: palette.surface,
+                        borderColor: palette.border,
+                        color: palette.textMain,
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Award className="w-5 h-5" style={{ color: primaryColor }} />
+                          <h3 className="text-base sm:text-lg font-black" style={{ color: palette.textMain }}>معرض الأعمال والمشاريع السابقة</h3>
+                        </div>
+                        <span className="text-xs font-bold" style={{ color: palette.textMuted }}>
+                          {parsedThemeConfigForType.portfolioItems.length} أعمال مضافة
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {parsedThemeConfigForType.portfolioItems.map((item: any, idx: number) => (
+                          <div
+                            key={item.id || idx}
+                            className="p-4 rounded-2xl border flex flex-col justify-between gap-3 transition-colors"
+                            style={{
+                              backgroundColor: palette.surfaceAlt,
+                              borderColor: palette.border,
+                              color: palette.textMain,
+                            }}
+                          >
+                            <div className="space-y-2.5">
+                              {item.imageUrl && (
+                                <img
+                                  src={item.imageUrl}
+                                  alt={item.title}
+                                  className="w-full h-36 rounded-xl object-cover border"
+                                  style={{ borderColor: palette.border }}
+                                />
+                              )}
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0"
+                                  style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}
+                                >
+                                  {String(idx + 1).padStart(2, '0')}
+                                </span>
+                                <h4 className="font-bold text-xs sm:text-sm leading-snug" style={{ color: palette.textMain }}>
+                                  {item.title}
+                                </h4>
+                              </div>
+                              {item.description && (
+                                <p className="text-[11px] leading-relaxed" style={{ color: palette.textMuted }}>
+                                  {item.description}
+                                </p>
+                              )}
+                            </div>
+
+                            {(item.fileUrl || item.externalUrl) && (
+                              <div className="pt-2 border-t flex flex-wrap gap-2" style={{ borderColor: palette.border }}>
+                                {item.fileUrl && (
+                                  <a
+                                    href={item.fileUrl}
+                                    download={item.fileName || item.title || 'ملف_العمل'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 py-2 px-3 rounded-xl text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95"
+                                    style={{ backgroundColor: primaryColor }}
+                                  >
+                                    <Download className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="truncate">{item.fileName || 'عرض / تحميل الملف'}</span>
+                                  </a>
+                                )}
+                                {item.externalUrl && (
+                                  <a
+                                    href={item.externalUrl.startsWith('http') ? item.externalUrl : `https://${item.externalUrl}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="py-2 px-3 rounded-xl border font-bold text-[11px] flex items-center justify-center gap-1 hover:opacity-80 transition-opacity"
+                                    style={{
+                                      backgroundColor: palette.surface,
+                                      borderColor: palette.border,
+                                      color: palette.textMain,
+                                    }}
+                                  >
+                                    <ExternalLink className="w-3 h-3 shrink-0" />
+                                    <span>رابط</span>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Service Categories Filter Bar inside products grid if multiple categories exist */}
+                  {isServiceStore && (parsedCategories.length > 1 || products.some(p => p.tags?.some(t => t.startsWith('subscription:')))) && (
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 mb-2">
+                      <button
+                        onClick={() => setSelectedCategory('all')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all border ${
+                          selectedCategory === 'all' ? 'text-white shadow-xs' : 'hover:opacity-80'
+                        }`}
+                        style={{
+                          backgroundColor: selectedCategory === 'all' ? primaryColor : palette.surface,
+                          borderColor: selectedCategory === 'all' ? primaryColor : palette.border,
+                          color: selectedCategory === 'all' ? '#ffffff' : palette.textMain,
+                        }}
+                      >
+                        الكل ({products.length})
+                      </button>
+
+                      {products.some(p => p.tags?.some(t => t.startsWith('subscription:'))) && (
+                        <button
+                          onClick={() => setSelectedCategory('subscriptions_only')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all border ${
+                            selectedCategory === 'subscriptions_only' ? 'text-white shadow-xs' : 'hover:opacity-80'
+                          }`}
+                          style={{
+                            backgroundColor: selectedCategory === 'subscriptions_only' ? primaryColor : palette.surface,
+                            borderColor: selectedCategory === 'subscriptions_only' ? primaryColor : palette.border,
+                            color: selectedCategory === 'subscriptions_only' ? '#ffffff' : palette.textMain,
+                          }}
+                        >
+                          🔄 باقات واشتراكات
+                        </button>
+                      )}
+
+                      {parsedCategories.map((c) => (
+                        <button
+                          key={c.main}
+                          onClick={() => setSelectedCategory(c.main)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all border ${
+                            selectedCategory === c.main ? 'text-white shadow-xs' : 'hover:opacity-80'
+                          }`}
+                          style={{
+                            backgroundColor: selectedCategory === c.main ? primaryColor : palette.surface,
+                            borderColor: selectedCategory === c.main ? primaryColor : palette.border,
+                            color: selectedCategory === c.main ? '#ffffff' : palette.textMain,
+                          }}
+                        >
+                          {c.main}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm sm:text-xl font-black" style={{ color: palette.textMain }}>
+                        {isServiceStore ? (section.settings.bannerTitle || 'الخدمات والاستشارات المتاحة') : (section.settings.bannerTitle || 'المنتجات المميزة')}
+                      </h3>
+                      {selectedOfferFilter && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedOfferFilter(null)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-bold hover:bg-rose-100 transition-colors"
+                        >
+                          <span>🔥 العرض: {selectedOfferFilter.title}</span>
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <span className="text-xs font-bold" style={{ color: primaryColor }}>
+                      {isLoadingProducts
+                        ? 'جاري تحميل العروض...'
+                        : `${filteredProducts.length} ${isServiceStore ? 'خدمة متاحة' : 'منتج متوفر'}`}
+                    </span>
+                  </div>
+
+                  {isLoadingProducts && filteredProducts.length === 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-6">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          className="rounded-2xl border overflow-hidden animate-pulse p-3 space-y-3"
+                          style={{ backgroundColor: palette.surface, borderColor: palette.border }}
+                        >
+                          <div className="aspect-square rounded-xl" style={{ backgroundColor: palette.surfaceAlt }} />
+                          <div className="h-3.5 w-3/4 rounded" style={{ backgroundColor: palette.surfaceAlt }} />
+                          <div className="h-3 w-1/2 rounded" style={{ backgroundColor: palette.surfaceAlt }} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : filteredProducts.length === 0 ? (
+                    <div
+                      className="p-12 text-center rounded-3xl border space-y-3"
+                      style={{ backgroundColor: palette.surface, borderColor: palette.border, color: palette.textMain }}
+                    >
+                      {isServiceStore ? <Briefcase className="w-10 h-10 opacity-40 mx-auto" /> : <ShoppingBag className="w-10 h-10 opacity-40 mx-auto" />}
+                      <h3 className="text-sm font-bold">{isServiceStore ? 'لا توجد خدمات متاحة حالياً' : 'لا توجد منتجات مطابقة للبحث'}</h3>
+                      <p className="text-xs" style={{ color: palette.textMuted }}>{isServiceStore ? 'سيتم إضافة باقات الاستشارات والخدمات قريباً.' : 'جرب البحث بكلمات أخرى أو اختر تصنيفاً مختلفاً.'}</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-6">
+                      {filteredProducts.map((prod) => {
+                        const isLow = prod.stock <= 3 && prod.stock > 0;
+                        const isOut = prod.stock === 0;
+
+                        // 1. Tech Cyber Product Card
+                        if (presetId === 'tech-modern') {
+                          return (
+                            <div
+                              key={prod.id}
+                              className="touch-card bg-slate-900 border border-slate-800 hover:border-cyan-500/50 rounded-2xl overflow-hidden shadow-lg flex flex-col justify-between transition-all"
+                            >
+                                <div 
+                                onClick={() => {
+                                  setSelectedProduct(prod);
+                                  setSelectedVariant(prod.variants && prod.variants.length > 0 ? prod.variants[0] : null);
+                                  setItemQuantity(1);
+                                }}
+                                className="relative aspect-square w-full overflow-hidden bg-slate-950 cursor-pointer"
+                              >
+                                {prod.images?.[0] ? (
+                                  <img src={prod.images[0]} alt={prod.name} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950 text-cyan-500/70">
+                                    <Cpu className="w-10 h-10" />
+                                  </div>
+                                )}
+                                <div className="absolute top-2 right-2 px-2 py-0.5 rounded bg-cyan-950/90 text-cyan-400 border border-cyan-500/40 text-[9px] font-mono font-bold">
+                                  TECH SPEC
+                                </div>
+                              </div>
+
+                              <div className="p-3 space-y-2 text-right">
+                                <div className="text-[10px] text-cyan-400 font-mono">{prod.category}</div>
+                                <h4 className="text-xs sm:text-sm font-bold text-white line-clamp-1">{prod.name}</h4>
+                                <div className="text-xs sm:text-base font-black text-cyan-300 font-mono">
+                                  {getFormattedPrice(prod.price)}
+                                </div>
+
+                                <button
+                                  disabled={isOut}
+                                  onClick={() => handleAddToCart(prod, undefined, 1)}
+                                  className="w-full py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-cyan-600/20"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span>BUY NOW</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // 2. Artisanal Roastery Coffee Card
+                        if (presetId === 'yemen-roastery') {
+                          return (
+                            <div
+                              key={prod.id}
+                              className="touch-card bg-white border border-amber-900/20 rounded-2xl overflow-hidden shadow-md flex flex-col justify-between text-[#451a03]"
+                            >
+                              <div 
+                                onClick={() => {
+                                  setSelectedProduct(prod);
+                                  setSelectedVariant(prod.variants && prod.variants.length > 0 ? prod.variants[0] : null);
+                                  setItemQuantity(1);
+                                }}
+                                className="relative aspect-square w-full overflow-hidden bg-[#faf6f0] cursor-pointer"
+                              >
+                                {prod.images?.[0] ? (
+                                  <img src={prod.images[0]} alt={prod.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-[#faf6f0] text-amber-800/60">
+                                    <Coffee className="w-10 h-10" />
+                                  </div>
+                                )}
+                                <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-amber-900 text-amber-100 text-[9px] font-bold">
+                                  محصول فاخر ☕
+                                </div>
+                              </div>
+
+                              <div className="p-3 space-y-2 text-right">
+                                <div className="text-[10px] text-amber-800 font-semibold">حراز وبني مطر</div>
+                                <h4 className="text-xs sm:text-sm font-bold line-clamp-1">{prod.name}</h4>
+                                <div className="text-xs sm:text-base font-black text-[#78350f]">
+                                  {getFormattedPrice(prod.price)}
+                                </div>
+
+                                <button
+                                  disabled={isOut}
+                                  onClick={() => handleAddToCart(prod, undefined, 1)}
+                                  className="w-full py-2 rounded-xl bg-[#78350f] hover:bg-[#5a270a] text-white font-bold text-xs flex items-center justify-center gap-1"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span>طلب المحصول</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // 3. Executive Professional Service Card
+                        if (isServiceStore || presetId === 'service-expert') {
+                          const isFree = prod.price === 0 || (prod.tags && prod.tags.some((t: string) => t === 'pricing:free' || t === 'is_free'));
+
+                          return (
+                            <div
+                              key={prod.id}
+                              className="touch-card border rounded-3xl overflow-hidden shadow-sm hover:shadow-md flex flex-col justify-between text-right transition-all group col-span-2 sm:col-span-1"
+                              style={{
+                                backgroundColor: palette.surface,
+                                borderColor: palette.border,
+                                color: palette.textMain,
+                              }}
+                            >
+                              <div 
+                                onClick={() => {
+                                  setSelectedProduct(prod);
+                                  setSelectedVariant(prod.variants && prod.variants.length > 0 ? prod.variants[0] : null);
+                                  setItemQuantity(1);
+                                }}
+                                className="relative h-44 sm:h-48 w-full overflow-hidden cursor-pointer"
+                                style={{ backgroundColor: palette.surfaceAlt }}
+                              >
+                                {prod.images?.[0] ? (
+                                  <img 
+                                    src={prod.images[0]} 
+                                    alt={prod.name} 
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                                  />
+                                ) : (
+                                  <div
+                                    className="w-full h-full flex flex-col items-center justify-center gap-2"
+                                    style={{ background: `linear-gradient(135deg, ${primaryColor}18, ${secondaryColor}22)` }}
+                                  >
+                                    <Briefcase className="w-10 h-10 opacity-80" style={{ color: primaryColor }} />
+                                  </div>
+                                )}
+                                <div className="absolute top-3 right-3 px-3 py-1.5 rounded-full text-white text-[10px] font-bold shadow-md flex items-center gap-1.5 backdrop-blur-xs transition-all" style={{ backgroundColor: primaryColor }}>
+                                  <Sparkles className="w-3 h-3 text-white/80" />
+                                  <span>استعراض المزيد</span>
+                                </div>
+                              </div>
+
+                              <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center justify-between gap-1 flex-wrap">
+                                    <span className="text-[11px] font-bold" style={{ color: primaryColor }}>
+                                      {prod.category}
+                                    </span>
+                                    {prod.digitalFileUrl && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold">
+                                        📥 ملف رقمي مرفق
+                                      </span>
+                                    )}
+                                    {prod.tags && (Array.isArray(prod.tags) ? prod.tags : []).some((t: string) => t === 'service:consultation' || t.startsWith('sessions:')) && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[10px] font-bold">
+                                        <CalendarCheck className="w-2.5 h-2.5 text-amber-600" />
+                                        <span>استشارة ({prod.tags?.find((t: string) => t.startsWith('sessions:'))?.split(':')[1] || '1'} جلسات • {prod.tags?.find((t: string) => t.startsWith('duration:'))?.split(':')[1] || '45'} {prod.tags?.find((t: string) => t.startsWith('duration_unit:'))?.split(':')[1] === 'hours' ? 'ساعة' : 'دقيقة'})</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                  <h4 className="text-sm sm:text-base font-black line-clamp-2" style={{ color: palette.textMain }}>
+                                    {prod.name}
+                                  </h4>
+                                  {prod.description && (
+                                    <p className="text-xs line-clamp-2 leading-relaxed" style={{ color: palette.textMuted }}>
+                                      {prod.description}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="pt-2 border-t space-y-3" style={{ borderColor: palette.border }}>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-baseline gap-1">
+                                      {isFree ? (
+                                        <span className="text-base sm:text-lg font-black text-emerald-500 font-mono flex items-center gap-1">
+                                          مجاناً 🎁
+                                        </span>
+                                      ) : (
+                                        <span className="text-base sm:text-lg font-black font-mono" style={{ color: primaryColor }}>
+                                          {getFormattedPrice(prod.price)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      {prod.tags?.includes('subscription:monthly') && (
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold border" style={{ color: primaryColor, backgroundColor: `${primaryColor}15`, borderColor: `${primaryColor}30` }}>
+                                          شهرياً 🔄
+                                        </span>
+                                      )}
+                                      {prod.tags?.includes('subscription:yearly') && (
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800">
+                                          سنوياً 🗓️
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    disabled={isSubmittingOrder}
+                                    onClick={() => {
+                                      if (isFree && prod.digitalFileUrl) {
+                                        handleFreeDigitalProductClick(prod);
+                                      } else {
+                                        handleAddToCart(prod, undefined, 1);
+                                        setIsCheckoutOpen(true);
+                                      }
+                                    }}
+                                    className="w-full py-2.5 sm:py-3 rounded-2xl text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all disabled:opacity-60"
+                                    style={{ backgroundColor: primaryColor, boxShadow: `0 8px 20px -4px ${primaryColor}40` }}
+                                  >
+                                    {isFree && prod.digitalFileUrl ? <Download className="w-4 h-4" /> : <CalendarCheck className="w-4 h-4" />}
+                                    <span>
+                                      {isFree
+                                        ? (prod.digitalFileUrl ? 'تحميل المنتج مجاناً ⚡' : 'طلب الخدمة مجاناً 🎁')
+                                        : prod.tags && prod.tags.some((t: string) => t === 'service:consultation' || t.startsWith('sessions:'))
+                                        ? 'طلب حجز الاستشارة 🗓️'
+                                        : prod.tags?.includes('subscription:monthly') || prod.tags?.includes('subscription:yearly')
+                                        ? 'الاشتراك وتفعيل الباقة 🔄'
+                                        : 'طلب الخدمة / حجز موعد 📅'}
+                                    </span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // 4. Swiss Minimalist Card
+                        if (presetId === 'minimal-clean') {
+                          return (
+                            <div
+                              key={prod.id}
+                              className="touch-card bg-white border-2 border-black overflow-hidden flex flex-col justify-between text-black rounded-none"
+                            >
+                              <div 
+                                onClick={() => {
+                                  setSelectedProduct(prod);
+                                  setSelectedVariant(prod.variants && prod.variants.length > 0 ? prod.variants[0] : null);
+                                  setItemQuantity(1);
+                                }}
+                                className="relative aspect-square w-full overflow-hidden bg-slate-100 cursor-pointer border-b-2 border-black"
+                              >
+                                {prod.images?.[0] ? (
+                                  <img src={prod.images[0]} alt={prod.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-400">
+                                    <ShoppingBag className="w-10 h-10" />
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="p-3 space-y-2 text-right">
+                                <h4 className="text-xs font-black line-clamp-1">{prod.name}</h4>
+                                <div className="text-xs sm:text-sm font-mono font-bold">
+                                  {getFormattedPrice(prod.price)}
+                                </div>
+
+                                <button
+                                  disabled={isOut}
+                                  onClick={() => handleAddToCart(prod, undefined, 1)}
+                                  className="w-full py-2 bg-black hover:bg-slate-800 text-white font-black text-xs flex items-center justify-center gap-1 rounded-none"
+                                >
+                                  <span>[+] ADD TO CART</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // 4. Default / Luxury Boutique Lookbook Card
+                        return (
+                          <div
+                            key={prod.id}
+                            className="touch-card group border overflow-hidden shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
+                            style={{
+                              backgroundColor: palette.surface,
+                              borderColor: palette.border,
+                              color: palette.textMain,
+                              borderRadius: theme.layout.borderRadius === 'pill' ? '20px' : theme.layout.borderRadius === 'curved' ? '16px' : '0px',
+                            }}
+                          >
+                            <div
+                              onClick={() => {
+                                setSelectedProduct(prod);
+                                setSelectedVariant(prod.variants && prod.variants.length > 0 ? prod.variants[0] : null);
+                                setItemQuantity(1);
+                              }}
+                              className="relative aspect-square w-full overflow-hidden cursor-pointer"
+                              style={{ backgroundColor: palette.surfaceAlt }}
+                            >
+                              {prod.images?.[0] ? (
+                                <img 
+                                  src={prod.images[0]} 
+                                  alt={prod.name}
+                                  className="w-full h-full object-cover" 
+                                />
+                              ) : (
+                                <div
+                                  className="w-full h-full flex items-center justify-center"
+                                  style={{ background: `linear-gradient(135deg, ${primaryColor}12, ${secondaryColor}18)` }}
+                                >
+                                  <ShoppingBag className="w-10 h-10 opacity-70" style={{ color: primaryColor }} />
+                                </div>
+                              )}
+                              
+                              {prod.comparePrice && (
+                                <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[9px] sm:text-[10px] font-black shadow-xs">
+                                  -{Math.round((1 - prod.price / prod.comparePrice) * 100)}%
+                                </span>
+                              )}
+
+                              {isLow && (
+                                <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[8px] sm:text-[10px] font-bold shadow-xs flex items-center gap-0.5">
+                                  <Flame className="w-2.5 h-2.5 animate-bounce" />
+                                  <span>بقي {prod.stock}!</span>
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="p-2.5 sm:p-5 flex-1 flex flex-col justify-between space-y-2 sm:space-y-3 text-right">
+                              <div>
+                                <div className="flex justify-between items-center text-[9px] sm:text-[10px] font-medium mb-0.5" style={{ color: palette.textMuted }}>
+                                  <span>{prod.category}</span>
+                                </div>
+                                <h3
+                                  onClick={() => {
+                                    setSelectedProduct(prod);
+                                    setSelectedVariant(prod.variants && prod.variants.length > 0 ? prod.variants[0] : null);
+                                    setItemQuantity(1);
+                                  }}
+                                  className="text-xs sm:text-sm font-bold line-clamp-2 cursor-pointer"
+                                  style={{ color: palette.textMain }}
+                                >
+                                  {prod.name}
+                                </h3>
+                              </div>
+
+                              <div className="pt-1.5 sm:pt-2 border-t flex items-center justify-between gap-1" style={{ borderColor: palette.border }}>
+                                <div className="min-w-0">
+                                  <div className="text-xs sm:text-base font-black truncate" style={{ color: palette.textMain }}>
+                                    {getFormattedPrice(prod.price)}
+                                  </div>
+                                  {prod.comparePrice && (
+                                    <div className="text-[9px] sm:text-[10px] line-through font-normal" style={{ color: palette.textMuted }}>
+                                      {getFormattedPrice(prod.comparePrice)}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <button
+                                  disabled={isOut}
+                                  onClick={() => {
+                                    if (prod.variants && prod.variants.length > 0) {
+                                      setSelectedProduct(prod);
+                                      setSelectedVariant(prod.variants[0]);
+                                      setItemQuantity(1);
+                                    } else {
+                                      handleAddToCart(prod, undefined, 1);
+                                    }
+                                  }}
+                                  className="p-1.5 sm:px-3 sm:py-2 font-bold text-xs transition-all flex items-center gap-1 disabled:opacity-40 shrink-0 text-white shadow-xs"
+                                  style={{ 
+                                    backgroundColor: primaryColor,
+                                    borderRadius: buttonRadiusClass === 'rounded-full' ? '9999px' : '10px',
+                                  }}
+                                  title="إضافة للسلة"
+                                >
+                                  <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  <span className="hidden xs:inline">أضف</span>
+                                </button>
+                              </div>
+
+                            </div>
+
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              );
+            }
+
+            // --- SECTION: PROMO BANNER ---
+            if (section.type === 'promo_banner') {
+              return (
+                <section key={section.id} className="max-w-7xl mx-auto px-3 sm:px-8">
+                  <div 
+                    className={`p-5 sm:p-8 text-white relative overflow-hidden shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 ${
+                      presetId === 'minimal-clean' ? 'border-2 border-black bg-black rounded-none' : 'rounded-2xl sm:rounded-3xl'
+                    }`}
+                    style={{ 
+                      backgroundColor: presetId === 'minimal-clean' ? '#000000' : secondaryColor,
+                      borderRadius: presetId === 'minimal-clean' ? '0px' : theme.layout.borderRadius === 'pill' ? '32px' : '20px'
+                    }}
+                  >
+                    <div className="space-y-1.5 text-center sm:text-right">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-[10px] font-bold">
+                        <Ticket className="w-3.5 h-3.5" />
+                        <span>كوبون حصري</span>
+                      </div>
+                      <h3 className="text-base sm:text-2xl font-black">{section.settings.bannerTitle || 'خصم خاص لفترة محدودة!'}</h3>
+                      <p className="text-xs sm:text-sm text-white/90">{section.settings.bannerSubtitle}</p>
+                    </div>
+
+                    {section.settings.discountCode && (
+                      <div className="px-5 py-3 rounded-2xl bg-slate-950/80 text-white border border-white/20 text-center space-y-0.5">
+                        <span className="text-[10px] text-slate-400 block font-medium">كود الخصم عند الدفع:</span>
+                        <span className="text-base font-black font-mono tracking-widest text-amber-300">
+                          {section.settings.discountCode}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              );
+            }
+
+            // --- SECTION: CUSTOMER TESTIMONIALS ---
+            if (section.type === 'testimonials') {
+              return (
+                <section key={section.id} id="testimonials" className="max-w-7xl mx-auto px-3 sm:px-8 space-y-4 scroll-mt-24">
+                  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 text-center sm:text-right">
+                    <div className="space-y-1">
+                      <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest" style={{ color: primaryColor }}>
+                        آراء وتجارب
+                      </span>
+                      <h3 className="text-sm sm:text-xl font-black">
+                        {section.settings.bannerTitle || 'ماذا يقول عملاؤنا عنا؟'}
+                      </h3>
+                    </div>
+                    <button 
+                      onClick={() => setShowReviewModal(true)}
+                      className="px-4 py-2 bg-brand-50 text-brand-700 font-bold text-xs rounded-xl hover:bg-brand-100 transition-colors flex items-center justify-center gap-1.5 mx-auto sm:mx-0"
+                    >
+                      <Star className="w-3.5 h-3.5" />
+                      أضف تقييمك
+                    </button>
+                  </div>
+
+                  {storeReviews.length === 0 ? (
+                    <div
+                      className="text-center py-10 rounded-2xl border border-dashed transition-colors"
+                      style={{
+                        backgroundColor: palette.surface,
+                        borderColor: palette.border,
+                      }}
+                    >
+                      <MessageCircle className="w-8 h-8 opacity-40 mx-auto mb-2" style={{ color: palette.textMuted }} />
+                      <p className="text-xs" style={{ color: palette.textMuted }}>لا توجد تقييمات منشورة حتى الآن. كن أول من يشارك تجربته!</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
+                      {storeReviews.map((review) => (
+                        <div
+                          key={review.id}
+                          className={`p-4 sm:p-5 rounded-2xl border space-y-2 text-right shadow-xs transition-colors ${
+                            presetId === 'minimal-clean' ? 'border-2 rounded-none' : ''
+                          }`}
+                          style={{
+                            backgroundColor: palette.surface,
+                            borderColor: presetId === 'minimal-clean' ? '#000000' : palette.border,
+                            color: palette.textMain,
+                          }}
+                        >
+                          <div className="flex text-amber-400 gap-0.5">
+                            {[...Array(5)].map((_, i) => <Star key={i} className={`w-3.5 h-3.5 ${i < review.rating ? 'fill-amber-400 text-amber-400' : 'opacity-25'}`} />)}
+                          </div>
+                          <p className="text-xs leading-relaxed" style={{ color: palette.textMuted }}>
+                            "{review.content}"
+                          </p>
+                          <div className="pt-2 border-t text-[11px] font-bold flex items-center gap-2" style={{ borderColor: palette.border, color: palette.textMain }}>
+                            <div
+                              className="w-6 h-6 rounded-full flex items-center justify-center"
+                              style={{ backgroundColor: palette.surfaceAlt, color: palette.textMuted }}
+                            >
+                              {review.customer.name.charAt(0)}
+                            </div>
+                            {review.customer.name}
+                            <CheckCircle2 className="w-3 h-3 text-green-500 mr-auto" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              );
+            }
+
+            return null;
+          })}
+      </div>
+
+      {/* Product Detail Modal */}
+      {selectedProduct && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/70 backdrop-blur-sm animate-fadeIn p-0 sm:p-4">
+          <div className="relative w-full sm:max-w-lg bg-white dark:bg-slateDark-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-slide-up sm:animate-fadeIn max-h-[90vh] flex flex-col">
+            
+            <button
+              onClick={() => setSelectedProduct(null)}
+              className="absolute top-3 left-3 p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-full bg-white/80 dark:bg-slateDark-800/80 backdrop-blur-sm z-10"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="overflow-y-auto flex-1">
+              <div className="relative aspect-video sm:aspect-video w-full bg-slate-100 dark:bg-slate-800">
+                {selectedProduct.images?.[0] ? (
+                  <img 
+                    src={selectedProduct.images[0]} 
+                    alt={selectedProduct.name} 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <div
+                    className="w-full h-full flex items-center justify-center"
+                    style={{ background: `linear-gradient(135deg, ${primaryColor}18, ${secondaryColor}22)` }}
+                  >
+                    {isServiceStore ? (
+                      <Briefcase className="w-12 h-12 opacity-75" style={{ color: primaryColor }} />
+                    ) : (
+                      <ShoppingBag className="w-12 h-12 opacity-75" style={{ color: primaryColor }} />
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 sm:p-6 space-y-3 sm:space-y-4 text-right">
+                <div>
+                  <span className="text-[10px] font-bold uppercase" style={{ color: primaryColor }}>
+                    {selectedProduct.category}
+                  </span>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                    {selectedProduct.name}
+                  </h3>
+                  <div className="text-lg sm:text-xl font-black mt-1" style={{ color: primaryColor }}>
+                    {getFormattedPrice(selectedVariant?.priceOverride || selectedProduct.price)}
+                  </div>
+                </div>
+
+                {selectedProduct.tags && selectedProduct.tags.some((t: string) => t === 'service:consultation' || t.startsWith('sessions:')) && (
+                  <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between text-xs">
+                    <span className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                      <CalendarCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <span>تفاصيل الاستشارة والجلسات:</span>
+                    </span>
+                    <span className="font-bold text-amber-800 dark:text-amber-300">
+                      {selectedProduct.tags.find((t: string) => t.startsWith('sessions:'))?.split(':')[1] || '1'} جلسة • {selectedProduct.tags.find((t: string) => t.startsWith('duration:'))?.split(':')[1] || '45'} {selectedProduct.tags.find((t: string) => t.startsWith('duration_unit:'))?.split(':')[1] === 'hours' ? 'ساعة' : 'دقيقة'}
+                    </span>
+                  </div>
+                )}
+
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl">
+                  {selectedProduct.description}
+                </p>
+
+                {/* Digital File Preview / Free Instant Download in Product Modal */}
+                {selectedProduct.digitalFileUrl && (() => {
+                  const isSelectedFree =
+                    selectedProduct.price === 0 ||
+                    (selectedProduct.tags && selectedProduct.tags.some((t: string) => t === 'pricing:free' || t === 'is_free'));
+                  return (
+                    <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
+                      <div className="flex items-center justify-between text-xs gap-2">
+                        <span className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                          <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <span>{isSelectedFree ? 'ملف رقمي مجاني مرفق:' : 'يتضمن ملفاً رقمياً مرفقاً:'}</span>
+                        </span>
+                        <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-300 truncate max-w-[160px]">
+                          {selectedProduct.digitalFileName || 'مستند رقمي'}
+                        </span>
+                      </div>
+                      {isSelectedFree ? (
+                        <button
+                          type="button"
+                          disabled={isSubmittingOrder}
+                          onClick={() => handleFreeDigitalProductClick(selectedProduct)}
+                          className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 disabled:opacity-60"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span>
+                            {currentCustomer ? 'تحميل المنتج مجاناً الآن 📥' : 'سجّل للتحميل المجاني الفوري 📥'}
+                          </span>
+                        </button>
+                      ) : (
+                        <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">
+                          🔒 يتاح رابط التحميل المباشر تلقائياً فور تأكيد الطلب في حسابك أو الفاتورة.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {selectedProduct.variants && selectedProduct.variants.length > 0 && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      اختر المقاس / اللون:
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedProduct.variants.map((v) => (
+                        <button
+                          key={v.id}
+                          onClick={() => setSelectedVariant(v)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                            selectedVariant?.id === v.id
+                              ? 'text-white shadow-sm'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                          }`}
+                          style={{ backgroundColor: selectedVariant?.id === v.id ? primaryColor : undefined }}
+                        >
+                          {v.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2.5 bg-white dark:bg-slateDark-900">
+              {!isServiceStore && (
+                <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                  <button
+                    onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
+                    className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="px-2 text-xs font-bold">{itemQuantity}</span>
+                  <button
+                    onClick={() => setItemQuantity(itemQuantity + 1)}
+                    className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {(() => {
+                const isSelectedFreeDigital = Boolean(
+                  selectedProduct.digitalFileUrl &&
+                  ((selectedVariant?.priceOverride ?? selectedProduct.price) === 0 ||
+                    (selectedProduct.tags && selectedProduct.tags.some((t: string) => t === 'pricing:free' || t === 'is_free')))
+                );
+                return (
+                  <button
+                    disabled={isSubmittingOrder}
+                    onClick={() => {
+                      if (isSelectedFreeDigital) {
+                        handleFreeDigitalProductClick(selectedProduct);
+                      } else {
+                        handleAddToCart(selectedProduct, selectedVariant || undefined, isServiceStore ? 1 : itemQuantity);
+                      }
+                    }}
+                    className="flex-1 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm text-white shadow-md flex items-center justify-center gap-2 disabled:opacity-60"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    {isSelectedFreeDigital ? (
+                      <Download className="w-4 h-4" />
+                    ) : isServiceStore ? (
+                      <Briefcase className="w-4 h-4" />
+                    ) : (
+                      <ShoppingCart className="w-4 h-4" />
+                    )}
+                    <span>
+                      {isSelectedFreeDigital
+                        ? 'تحميل المنتج مجاناً ⚡'
+                        : isServiceStore
+                        ? 'حجز وطلب هذه الخدمة ⚡'
+                        : 'إضافة إلى السلة'}
+                    </span>
+                  </button>
+                );
+              })()}
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Slide-over Cart Drawer */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden animate-fadeIn">
+          <div 
+            onClick={() => setIsCartOpen(false)}
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs" 
+          />
+          
+          <div className="fixed inset-y-0 left-0 max-w-full flex w-full sm:w-auto">
+            <div className="w-full sm:w-96 bg-white dark:bg-slateDark-900 border-r border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col justify-between">
+              
+              <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5" style={{ color: primaryColor }} />
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                    سلة مشترياتك ({cart.reduce((s, i) => s + i.quantity, 0)})
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsCartOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-full"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="px-4 py-2.5 bg-brand-50 dark:bg-brand-950/40 border-b border-brand-100 dark:border-brand-900/60 text-[11px] sm:text-xs">
+                <div className="flex justify-between font-bold text-brand-700 dark:text-brand-300 mb-1">
+                  <span>🚀 التوصيل المجاني</span>
+                  <span>{cartSubtotalConverted > 20000 ? 'مؤهل للتوصيل المجاني!' : 'أضف المزيد للتوصيل المجاني'}</span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-brand-200 dark:bg-brand-900 overflow-hidden">
+                  <div 
+                    className="h-full bg-brand-500 rounded-full transition-all duration-500" 
+                    style={{ width: `${Math.min(100, (cartSubtotalConverted / 25000) * 100)}%` }} 
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 p-3 sm:p-5 overflow-y-auto space-y-2.5">
+                {cart.length === 0 ? (
+                  <div className="text-center py-16 space-y-3">
+                    <ShoppingCart className="w-10 h-10 text-slate-300 mx-auto" />
+                    <p className="text-xs text-slate-500">سلتك فارغة حالياً</p>
+                  </div>
+                ) : (
+                  cart.map((item, idx) => (
+                    <div 
+                      key={idx} 
+                      className="p-2.5 sm:p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2.5 text-xs"
+                    >
+                      {item.productImage ? (
+                        <img 
+                          src={item.productImage} 
+                          alt={item.productName} 
+                          className="w-11 h-11 rounded-xl object-cover bg-white shrink-0" 
+                        />
+                      ) : (
+                        <div className="w-11 h-11 rounded-xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-black text-xs text-slate-600 dark:text-slate-300 shrink-0">
+                          {item.productName?.charAt(0) || '•'}
+                        </div>
+                      )}
+                      
+                      <div className="flex-1 min-w-0 text-right">
+                        <h4 className="font-bold text-slate-900 dark:text-white truncate">
+                          {item.productName}
+                        </h4>
+                        {item.variantName && (
+                          <div className="text-[10px] text-slate-400">{item.variantName}</div>
+                        )}
+                        <div className="font-bold mt-0.5" style={{ color: primaryColor }}>
+                          {formatCurrency(getConvertedPrice(item.price * item.quantity), activeCurrency)}
+                        </div>
+                      </div>
+
+                      {isServiceStore ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300">
+                            خدمة 1x
+                          </span>
+                          <button
+                            onClick={() => setCart(cart.filter((_, i) => i !== idx))}
+                            className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                            title="حذف الخدمة"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <button
+                            onClick={() => handleUpdateCartQuantity(idx, -1)}
+                            className="p-1 text-slate-500 hover:text-red-500"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="text-xs font-bold px-1">{item.quantity}</span>
+                          <button
+                            onClick={() => handleUpdateCartQuantity(idx, 1)}
+                            className="p-1 text-slate-500 hover:text-brand-600"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {cart.length > 0 && (
+                <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 space-y-3">
+                  <div className="flex justify-between text-xs text-slate-500">
+                    <span>المجموع الفرعي:</span>
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {formatCurrency(cartSubtotalConverted, activeCurrency)}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setIsCartOpen(false);
+                      setIsCheckoutOpen(true);
+                    }}
+                    className="w-full py-3.5 rounded-2xl font-bold text-xs sm:text-sm text-white shadow-lg flex items-center justify-center gap-2"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    <span>إتمام الطلب السريع 🛍️</span>
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* One-Step Checkout Modal */}
+      {isCheckoutOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/70 backdrop-blur-sm animate-fadeIn p-0 sm:p-4">
+          <div className="relative w-full sm:max-w-xl bg-white dark:bg-slateDark-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden max-h-[92vh] flex flex-col animate-slide-up sm:animate-fadeIn">
+            
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
+              <h3 className="text-xs sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                {isServiceStore ? <Briefcase className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: primaryColor }} /> : <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-brand-600" />}
+                <span>{isServiceStore ? 'تأكيد حجز الخدمة والاستشارة 📅' : 'إتمام الطلب في خطوة واحدة'}</span>
+              </h3>
+              <button
+                onClick={() => setIsCheckoutOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handlePlaceOrder} className="p-4 sm:p-6 space-y-4 overflow-y-auto text-xs flex-1 text-right">
+              
+              <div className="space-y-2.5">
+                <div className="font-bold text-slate-900 dark:text-white text-xs">
+                  {isServiceStore ? '1. بيانات العميل والمستفيد:' : '1. معلومات المستلم والتوصيل:'}
+                </div>
+
+                {(() => {
+                  const resolvedName = (customerName || currentCustomer?.name || '').trim();
+                  const resolvedPhone = (customerPhone || currentCustomer?.phone || '').trim();
+                  const resolvedEmail = (customerEmail || currentCustomer?.email || '').trim();
+                  const hasVerifiedIdentity = Boolean(
+                    currentCustomer &&
+                    resolvedName &&
+                    ((resolvedPhone && resolvedPhone.length >= 8) || resolvedEmail)
+                  );
+
+                  if (hasVerifiedIdentity && !showEditCustomerFields) {
+                    return (
+                      <div className="p-3.5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/70 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <div className="min-w-0">
+                            <div className="font-black text-xs text-emerald-900 dark:text-emerald-200 truncate">
+                              مسجل باسم: {resolvedName}
+                            </div>
+                            <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono truncate" dir="ltr">
+                              {resolvedPhone || resolvedEmail}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowEditCustomerFields(true)}
+                          className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 hover:underline shrink-0"
+                        >
+                          تعديل البيانات
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <>
+                      {(!currentCustomer || !resolvedName || (!resolvedPhone && !resolvedEmail)) && (
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 text-center space-y-3 mb-4">
+                          <p className="text-xs text-amber-800 dark:text-amber-300 font-bold">
+                            {currentCustomer
+                              ? 'يرجى استكمال بياناتك لإتمام الطلب'
+                              : 'سجّل دخولك أو أنشئ حساباً مجانياً الآن لتأكيد الطلب والحصول على ملفاتك وروابط التحميل فوراً.'}
+                          </p>
+                          {!currentCustomer && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPendingCheckoutAfterAuth(true);
+                                setPendingFreeDownloadProduct(null);
+                                setAuthPromptMode('register');
+                                setAuthPromptNote('أنشئ حساباً مجانياً أو سجّل دخولك ليتم تأكيد طلبك وإظهار زر التحميل مباشرة 📥');
+                                setIsAuthModalOpen(true);
+                              }}
+                              className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-colors"
+                            >
+                              تسجيل الدخول / إنشاء حساب
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                            الاسم الكامل <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={customerName}
+                            onChange={(e) => setCustomerName(e.target.value)}
+                            placeholder="الاسم الثلاثي"
+                            className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                            رقم الهاتف / الواتساب {!(Boolean(resolvedEmail) && Boolean(currentCustomer)) && <span className="text-red-500">*</span>}
+                          </label>
+                          <input
+                            type="tel"
+                            required={!(Boolean(resolvedEmail) && Boolean(currentCustomer))}
+                            value={customerPhone}
+                            onChange={(e) => setCustomerPhone(e.target.value)}
+                            placeholder="05xxxxxxxx أو 77xxxxxxx"
+                            dir="ltr"
+                            className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none text-left"
+                          />
+                        </div>
+                      </div>
+                      {hasVerifiedIdentity && (
+                        <button
+                          type="button"
+                          onClick={() => setShowEditCustomerFields(false)}
+                          className="text-[11px] font-bold text-brand-600 hover:underline"
+                        >
+                          ← إخفاء وحفظ البيانات المسجلة
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
+
+                {!isServiceStore ? (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                          المدينة
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                          طريقة الاستلام
+                        </label>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setDeliveryType('delivery')}
+                            className={`flex-1 py-2 rounded-xl text-[11px] font-bold ${
+                              deliveryType === 'delivery' ? 'text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'
+                            }`}
+                            style={{ backgroundColor: deliveryType === 'delivery' ? primaryColor : undefined }}
+                          >
+                            توصيل للمنزل
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeliveryType('pickup')}
+                            className={`flex-1 py-2 rounded-xl text-[11px] font-bold ${
+                              deliveryType === 'pickup' ? 'text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'
+                            }`}
+                            style={{ backgroundColor: deliveryType === 'pickup' ? primaryColor : undefined }}
+                          >
+                            استلام من الفرع
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {deliveryType === 'delivery' && (
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                          العنوان بالتفصيل
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="مثال: المعلا - الشارع الرئيسي بجانب بنك الكريمي"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          className="w-full px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                        />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                      موعد الحجز المفضل أو تفاصيل الاستشارة (اختياري)
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="مثال: أرغب بالحجز يوم الأحد الساعة 4 عصراً، أو تفاصيل الاستشارة..."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {cartTotalConverted <= 0 ? (
+                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center space-y-1">
+                  <div className="text-sm font-bold text-emerald-800 dark:text-emerald-200 flex items-center justify-center gap-1.5">
+                    <span>🎁 هذا الطلب مجاني بالكامل بدون أي رسوم</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400">
+                    سيتم تأكيد طلبك فوراً وتجهيز الرابط أو الخدمة مباشرة
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="font-bold text-slate-900 dark:text-white text-xs">
+                    2. طريقة الدفع:
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {store.paymentAccounts.filter(a => a.isActive && !(isServiceStore && a.type === 'cod')).map((acc) => (
+                      <button
+                        key={acc.id}
+                        type="button"
+                        onClick={() => setSelectedPayment(acc.type)}
+                        className={`p-2.5 rounded-2xl border text-right transition-all ${
+                          selectedPayment === acc.type
+                            ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300 font-bold ring-1 ring-brand-500'
+                            : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        <div className="text-xs font-bold truncate">{acc.name}</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5 truncate">
+                          {acc.type === 'cod' ? 'الدفع نقداً للمندوب' : 'تحويل للمحفظة'}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {selectedPayment !== 'cod' && (
+                    <div className="p-3.5 rounded-2xl bg-brand-50/40 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800/60 space-y-2">
+                      {(() => {
+                        const activeAcc = store.paymentAccounts.find(a => a.type === selectedPayment);
+                        if (!activeAcc) return null;
+                        return (
+                          <>
+                            <div className="space-y-1">
+                              <div className="font-bold text-slate-900 dark:text-white">
+                                بيانات التحويل إلى {activeAcc.name}:
+                              </div>
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-mono p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 gap-1">
+                                <span>رقم الحساب: <strong>{activeAcc.accountNumber || store.phone}</strong></span>
+                                <span>الاسم: {activeAcc.accountName || store.name}</span>
+                              </div>
+                              <p className="text-[10px] text-slate-500 mt-1">
+                                {activeAcc.instructions || 'يرجى إرفاق صورة إشعار التحويل لتسريع تجهيز الطلب.'}
+                              </p>
+                            </div>
+
+                            <div className="pt-1">
+                              <ImageUploader
+                                value={paymentProofUrl}
+                                onChange={(url) => setPaymentProofUrl(url)}
+                                label="صورة إشعار أو سند التحويل (اختياري)"
+                                successSubtitle="جاهز للإرسال والتأكيد مع الطلب"
+                                maxSizeMB={5}
+                              />
+                              <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+                                <span>💡</span>
+                                <span>إرفاق الصورة اختياري؛ يمكنك إرفاقها لتسريع التحقق أو إرسالها لاحقاً عبر واتساب.</span>
+                              </p>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Coupon Section */}
+              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="font-bold text-slate-900 dark:text-white text-xs">
+                  كود الخصم (اختياري):
+                </div>
+                {!appliedCoupon ? (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        placeholder="أدخل الكوبون هنا..."
+                        className="flex-1 px-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 uppercase font-bold tracking-wider"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        disabled={!couponCode || isValidatingCoupon}
+                        className="px-5 py-2.5 rounded-xl text-xs font-bold bg-slate-900 dark:bg-slate-700 text-white disabled:opacity-50 transition-opacity"
+                      >
+                        {isValidatingCoupon ? 'جاري...' : 'تطبيق'}
+                      </button>
+                    </div>
+                    {couponError && (
+                      <div className="text-red-500 text-[11px] font-bold mt-1 px-1">{couponError}</div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/50">
+                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-xs">
+                      <span>كوبون مطبق: {appliedCoupon.code}</span>
+                    </div>
+                    <button type="button" onClick={handleRemoveCoupon} className="text-red-500 bg-white hover:bg-red-50 px-2 py-1 rounded-lg text-[10px] font-bold border border-red-200">
+                      إزالة
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">المجموع الفرعي ({cart.length} أصناف):</span>
+                  <span className="font-bold">{formatCurrency(cartSubtotalConverted, activeCurrency)}</span>
+                </div>
+                {appliedCoupon && discountConverted > 0 && (
+                  <div className="flex justify-between text-xs text-brand-600 dark:text-brand-400">
+                    <span>خصم الكوبون ({appliedCoupon.code}):</span>
+                    <span className="font-bold">- {formatCurrency(discountConverted, activeCurrency)}</span>
+                  </div>
+                )}
+                {!isServiceStore && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">رسوم التوصيل:</span>
+                    <span className="font-bold">
+                      {deliveryType === 'pickup' ? 'مجاني (استلام)' : appliedCoupon?.type === 'shipping' ? 'مجاني بالكوبون' : formatCurrency(shippingCostConverted, activeCurrency)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 pt-1.5 border-t border-slate-200 dark:border-slate-700">
+                  <span>الإجمالي النهائي المستحق:</span>
+                  <span>{formatCurrency(cartTotalConverted, activeCurrency)}</span>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmittingOrder}
+                className="w-full py-3.5 rounded-2xl font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 active:scale-95"
+              >
+                <Send className="w-4 h-4" />
+                <span>
+                  {isSubmittingOrder 
+                    ? 'جاري تأكيد الحجز...' 
+                    : cartTotalConverted <= 0
+                    ? 'تأكيد والحصول على الخدمة مجاناً 🎁'
+                    : (isServiceStore ? 'تأكيد حجز الخدمة وإرسال التفاصيل عبر الواتساب ✨' : 'تأكيد الطلب وإرساله إلى واتساب المتجر مباشرة ✨')}
+                </span>
+              </button>
+
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-md bg-white dark:bg-slateDark-900 rounded-3xl p-6 shadow-2xl">
+            <button
+              onClick={() => setShowReviewModal(false)}
+              className="absolute top-4 left-4 p-2 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <h3 className="text-xl font-bold mb-2 text-right">إضافة تقييم جديد</h3>
+            <p className="text-xs text-slate-500 mb-6 text-right">يسعدنا سماع رأيك حول تجربتك معنا!</p>
+            
+            <div className="space-y-4 text-right">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">تقييمك</label>
+                <div className="flex gap-2 justify-center">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button key={star} type="button" onClick={() => setReviewRating(star)}>
+                      <Star className={`w-8 h-8 ${star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">النص والتجربة</label>
+                <textarea
+                  value={reviewContent}
+                  onChange={(e) => setReviewContent(e.target.value)}
+                  className="w-full h-24 p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-brand-500 text-right"
+                  placeholder="اكتب تقييمك هنا..."
+                />
+              </div>
+              
+              <button 
+                onClick={handleSubmitReview}
+                disabled={isSubmittingReview}
+                className="w-full py-3 rounded-xl bg-brand-600 text-white font-bold disabled:opacity-50"
+              >
+                {isSubmittingReview ? 'جاري الإرسال...' : 'إرسال التقييم'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Store Footer */}
+      <div
+        id="contact-section"
+        className="border-t mt-16 pt-12 pb-8 px-4 sm:px-6 md:px-8 relative z-0 scroll-mt-24 transition-colors"
+        style={{
+          backgroundColor: palette.surface,
+          borderColor: palette.border,
+          color: palette.textMain,
+        }}
+      >
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
+          
+          <div className="space-y-4">
+            {store.logo && (
+              <img src={store.logo} alt={store.name} className="h-12 w-auto rounded-xl object-contain" />
+            )}
+            <h3 className="text-lg font-black" style={{ fontFamily, color: palette.textMain }}>{store.name}</h3>
+            <p className="text-sm leading-relaxed max-w-xs" style={{ color: palette.textMuted }}>{store.description}</p>
+            
+            <div className="flex flex-wrap gap-2 pt-2">
+              {socialLinks.facebook && (
+                <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full transition-opacity hover:opacity-80" style={{ backgroundColor: palette.surfaceAlt, color: palette.textMuted }}>
+                  <Facebook className="w-4 h-4" />
+                </a>
+              )}
+              {socialLinks.instagram && (
+                <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full transition-opacity hover:opacity-80" style={{ backgroundColor: palette.surfaceAlt, color: palette.textMuted }}>
+                  <Instagram className="w-4 h-4" />
+                </a>
+              )}
+              {socialLinks.x && (
+                <a href={socialLinks.x} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full transition-opacity hover:opacity-80" style={{ backgroundColor: palette.surfaceAlt, color: palette.textMuted }}>
+                  <Twitter className="w-4 h-4" />
+                </a>
+              )}
+              {socialLinks.tiktok && (
+                <a href={socialLinks.tiktok} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full transition-opacity hover:opacity-80" style={{ backgroundColor: palette.surfaceAlt, color: palette.textMuted }}>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.04.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.12-3.44-3.17-3.61-5.46-.21-2.91 1.67-5.63 4.41-6.4 1.5-.42 3.08-.27 4.54.19v4.11c-.04.02-.07.03-.11.05-1.12.56-2.61.35-3.32-.73-.55-.83-.4-2.04.33-2.73.57-.54 1.35-.73 2.06-.61.7.13 1.25.68 1.42 1.38.04.16.05.32.05.48.01 4.79.01 9.58.01 14.37v.29c.01-.2.03-.4.03-.61-.01-5.64 0-11.28-.01-16.92z"/>
+                  </svg>
+                </a>
+              )}
+              {socialLinks.snapchat && (
+                <a href={socialLinks.snapchat} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full transition-opacity hover:opacity-80" style={{ backgroundColor: palette.surfaceAlt, color: palette.textMuted }}>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 24c-.218 0-.466-.022-.727-.066-1.348-.225-2.673-.622-3.935-1.176-.906-.398-1.574-.913-1.956-1.503-.314-.486-.395-1.025-.236-1.57.195-.668.74-1.272 1.57-1.745.28-.16.598-.292.937-.393a2.695 2.695 0 0 0 1.505-1.398c.15-.31.254-.645.308-1.01.077-.52.023-1.024-.158-1.488-.205-.53-.55-.992-1.01-1.352-.395-.312-.862-.516-1.378-.598a.965.965 0 0 1-.58-.29.897.897 0 0 1-.22-.596c0-.28.1-.53.284-.716.208-.21.49-.33.79-.33.376 0 .736.14.994.39.262.257.412.597.412.936 0 .584.498 1.054 1.102 1.054.606 0 1.106-.47 1.106-1.054 0-1.127-.954-2.046-2.124-2.046-.86 0-1.637.525-1.954 1.32-.124.314-.184.654-.176.993.024.873.34 1.696.88 2.308.528.6 1.238.995 2.008 1.116a4.595 4.595 0 0 1-2.482 2.378c-.682.316-1.442.544-2.228.665-.89.136-1.482.528-1.722 1.134-.184.47-.11.968.214 1.443.434.637 1.168 1.205 2.146 1.66 1.455.674 3.084 1.133 4.755 1.34.6.075 1.208.114 1.815.114s1.216-.04 1.815-.115c1.67-.207 3.3-.666 4.755-1.34.978-.455 1.712-1.023 2.146-1.66.324-.475.398-.973.214-1.443-.24-.606-.832-.998-1.722-1.134-.786-.12-1.546-.35-2.228-.665a4.595 4.595 0 0 1-2.482-2.378c.77-.12 1.48-.516 2.008-1.116.54-.612.856-1.435.88-2.308.008-.34-.052-.68-.176-.993-.317-.795-1.094-1.32-1.954-1.32-1.17 0-2.124.92-2.124 2.046 0 .584.5 1.054 1.106 1.054.604 0 1.102-.47 1.102-1.054 0-.34.15-.68.412-.937.258-.25.618-.39.994-.39.3 0 .582.12.79.33.184.186.284.436.284.716 0 .227-.083.43-.22.596a.965.965 0 0 1-.58.29c-.516.082-.983.286-1.378.598-.46.36-.805.822-1.01 1.352-.18.464-.235.968-.158 1.488.054.365.158.7.308 1.01a2.695 2.695 0 0 0 1.505 1.398c.34.1.658.233.937.393.83.473 1.375 1.077 1.57 1.745.158.545.078 1.084-.236 1.57-.382.59-1.05 1.105-1.956 1.503-1.262.554-2.587.95-3.935 1.176-.26.044-.51.066-.727.066zM11.975 0c1.782 0 3.397.643 4.678 1.744a6.536 6.536 0 0 1 2.22 3.654c.264 1.345.068 2.697-.563 3.882-.417.784-.988 1.47-1.68 2.015.013.106.013.22.013.336 0 .55-.078 1.096-.23 1.63a7.284 7.284 0 0 1-1.396 2.61c-.558.68-1.222 1.258-1.97 1.705-.286.173-.59.324-.91.455.053-.133.094-.275.122-.423.108-.57-.008-1.134-.334-1.637-.24-.37-.582-.676-.983-.878a2.532 2.532 0 0 0-1.127-.248h-.024c-.4.01-.79.123-1.144.33-.35.204-.64.492-.852.846-.312.518-.4 1.105-.25 1.683.056.208.136.407.242.593-.324-.135-.63-.29-.918-.466-.75-.45-1.41-1.028-1.97-1.708a7.284 7.284 0 0 1-1.397-2.61c-.152-.534-.23-1.08-.23-1.63 0-.115 0-.23.013-.335-.693-.546-1.264-1.232-1.68-2.016-.63-1.185-.827-2.537-.564-3.88a6.536 6.536 0 0 1 2.22-3.655C8.577.643 10.193 0 11.975 0z"/>
+                  </svg>
+                </a>
+              )}
+              {socialLinks.linkedin && (
+                <a href={socialLinks.linkedin.startsWith('http') ? socialLinks.linkedin : `https://${socialLinks.linkedin}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full transition-opacity hover:opacity-80" style={{ backgroundColor: palette.surfaceAlt, color: palette.textMuted }} title="LinkedIn">
+                  <Linkedin className="w-4 h-4" />
+                </a>
+              )}
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <h4 className="text-sm font-bold" style={{ fontFamily, color: palette.textMain }}>تواصل معنا</h4>
+            <div className="space-y-3">
+              {store.phone && (
+                <div className="flex items-center gap-3 text-sm" style={{ color: palette.textMuted }}>
+                  <Phone className="w-4 h-4 shrink-0" style={{ color: primaryColor }} />
+                  <span dir="ltr">{store.phone}</span>
+                </div>
+              )}
+              {store.whatsapp && (
+                <a
+                  href={formatWhatsAppUrl(store.whatsapp || store.phone, store.name) || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 text-sm text-green-500 hover:underline"
+                  title="تواصل مباشرة عبر واتساب"
+                >
+                  <MessageCircle className="w-4 h-4 shrink-0 text-green-500" />
+                  <span dir="ltr">{store.whatsapp}</span>
+                </a>
+              )}
+              {store.email && (
+                <div className="flex items-center gap-3 text-sm" style={{ color: palette.textMuted }}>
+                  <Mail className="w-4 h-4 shrink-0" style={{ color: palette.textMuted }} />
+                  <span>{store.email}</span>
+                </div>
+              )}
+              {store.address && (
+                <div className="flex items-start gap-3 text-sm mt-1" style={{ color: palette.textMuted }}>
+                  <MapPin className="w-4 h-4 shrink-0 mt-0.5" style={{ color: palette.textMuted }} />
+                  <div className="leading-relaxed">
+                    <div>{store.city}</div>
+                    <div className="text-[11px] opacity-80">{store.address}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {(() => {
+            let lp: any = {};
+            try {
+              const cfg = typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig || '{}') : store.themeConfig;
+              if (cfg?.legalPages) lp = cfg.legalPages;
+            } catch {}
+            const hasPrivacy = Boolean(lp?.privacy && lp.privacy.trim().length > 0);
+            const hasTerms = Boolean(lp?.terms && lp.terms.trim().length > 0);
+            const hasReturns = Boolean(lp?.returns && lp.returns.trim().length > 0);
+            const hasFaq = Boolean(lp?.faq && lp.faq.trim().length > 0);
+            const hasAnyLegal = hasPrivacy || hasTerms || hasReturns || hasFaq;
+
+            if (!hasAnyLegal) return null;
+
+            return (
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold" style={{ fontFamily, color: palette.textMain }}>روابط هامة</h4>
+                <div className="space-y-2 flex flex-col items-start text-sm">
+                  {hasPrivacy && (
+                    <button onClick={() => { setLegalPageType('privacy'); setIsLegalModalOpen(true); }} className="hover:opacity-80 transition-opacity text-right" style={{ color: palette.textMuted }}>سياسة الخصوصية</button>
+                  )}
+                  {hasTerms && (
+                    <button onClick={() => { setLegalPageType('terms'); setIsLegalModalOpen(true); }} className="hover:opacity-80 transition-opacity text-right" style={{ color: palette.textMuted }}>الشروط والأحكام</button>
+                  )}
+                  {hasReturns && (
+                    <button onClick={() => { setLegalPageType('returns'); setIsLegalModalOpen(true); }} className="hover:opacity-80 transition-opacity text-right" style={{ color: palette.textMuted }}>سياسة الاسترجاع والتوصيل</button>
+                  )}
+                  {hasFaq && (
+                    <button onClick={() => { setLegalPageType('faq'); setIsLegalModalOpen(true); }} className="hover:opacity-80 transition-opacity text-right" style={{ color: palette.textMuted }}>الأسئلة الشائعة</button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+        </div>
+      </div>
+
+      {/* Powered By Footer */}
+      <footer
+        className="border-t py-6 text-center text-xs px-4 pb-24 sm:pb-6 transition-colors"
+        style={{
+          backgroundColor: palette.background,
+          borderColor: palette.border,
+          color: palette.textMuted,
+        }}
+      >
+        <p className="opacity-85 mb-4 font-medium" style={{ color: palette.textMuted }}>© {new Date().getFullYear()} {store.name}. جميع الحقوق محفوظة.</p>
+        <div className="flex flex-col items-center justify-center gap-3">
+          <span className="text-xs font-bold" style={{ color: palette.textMuted }}>
+            تم تطوير المنصة بواسطة
+          </span>
+          <BrandLogo size="sm" showText={true} href="/" className="hover:opacity-80 transition-opacity" />
+        </div>
+      </footer>
+
+      {/* Legal Pages Modal */}
+      <LegalPagesModal
+        store={store}
+        isOpen={isLegalModalOpen}
+        onClose={() => setIsLegalModalOpen(false)}
+        pageType={legalPageType}
+      />
+
+      {/* Review Modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-md bg-white dark:bg-slateDark-900 rounded-3xl p-6 shadow-2xl">
+            <button
+              onClick={() => setShowReviewModal(false)}
+              className="absolute top-4 left-4 p-2 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <h3 className="text-xl font-bold mb-2">إضافة تقييم جديد</h3>
+            <p className="text-xs text-slate-500 mb-6">يسعدنا سماع رأيك حول تجربتك معنا!</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">تقييمك</label>
+                <div className="flex gap-2 justify-center">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button key={star} type="button" onClick={() => setReviewRating(star)}>
+                      <Star className={`w-8 h-8 ${star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">النص والتجربة</label>
+                <textarea
+                  value={reviewContent}
+                  onChange={(e) => setReviewContent(e.target.value)}
+                  className="w-full h-24 p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-brand-500"
+                  placeholder="اكتب تقييمك هنا..."
+                />
+              </div>
+              
+              <button 
+                onClick={handleSubmitReview}
+                disabled={isSubmittingReview}
+                className="w-full py-3 rounded-xl bg-brand-600 text-white font-bold disabled:opacity-50"
+              >
+                {isSubmittingReview ? 'جاري الإرسال...' : 'إرسال التقييم'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Auth Modal */}
+      <CustomerAuthModal
+        storeId={store.id}
+        isOpen={isAuthModalOpen}
+        defaultMode={authPromptMode}
+        subtitleNote={authPromptNote}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setPendingFreeDownloadProduct(null);
+          setPendingCheckoutAfterAuth(false);
+          setAuthPromptMode('login');
+          setAuthPromptNote(undefined);
+        }}
+        onSuccess={async () => {
+          setIsAuthModalOpen(false);
+          const pendingProd = pendingFreeDownloadProduct;
+          const shouldAutoCheckout = pendingCheckoutAfterAuth;
+          setPendingFreeDownloadProduct(null);
+          setPendingCheckoutAfterAuth(false);
+          setAuthPromptMode('login');
+          setAuthPromptNote(undefined);
+
+          const customer = await getCurrentCustomerAction();
+          if (customer) {
+            setCurrentCustomer(customer);
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem(`seen_customer_${store.id}`, JSON.stringify(customer));
+              } catch (e) {}
+            }
+            setCustomerName(customer.name || '');
+            setCustomerPhone(customer.phone || '');
+            setCustomerEmail(customer.email || '');
+            const orders = await getCustomerOrdersAction(store.id, customer.customerId, 'id', customer.phone || undefined);
+            if (orders && orders.length > 0) {
+              setCity(orders[0].city || store.city || '');
+              setAddress(orders[0].address || '');
+            }
+
+            if (pendingProd) {
+              await executeFreeDigitalClaim(pendingProd, customer);
+            } else if (shouldAutoCheckout && cart.length > 0 && cartTotalConverted <= 0) {
+              await submitOrderWithCustomer(customer);
+            }
+          }
+        }}
+      />
+
+      {/* Order Success Modal */}
+      {orderSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-8 text-center shadow-2xl animate-in zoom-in-95 duration-300">
+            <button
+              onClick={() => setOrderSuccess(null)}
+              className="absolute top-4 left-4 p-2 text-slate-400 hover:text-slate-700 bg-slate-100 dark:bg-slate-800 rounded-full"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+            
+            <h2 className="text-2xl font-black mb-2 text-slate-900 dark:text-white" style={{ fontFamily }}>
+              {orderSuccess.isFreeDigitalClaim
+                ? 'تم تفعيل طلبك بنجاح! 📥'
+                : isServiceStore
+                ? 'تم تسجيل حجز الخدمة بنجاح! 📅'
+                : 'تم استلام طلبك بنجاح! 🎉'}
+            </h2>
+            <p className="text-slate-500 mb-6 leading-relaxed text-sm">
+              {orderSuccess.isFreeDigitalClaim
+                ? 'حسابك جاهز الآن! يمكنك تحميل المنتج والملف المرفق مباشرة بالزر أدناه أو في أي وقت من مكتبتك.'
+                : isServiceStore
+                ? `شكراً لثقتك في ${store.name}. تم تسجيل طلبك وإشعار الدفع بنجاح وهو قيد المتابعة والتجهيز.`
+                : `شكراً لتسوقك من ${store.name}. تم تسجيل طلبك وهو الآن قيد المراجعة.`}
+            </p>
+            
+            <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 mb-6 border border-slate-100 dark:border-slate-700">
+              <div className="text-xs text-slate-500 mb-1">{isServiceStore ? 'رقم الحجز / الخدمة' : 'رقم الطلب'}</div>
+              <div className="text-xl font-bold font-mono tracking-wider text-brand-600 dark:text-brand-400">
+                {orderSuccess.orderNumber}
+              </div>
+            </div>
+
+            {/* Downloadable Digital Files Section */}
+            {orderSuccess.items && orderSuccess.items.some((it: any) => it.digitalFileUrl) && (
+              <div className="p-4 rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-right space-y-3 mb-6 shadow-sm">
+                <div className="flex items-center gap-2 text-emerald-900 dark:text-emerald-200 text-xs font-black">
+                  <Sparkles className="w-4 h-4 text-emerald-500 animate-pulse" />
+                  <span>ملفات المنتج الجاهزة للتحميل الآن:</span>
+                </div>
+                {orderSuccess.items.filter((it: any) => it.digitalFileUrl).map((it: any, idx: number) => {
+                  const isInstant = Number(orderSuccess.total) <= 0 || it.digitalFileAccess !== 'verified';
+                  return (
+                    <div key={idx} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-800/60 space-y-2.5">
+                      <div className="truncate text-xs font-bold text-slate-800 dark:text-slate-200">
+                        📄 {it.digitalFileName || it.productName}
+                      </div>
+                      {isInstant ? (
+                        <a
+                          href={it.digitalFileUrl}
+                          download={it.digitalFileName || 'ملف_الخدمة'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-2.5 px-4 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
+                          style={{ backgroundColor: primaryColor }}
+                        >
+                          <Download className="w-4 h-4" />
+                          <span>تحميل المنتج الآن 📥</span>
+                        </a>
+                      ) : (
+                        <span className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-md block font-medium">
+                          ⏳ سيتاح التحميل فور تأكيد الحوالة
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            <div className="space-y-3">
+              {orderSuccess.waUrl && (
+                <a 
+                  href={orderSuccess.waUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-green-500/20 active:scale-95 text-sm"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  <span>{isServiceStore ? 'إرسال تفاصيل الحجز والإشعار عبر واتساب 💬' : 'إرسال تفاصيل الطلب والإشعار عبر واتساب 💬'}</span>
+                </a>
+              )}
+              {(isServiceStore || orderSuccess.isFreeDigitalClaim) && (
+                <Link
+                  href={`/store/${store.slug}/account?tab=library`}
+                  className="w-full py-3.5 rounded-xl text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 text-sm"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <Briefcase className="w-4 h-4" />
+                  <span>عرض مكتبتي والملفات القابلة للتحميل 💼</span>
+                </Link>
+              )}
+              <Link 
+                href={`/store/${store.slug}/track/${orderSuccess.id}`}
+                className="w-full py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-brand-600/20 text-sm"
+              >
+                {isServiceStore ? 'تتبع حالة الخدمة' : 'تتبع حالة الطلب'} <ArrowLeft className="w-4 h-4" />
+              </Link>
+              <button 
+                onClick={() => setOrderSuccess(null)}
+                className="w-full py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all text-sm"
+              >
+                {isServiceStore ? 'العودة واستعراض المزيد من الخدمات' : 'الاستمرار في التسوق'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Sticky Bottom Floating Cart Bar */}
+      {cart.length > 0 && !isCheckoutOpen && !isCartOpen && (
+        <div className="fixed bottom-4 left-4 right-4 z-40 sm:hidden animate-fadeIn">
+          <button
+            onClick={() => isServiceStore ? setIsCheckoutOpen(true) : setIsCartOpen(true)}
+            className="w-full py-3.5 px-5 rounded-2xl text-white font-black text-xs shadow-2xl flex items-center justify-between border border-white/20 active:scale-95 transition-all"
+            style={{ backgroundColor: primaryColor }}
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-white/25 flex items-center justify-center text-xs font-black">
+                {cart.reduce((s, i) => s + i.quantity, 0)}
+              </span>
+              <span>{isServiceStore ? 'متابعة حجز واستكمال الخدمة' : 'معاينة السلة وإتمام الشراء'}</span>
+            </div>
+            <div className="flex items-center gap-1.5 font-black text-sm">
+              <span>{formatCurrency(cartTotalConverted, activeCurrency)}</span>
+              <ArrowLeft className="w-4 h-4" />
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* Floating WhatsApp Support Button */}
+      <WhatsAppSupportButton 
+        phone={store.whatsapp || store.phone} 
+        storeName={store.name} 
+        className={cart.length > 0 ? "!bottom-20 sm:!bottom-6" : ""}
+      />
+
+      {/* Animated Offers & Discounts Sidebar (Shown only when activated & active offers exist) */}
+      <OffersSidebar
+        visible={offersData.shouldShowSidebar}
+        activeOffers={offersData.activeOffers}
+        discountedProducts={offersData.discountedProducts}
+        allProducts={products}
+        primaryColor={primaryColor}
+        secondaryColor={secondaryColor}
+        isServiceStore={isServiceStore}
+        activeOfferFilterId={selectedOfferFilter?.id || null}
+        onSelectOfferFilter={setSelectedOfferFilter}
+        onSelectProduct={(prod) => {
+          setSelectedProduct(prod);
+          setSelectedVariant(prod.variants && prod.variants.length > 0 ? prod.variants[0] : null);
+          setItemQuantity(1);
+        }}
+        formatPrice={getFormattedPrice}
+      />
+
+      {/* Share Platform Modal */}
+      <ShareStoreModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        storeSlug={store.slug}
+        storeName={store.name}
+        isService={isServiceStore}
+      />
+
+      {/* Custom Service Request Modal */}
+      <CustomServiceRequestModal
+        isOpen={isCustomRequestModalOpen}
+        onClose={() => setIsCustomRequestModalOpen(false)}
+        storeName={store.name}
+        merchantPhone={store.whatsapp || store.phone}
+        baseCurrency={activeCurrency}
+      />
+
+    </div>
+  );
+}
+
+

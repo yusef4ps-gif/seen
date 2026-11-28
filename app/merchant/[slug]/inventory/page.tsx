@@ -202,11 +202,17 @@ export default function MerchantInventoryPage() {
                   <tr key={prod.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     
                     <td className="py-3 px-4 font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
-                      <img 
-                        src={prod.images[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100'} 
-                        alt={prod.name} 
-                        className="w-8 h-8 rounded-lg object-cover bg-slate-100" 
-                      />
+                      {prod.images?.[0] ? (
+                        <img
+                          src={prod.images[0]}
+                          alt={prod.name}
+                          className="w-8 h-8 rounded-lg object-cover bg-slate-100 shrink-0"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-xs font-black text-slate-400 shrink-0">
+                          {prod.name?.charAt(0) || '•'}
+                        </div>
+                      )}
                       <span>{prod.name}</span>
                     </td>
 

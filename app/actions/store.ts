@@ -7,6 +7,17 @@ import { requireAuth, requireStoreOwner, requireSuperAdmin, issueMerchantSession
 import { sendEmail, EmailTemplates } from '@/lib/notification-engine';
 import { INITIAL_PLANS } from '@/lib/initial-data';
 import { SubscriptionPlan } from '@/lib/types';
+import {
+  getCachedStore,
+  setCachedStore,
+  invalidateCachedStore,
+  getCachedProducts,
+  setCachedProducts,
+  invalidateCachedProducts,
+  getCachedPlans,
+  setCachedPlans,
+  invalidateCachedPlans,
+} from '@/lib/server-cache';
 
 // Re-export the initial default JSON from storeEngine logic to use when creating a new store
 const DEFAULT_CUSTOM_RATES = JSON.stringify({
@@ -195,12 +206,8 @@ export async function createStoreAction(data: any) {
           ? `البروفايل المهني الرسمي لـ ${data.name}. استشارات وخدمات مهنية متخصصة بأعلى معايير الدقة والسرية.`
           : `المتجر الإلكتروني الرسمي لـ ${data.name}. تسوق أفضل المنتجات بأفضل الأسعار.`),
         category: data.category || (data.themeConfig?.storeType === 'SERVICE' ? 'محاماة واستشارات قانونية' : 'عام'),
-        logo: data.logo || (data.themeConfig?.storeType === 'SERVICE' 
-          ? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80'
-          : 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=200&auto=format&fit=crop&q=80'),
-        banner: data.banner || (data.themeConfig?.storeType === 'SERVICE'
-          ? 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&auto=format&fit=crop&q=80'
-          : 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&auto=format&fit=crop&q=80'),
+        logo: data.logo || '',
+        banner: data.banner || '',
         primaryColor: data.primaryColor || (data.themeConfig?.storeType === 'SERVICE' ? '#0d9488' : '#0f2b48'),
         phone: data.phone,
         whatsapp: data.whatsapp || data.phone.replace(/[^0-9]/g, ''),
@@ -324,23 +331,20 @@ export async function getPlatformStatsAction() {
   }
 }
 
-// In-Memory Performance Caches (short TTL to keep data fresh while eliminating duplicate roundtrips)
-const storeCache = new Map<string, { data: any; expires: number }>();
-let plansCache: { data: SubscriptionPlan[]; expires: number } | null = null;
+// Global in-memory performance caches backed by lib/server-cache.ts
+const storeCache = {
+  clear: () => invalidateCachedStore(),
+  delete: (key: string) => invalidateCachedStore(key),
+};
 
 export async function invalidateStoreCache(slugOrId?: string) {
-  if (slugOrId) {
-    storeCache.delete(slugOrId);
-  } else {
-    storeCache.clear();
-  }
+  invalidateCachedStore(slugOrId);
 }
 
 export async function getStoreBySlugAction(slug: string) {
-  const now = Date.now();
-  const cached = storeCache.get(slug);
-  if (cached && cached.expires > now) {
-    return cached.data;
+  const cached = getCachedStore(slug);
+  if (cached) {
+    return cached;
   }
 
   try {
@@ -374,13 +378,7 @@ export async function getStoreBySlugAction(slug: string) {
       paymentAccounts: store.paymentAccounts ? JSON.parse(store.paymentAccounts) : []
     };
 
-    storeCache.set(slug, { data: result, expires: now + 15_000 });
-    if (result.slug && result.slug !== slug) {
-      storeCache.set(result.slug, { data: result, expires: now + 15_000 });
-    }
-    if (result.id && result.id !== slug) {
-      storeCache.set(result.id, { data: result, expires: now + 15_000 });
-    }
+    setCachedStore([slug, result.slug, result.id, result.customDomain], result, 60_000);
 
     return result;
   } catch (error) {
@@ -390,13 +388,18 @@ export async function getStoreBySlugAction(slug: string) {
 }
 
 export async function getProductsByStoreAction(storeId: string) {
+  const cached = getCachedProducts(storeId);
+  if (cached) {
+    return cached;
+  }
+
   try {
     const products = await prisma.product.findMany({
       where: { storeId },
       include: { variants: true },
       orderBy: { createdAt: 'desc' },
     });
-    return products.map(p => {
+    const parsed = products.map(p => {
       const parsedTags: string[] = p.tags ? JSON.parse(p.tags) : [];
       const urlTag = parsedTags.find(t => t.startsWith('digital_url:'));
       const nameTag = parsedTags.find(t => t.startsWith('digital_name:'));
@@ -411,6 +414,8 @@ export async function getProductsByStoreAction(storeId: string) {
         digitalFileAccess: (accessTag ? accessTag.replace('digital_access:', '') : 'instant') as any,
       };
     });
+    setCachedProducts(storeId, parsed, 60_000);
+    return parsed;
   } catch (error) {
     console.error('Error fetching products:', error);
     return [];
@@ -490,6 +495,7 @@ export async function updateStoreAction(storeId: string, data: any) {
       // Execute all updates in a single transaction to prevent timeouts
       if (updateOperations.length > 0) {
         await prisma.$transaction(updateOperations);
+        invalidateCachedProducts(storeId);
       }
     }
 
@@ -511,25 +517,56 @@ export async function updateStoreAction(storeId: string, data: any) {
 export async function getStoreCustomersAction(storeId: string) {
   try {
     await requireStoreOwner(storeId);
-    // 1. Fetch all registered customers for this store
-    const customers = await prisma.customer.findMany({
-      where: { storeId },
-      orderBy: { createdAt: 'desc' }
-    });
+    // 1. Fetch all registered customers, orders, and in-platform message threads for this store
+    const [customers, allStoreOrders, messageThreads] = await Promise.all([
+      prisma.customer.findMany({
+        where: { storeId },
+        orderBy: { lastLoginAt: 'desc' },
+      }),
+      prisma.order.findMany({
+        where: { storeId },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          orderNumber: true,
+          customerId: true,
+          customerName: true,
+          customerPhone: true,
+          total: true,
+          status: true,
+          createdAt: true,
+        },
+      }),
+      prisma.siteContent.findMany({
+        where: { group: 'customer_messages', label: storeId },
+        select: { key: true, value: true },
+      }),
+    ]);
 
-    // 2. Fetch all orders for this store to aggregate accurate totals
-    const allStoreOrders = await prisma.order.findMany({
-      where: { storeId },
-      select: {
-        id: true,
-        customerId: true,
-        customerName: true,
-        customerPhone: true,
-        total: true,
-        status: true,
-        createdAt: true
-      }
-    });
+    const threadStatsMap = new Map<
+      string,
+      { messagesCount: number; unreadFromCustomer: number; lastMessageAt: string | null; lastMessagePreview: string | null }
+    >();
+    const threadPrefix = `cust_msg_${storeId}_`;
+    for (const row of messageThreads) {
+      if (!row.key.startsWith(threadPrefix)) continue;
+      const cid = row.key.slice(threadPrefix.length);
+      try {
+        const list = JSON.parse(row.value || '[]');
+        if (Array.isArray(list) && list.length > 0) {
+          const unreadFromCustomer = list.filter((m: any) => m.sender === 'customer' && !m.readByMerchant).length;
+          const lastMsg = list[list.length - 1];
+          threadStatsMap.set(cid, {
+            messagesCount: list.length,
+            unreadFromCustomer,
+            lastMessageAt: lastMsg?.createdAt || null,
+            lastMessagePreview: lastMsg?.text ? String(lastMsg.text).slice(0, 80) : null,
+          });
+        }
+      } catch {}
+    }
+
+    const thirtyDaysAgoMs = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
     // 3. Match and calculate live accurate stats for each customer
     const customersWithLiveStats = await Promise.all(
@@ -554,6 +591,7 @@ export async function getStoreCustomersAction(storeId: string) {
         const validOrders = matchedOrders.filter(o => o.status !== 'cancelled');
         const computedCount = validOrders.length;
         const computedTotal = validOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        const latestValidOrder = validOrders[0] || matchedOrders[0] || null;
 
         // Sync with database if different so DB remains accurate
         if (cust.ordersCount !== computedCount || Math.abs(cust.totalSpent - computedTotal) > 0.01) {
@@ -575,10 +613,26 @@ export async function getStoreCustomersAction(storeId: string) {
           }).catch(err => console.error('Failed to link orders to customer:', err));
         }
 
+        const lastLoginMs = cust.lastLoginAt ? new Date(cust.lastLoginAt).getTime() : 0;
+        const lastOrderMs = latestValidOrder?.createdAt ? new Date(latestValidOrder.createdAt).getTime() : 0;
+        const isRecentlyActive = Math.max(lastLoginMs, lastOrderMs) >= thirtyDaysAgoMs;
+        const isActive = cust.authProvider !== 'guest' ? isRecentlyActive || Boolean(cust.password) : isRecentlyActive;
+        const msgSummary = threadStatsMap.get(cust.id) || {
+          messagesCount: 0,
+          unreadFromCustomer: 0,
+          lastMessageAt: null,
+          lastMessagePreview: null,
+        };
+
         return {
           ...cust,
           ordersCount: computedCount,
-          totalSpent: computedTotal
+          totalSpent: computedTotal,
+          lastOrderAt: latestValidOrder?.createdAt || null,
+          lastOrderNumber: latestValidOrder?.orderNumber || null,
+          lastOrderStatus: latestValidOrder?.status || null,
+          isActive,
+          ...msgSummary,
         };
       })
     );
@@ -607,7 +661,13 @@ export async function getStoreCustomersAction(storeId: string) {
     for (const [cleanPhone, gOrders] of Array.from(guestOrdersByPhone.entries())) {
       const validOrders = gOrders.filter((o: any) => o.status !== 'cancelled');
       const gTotal = validOrders.reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
-      const latestOrder = gOrders[0];
+      const latestOrder = validOrders[0] || gOrders[0];
+      const msgEmpty = {
+        messagesCount: 0,
+        unreadFromCustomer: 0,
+        lastMessageAt: null,
+        lastMessagePreview: null,
+      };
 
       try {
         const createdGuest = await prisma.customer.create({
@@ -617,14 +677,22 @@ export async function getStoreCustomersAction(storeId: string) {
             phone: latestOrder.customerPhone,
             ordersCount: validOrders.length,
             totalSpent: gTotal,
-            authProvider: 'guest'
+            authProvider: 'guest',
+            lastLoginAt: latestOrder.createdAt,
           }
         });
         await prisma.order.updateMany({
           where: { id: { in: gOrders.map((o: any) => o.id) } },
           data: { customerId: createdGuest.id }
         });
-        guestCustomers.push(createdGuest);
+        guestCustomers.push({
+          ...createdGuest,
+          lastOrderAt: latestOrder.createdAt,
+          lastOrderNumber: latestOrder.orderNumber,
+          lastOrderStatus: latestOrder.status,
+          isActive: new Date(latestOrder.createdAt).getTime() >= thirtyDaysAgoMs,
+          ...msgEmpty,
+        });
       } catch {
         guestCustomers.push({
           id: `guest_${cleanPhone}`,
@@ -635,7 +703,13 @@ export async function getStoreCustomersAction(storeId: string) {
           ordersCount: validOrders.length,
           totalSpent: gTotal,
           createdAt: latestOrder.createdAt,
-          authProvider: 'guest'
+          lastLoginAt: latestOrder.createdAt,
+          lastOrderAt: latestOrder.createdAt,
+          lastOrderNumber: latestOrder.orderNumber,
+          lastOrderStatus: latestOrder.status,
+          authProvider: 'guest',
+          isActive: new Date(latestOrder.createdAt).getTime() >= thirtyDaysAgoMs,
+          ...msgEmpty,
         });
       }
     }
@@ -730,9 +804,9 @@ export async function toggleStoreStatusAction(storeId: string, newStatus: string
 }
 
 export async function getPlansAction(): Promise<SubscriptionPlan[]> {
-  const now = Date.now();
-  if (plansCache && plansCache.expires > now) {
-    return plansCache.data;
+  const cached = getCachedPlans();
+  if (cached) {
+    return cached;
   }
 
   try {
@@ -741,7 +815,7 @@ export async function getPlansAction(): Promise<SubscriptionPlan[]> {
     });
     if (item && item.value) {
       const parsed = JSON.parse(item.value);
-      plansCache = { data: parsed, expires: now + 60_000 };
+      setCachedPlans(parsed, 120_000);
       return parsed;
     }
   } catch (error) {
@@ -753,7 +827,7 @@ export async function getPlansAction(): Promise<SubscriptionPlan[]> {
 export async function updatePlansAction(plans: SubscriptionPlan[]) {
   try {
     await requireSuperAdmin();
-    plansCache = null;
+    invalidateCachedPlans();
     await prisma.siteContent.upsert({
       where: { key: 'system_subscription_plans' },
       update: { value: JSON.stringify(plans) },

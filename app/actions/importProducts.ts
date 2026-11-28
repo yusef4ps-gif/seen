@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { requireStoreOwner } from '@/app/actions/auth';
+import { invalidateCachedProducts } from '@/lib/server-cache';
 
 export async function bulkCreateProductsAction(storeId: string, products: any[]) {
   try {
@@ -60,6 +61,7 @@ export async function bulkCreateProductsAction(storeId: string, products: any[])
       }
     });
     
+    invalidateCachedProducts(storeId);
     revalidatePath(`/merchant/[slug]/products`);
     
     return { success: true, count: processedCount };

@@ -5,11 +5,37 @@ import { calculateInventoryOverview } from '../lib/inventory-engine';
 import { isAiAllowedForStore } from '../lib/ai-access';
 import { getSubscriptionExpiryInfo } from '../lib/store-helpers';
 import {
+  isStoreOfferCurrentlyActive,
+  doesOfferApplyToProduct,
+  resolveStorefrontOffersData,
+  StoreOfferItem,
+} from '../lib/offers-utils';
+import {
   signSessionToken,
   verifySessionToken,
   createOtpChallengeToken,
   verifyOtpChallengeToken,
 } from '../lib/session';
+import {
+  CURATED_COLOR_PALETTES,
+  applySmartBackgroundChange,
+  isDarkColor,
+  resolveStorePalette,
+  toSafeColorInputHex,
+} from '../lib/theme-colors';
+import {
+  getCachedStore,
+  setCachedStore,
+  invalidateCachedStore,
+  getCachedProducts,
+  setCachedProducts,
+  invalidateCachedProducts,
+  getCachedReviews,
+  setCachedReviews,
+  invalidateCachedReviews,
+  isIpBlockedCached,
+  invalidateBlockedIpCache,
+} from '../lib/server-cache';
 
 test('currency-engine: same currency identity returns exact amount', () => {
   assert.equal(convertCurrency(150, 'SAR', 'SAR'), 150);
@@ -135,4 +161,148 @@ test('session: HMAC-SHA256 tokens verify cleanly and reject tampering or expirat
   assert.equal(await verifyOtpChallengeToken(otpToken, 'user@example.com', '4829'), true);
   assert.equal(await verifyOtpChallengeToken(otpToken, 'user@example.com', '0000'), false);
   assert.equal(await verifyOtpChallengeToken(otpToken, 'other@example.com', '4829'), false);
+});
+
+test('offers-utils: shows sidebar only when active offers or discounted products exist and sidebar is enabled', () => {
+  const now = new Date('2026-11-28T12:00:00Z');
+  const activeOffer: StoreOfferItem = {
+    id: 'o1',
+    title: 'عرض اليوم الوطني',
+    type: 'percentage',
+    discountValue: 25,
+    discountStr: 'خصم 25%',
+    scopeType: 'specific',
+    productIds: ['p1'],
+    startDate: '2026-11-20',
+    endDate: '2026-11-30',
+    isActive: true,
+    createdAt: '2026-11-20T00:00:00Z',
+  };
+  const pausedOffer: StoreOfferItem = { ...activeOffer, id: 'o2', isActive: false };
+  const expiredOffer: StoreOfferItem = { ...activeOffer, id: 'o3', endDate: '2026-11-25' };
+
+  assert.equal(isStoreOfferCurrentlyActive(activeOffer, now), true);
+  assert.equal(isStoreOfferCurrentlyActive(pausedOffer, now), false);
+  assert.equal(isStoreOfferCurrentlyActive(expiredOffer, now), false);
+
+  assert.equal(doesOfferApplyToProduct(activeOffer, 'p1'), true);
+  assert.equal(doesOfferApplyToProduct(activeOffer, 'p2'), false);
+
+  // Hidden when zero active offers & zero discounted products
+  const emptyResult = resolveStorefrontOffersData(
+    { themeConfig: JSON.stringify({ offersSidebarEnabled: true, offers: [pausedOffer, expiredOffer] }) },
+    [{ id: 'p1', price: 100 }],
+    now
+  );
+  assert.equal(emptyResult.shouldShowSidebar, false);
+
+  // Visible when an active offer exists
+  const activeResult = resolveStorefrontOffersData(
+    { themeConfig: JSON.stringify({ offersSidebarEnabled: true, offers: [activeOffer] }) },
+    [{ id: 'p1', price: 100 }],
+    now
+  );
+  assert.equal(activeResult.shouldShowSidebar, true);
+  assert.equal(activeResult.activeOffers.length, 1);
+
+  // Hidden when merchant manually disabled sidebar even with active offer
+  const manuallyDisabled = resolveStorefrontOffersData(
+    { themeConfig: JSON.stringify({ offersSidebarEnabled: false, offers: [activeOffer] }) },
+    [{ id: 'p1', price: 100 }],
+    now
+  );
+  assert.equal(manuallyDisabled.shouldShowSidebar, false);
+
+  // Visible automatically when product has comparePrice > price
+  const discountedProductResult = resolveStorefrontOffersData(
+    { themeConfig: JSON.stringify({ offersSidebarEnabled: true, offers: [] }) },
+    [{ id: 'p1', price: 80, comparePrice: 120 }],
+    now
+  );
+  assert.equal(discountedProductResult.shouldShowSidebar, true);
+  assert.equal(discountedProductResult.discountedProducts.length, 1);
+});
+
+test('theme-colors: hex normalization, dark/light smart background contrast & palette resolution', () => {
+  assert.equal(toSafeColorInputHex('#0d9488'), '#0d9488');
+  assert.equal(toSafeColorInputHex('fff'), '#ffffff');
+  assert.equal(toSafeColorInputHex('invalid-hex', '#3b82f6'), '#3b82f6');
+
+  // Curated Navy Executive palette matches dark navy aesthetic
+  const navy = CURATED_COLOR_PALETTES.find((p) => p.id === 'navy-executive');
+  assert.ok(navy);
+  assert.equal(isDarkColor(navy!.colors.background), true);
+  assert.equal(isDarkColor(navy!.colors.surface), true);
+  assert.equal(isDarkColor(navy!.colors.textMain), false);
+
+  // Switching background from light to dark navy automatically flips surface & text to readable dark-theme colors
+  const lightStart = {
+    primary: '#0d9488',
+    secondary: '#0f172a',
+    background: '#f8fafc',
+    surface: '#ffffff',
+    textMain: '#0f172a',
+    textMuted: '#64748b',
+  };
+  const switchedToDark = applySmartBackgroundChange(lightStart, '#071326');
+  assert.equal(switchedToDark.background, '#071326');
+  assert.equal(isDarkColor(switchedToDark.surface), true);
+  assert.equal(isDarkColor(switchedToDark.textMain), false);
+
+  // Switching back from dark to light restores white card surface and dark text
+  const switchedToLight = applySmartBackgroundChange(switchedToDark, '#f8fafc');
+  assert.equal(switchedToLight.background, '#f8fafc');
+  assert.equal(switchedToLight.surface, '#ffffff');
+  assert.equal(switchedToLight.textMain, '#0f172a');
+
+  // resolveStorePalette guarantees legible text even if merchant persisted only dark background over default dark text
+  const legacyPartialDark = resolveStorePalette({
+    primary: '#3b82f6',
+    secondary: '#0d9488',
+    background: '#071326',
+    surface: '#0f1f3d',
+    textMain: '#0f172a',
+    textMuted: '#1e293b',
+  });
+  assert.equal(legacyPartialDark.isDark, true);
+  assert.equal(legacyPartialDark.isSurfaceDark, true);
+  assert.equal(isDarkColor(legacyPartialDark.textMain), false);
+  assert.ok(legacyPartialDark.headerBg.startsWith('rgba('));
+});
+
+test('server-cache: caches store/products/reviews/blockedIPs and clears cleanly on invalidation', async () => {
+  // Store cache keyed by slug and id + sibling invalidation
+  setCachedStore(['store-slug-a', 'store-id-a'], { id: 'store-id-a', slug: 'store-slug-a', name: 'Test Store' }, 5000);
+  assert.equal(getCachedStore('store-slug-a')?.name, 'Test Store');
+  assert.equal(getCachedStore('store-id-a')?.name, 'Test Store');
+  invalidateCachedStore('store-id-a');
+  assert.equal(getCachedStore('store-slug-a'), null);
+  assert.equal(getCachedStore('store-id-a'), null);
+
+  // Products and reviews caches
+  setCachedProducts('store-id-a', [{ id: 'p1', name: 'Item 1' }], 5000);
+  assert.equal(getCachedProducts('store-id-a')?.length, 1);
+  invalidateCachedProducts('store-id-a');
+  assert.equal(getCachedProducts('store-id-a'), null);
+
+  setCachedReviews('store-id-a', [{ id: 'r1', rating: 5 }], 5000);
+  assert.equal(getCachedReviews('store-id-a')?.length, 1);
+  invalidateCachedReviews('store-id-a');
+  assert.equal(getCachedReviews('store-id-a'), null);
+
+  // Blocked IP cache avoids repeated DB lookup and resets on invalidation
+  let dbLookups = 0;
+  const lookup = async (ip: string) => {
+    dbLookups += 1;
+    return ip === '1.2.3.4' ? { reason: 'abuse' } : null;
+  };
+  const first = await isIpBlockedCached('1.2.3.4', lookup, 5000);
+  const second = await isIpBlockedCached('1.2.3.4', lookup, 5000);
+  assert.equal(first.blocked, true);
+  assert.equal(second.blocked, true);
+  assert.equal(dbLookups, 1);
+
+  invalidateBlockedIpCache('1.2.3.4');
+  await isIpBlockedCached('1.2.3.4', lookup, 5000);
+  assert.equal(dbLookups, 2);
 });

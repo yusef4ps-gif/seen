@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { headers } from 'next/headers';
 import { getIpLocation } from '@/lib/geo';
 import { requireSuperAdmin } from '@/app/actions/auth';
+import { invalidateBlockedIpCache } from '@/lib/server-cache';
 
 /**
  * Log a system action
@@ -94,6 +95,7 @@ export async function blockIPAction(ipAddress: string, reason: string) {
         reason
       }
     });
+    invalidateBlockedIpCache(ipAddress);
 
     return { success: true };
   } catch (error) {
@@ -116,6 +118,9 @@ export async function unblockIPAction(id: string) {
     await prisma.blockedIP.delete({
       where: { id }
     });
+    if (blockedIP?.ipAddress) {
+      invalidateBlockedIpCache(blockedIP.ipAddress);
+    }
     return { success: true };
   } catch (error) {
     console.error('Failed to unblock IP:', error);

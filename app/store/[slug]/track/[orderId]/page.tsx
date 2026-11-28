@@ -262,7 +262,7 @@ export default function OrderTrackingPage() {
                         {isAllowed ? (
                           <a
                             href={it.digitalFileUrl}
-                            download={it.digitalFileName || 'ملف_الخدمة.pdf'}
+                            download={it.digitalFileName || 'ملف_الخدمة'}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 shrink-0"
@@ -418,7 +418,13 @@ export default function OrderTrackingPage() {
                 <div className="space-y-4">
                   {itemsList.map((it: any, idx: number) => (
                     <div key={idx} className="flex gap-3">
-                      <img src={it.productImage} alt={it.productName} className="w-14 h-14 rounded-xl object-cover border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950" />
+                      {it.productImage ? (
+                        <img src={it.productImage} alt={it.productName} className="w-14 h-14 rounded-xl object-cover border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 shrink-0" />
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-400 font-black text-sm">
+                          {it.productName?.charAt(0) || '•'}
+                        </div>
+                      )}
                       <div className="flex-1 flex flex-col justify-center">
                         <div className="flex justify-between items-start">
                           <div className="font-bold text-sm text-slate-900 dark:text-white line-clamp-2 leading-tight pl-2">
@@ -432,16 +438,16 @@ export default function OrderTrackingPage() {
                           {it.variantName && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{it.variantName}</span>}
                           <span className="text-[11px] font-medium text-slate-500">الكمية: {it.quantity}</span>
                           {it.digitalFileUrl && (
-                            (it.digitalFileAccess !== 'verified' || order.paymentProofStatus === 'verified' || order.status === 'delivered' || order.status === 'processing') ? (
+                            (it.digitalFileAccess !== 'verified' || order.paymentProofStatus === 'verified' || order.status === 'delivered' || order.status === 'processing' || Number(order.total) === 0) ? (
                               <a
                                 href={it.digitalFileUrl}
-                                download={it.digitalFileName || 'ملف_الخدمة.pdf'}
+                                download={it.digitalFileName || 'ملف_الخدمة'}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[11px] font-bold shadow-xs transition-all active:scale-95"
                               >
                                 <Download className="w-3 h-3" />
-                                <span>تحميل ({it.digitalFileName || 'PDF'}) 📥</span>
+                                <span>تحميل ({it.digitalFileName || 'الملف'}) 📥</span>
                               </a>
                             ) : (
                               <span className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800/40">

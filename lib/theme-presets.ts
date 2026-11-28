@@ -22,21 +22,8 @@ export const DEFAULT_THEME_SECTIONS: ThemeSection[] = [
     settings: {
       bannerTitle: 'تشكيلة الموسم الفاخرة 2026',
       bannerSubtitle: 'أرقى المنتجات بتصاميم حصرية وجودة فائقة تلبي ذوقك الرفيع',
-      bannerImageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&auto=format&fit=crop&q=80',
-      heroSlides: [
-        {
-          image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&auto=format&fit=crop&q=80',
-          title: 'تشكيلة الموسم الفاخرة 2026',
-          subtitle: 'أرقى المنتجات بتصاميم حصرية وجودة فائقة تلبي ذوقك الرفيع',
-          ctaText: 'استكشف التشكيلة الآن'
-        },
-        {
-          image: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1200&auto=format&fit=crop&q=80',
-          title: 'إطلالة عصرية أنيقة',
-          subtitle: 'أحدث صيحات الموضة العالمية بين يديك',
-          ctaText: 'تسوق الآن'
-        }
-      ],
+      bannerImageUrl: '',
+      heroSlides: [],
       ctaText: 'استكشف التشكيلة الآن',
     },
   },
@@ -81,7 +68,7 @@ export const DEFAULT_THEME_SECTIONS: ThemeSection[] = [
       bannerTitle: 'خصم خاص 20% لفترة محدودة!',
       bannerSubtitle: 'استخدم كود الخصم عند إتمام الطلب واحصل على توفير فوري',
       discountCode: 'SEEN20',
-      bannerImageUrl: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&auto=format&fit=crop&q=80',
+      bannerImageUrl: '',
       ctaText: 'تسوق العرض الآن',
     },
   },
@@ -103,7 +90,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     name: 'بوتيك الأزياء الملكي (Aden Luxury)',
     category: 'أزياء وعبايات وجمال',
     description: 'شكل مجلة أزياء فاخرة (Lookbook): هيدر سنترال، بطاقات منتجات بإطارات عصرية، دوائر تصنيفات انسيابية، وبنرات كاملة العرض.',
-    thumbnail: 'https://images.unsplash.com/photo-1534452203293-494d7ddbf7e0?w=400&auto=format&fit=crop&q=80',
+    thumbnail: '',
     config: {
       presetId: 'fashion-luxury',
       colors: {
@@ -131,7 +118,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     name: 'المصفوفة التقنية (Sanaa Neo Cyber Tech)',
     category: 'إلكترونيات وهواتف وجيمنج',
     description: 'شكل دارك مود تقني سيبراني: كروت مواصفات ذكية مع شارات تقنية (5G / 4K / الضمان)، هيدر إلكتروني متقدم، وأزرار زجاجية نيون.',
-    thumbnail: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&auto=format&fit=crop&q=80',
+    thumbnail: '',
     config: {
       presetId: 'tech-modern',
       colors: {
@@ -158,10 +145,10 @@ export const THEME_PRESETS: ThemePreset[] = [
         },
         {
           ...DEFAULT_THEME_SECTIONS[1],
-          settings: { 
+          settings: {
             bannerTitle: 'الجيل الجديد من الهواتف والأجهزة الذكية',
             bannerSubtitle: 'أحدث معالجات 2026، شاشات OLED، وأداء فائق للألعاب والأعمال',
-            bannerImageUrl: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1200&auto=format&fit=crop&q=80',
+            bannerImageUrl: '',
             ctaText: 'اكتشف المواصفات والأسعار',
           },
         },
@@ -174,7 +161,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     name: 'المحمص الحرفي والتراث (Yemeni Roastery & Food)',
     category: 'بن يماني وأغذية ومقاهي',
     description: 'شكل دافئ حرفي (Artisanal Craft): بطاقات بن محددة بدرجات التحميص (خفيف/وسط/داكن)، خلفيات كريمية دافئة، وبار مميزات التحضير.',
-    thumbnail: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&auto=format&fit=crop&q=80',
+    thumbnail: '',
     config: {
       presetId: 'yemen-roastery',
       colors: {
@@ -201,10 +188,10 @@ export const THEME_PRESETS: ThemePreset[] = [
         },
         {
           ...DEFAULT_THEME_SECTIONS[1],
-          settings: { 
+          settings: {
             bannerTitle: 'أصالة البن اليماني من المزرعة إلى فنجانك',
             bannerSubtitle: 'محمصة طازجة أسبوعياً ومعبأة بأعلى معايير الحفظ لتستمتع بنكهة فريدة',
-            bannerImageUrl: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=1200&auto=format&fit=crop&q=80',
+            bannerImageUrl: '',
             ctaText: 'اختر محصولك المفضل',
           },
         },
@@ -217,7 +204,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     name: 'النمط السويسري العصري (Swiss Minimalist)',
     category: 'تصميم فني ومتاجر متنوعة',
     description: 'شكل معماري نقي وحاد (Brutalist Minimal): خطوط هندسية بيضاء وسوداء نقية، بطاقات بدون هوامش مبالغة، وأرقام تصنيفات بارزة.',
-    thumbnail: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=400&auto=format&fit=crop&q=80',
+    thumbnail: '',
     config: {
       presetId: 'minimal-clean',
       colors: {
@@ -245,7 +232,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     name: 'الجمال والعطور الفاخرة (Glamour & Scents)',
     category: 'عطور ومستحضرات تجميل',
     description: 'شكل ناعم وجذاب: يعتمد على ألوان الباستيل الهادئة والمساحات البيضاء المريحة للعين مع خطوط رقيقة لإبراز تفاصيل العطور.',
-    thumbnail: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?w=400&auto=format&fit=crop&q=80',
+    thumbnail: '',
     config: {
       presetId: 'perfume-beauty',
       colors: {
@@ -272,10 +259,10 @@ export const THEME_PRESETS: ThemePreset[] = [
         },
         {
           ...DEFAULT_THEME_SECTIONS[1],
-          settings: { 
+          settings: {
             bannerTitle: 'عطرك يعبر عن هويتك',
             bannerSubtitle: 'اكتشف مجموعتنا الجديدة من العطور الفرنسية والشرقية المصممة خصيصاً لك',
-            bannerImageUrl: 'https://images.unsplash.com/photo-1615634260167-c8cdede054de?w=1200&auto=format&fit=crop&q=80',
+            bannerImageUrl: '',
             ctaText: 'تسوق المجموعة الجديدة',
           },
         },
@@ -288,7 +275,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     name: 'الحلويات والمخبوزات (Sweet Treats)',
     category: 'حلويات، مخبوزات وضيافة',
     description: 'تصميم مرح وشهي: ألوان دافئة ومبهجة (الوردي المشمشي والبني الشوكولاتي) مع تركيز عالي على صور المنتجات لجذب الشهية.',
-    thumbnail: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&auto=format&fit=crop&q=80',
+    thumbnail: '',
     config: {
       presetId: 'sweets-bakery',
       colors: {
@@ -315,10 +302,10 @@ export const THEME_PRESETS: ThemePreset[] = [
         },
         {
           ...DEFAULT_THEME_SECTIONS[1],
-          settings: { 
+          settings: {
             bannerTitle: 'ألذ الحلويات والمخبوزات لمناسباتك',
             bannerSubtitle: 'نخبز يومياً بحب باستخدام أجود المكونات الطبيعية',
-            bannerImageUrl: 'https://images.unsplash.com/photo-1550617931-e17a7b70dce2?w=1200&auto=format&fit=crop&q=80',
+            bannerImageUrl: '',
             ctaText: 'اطلب تشكيلة اليوم',
           },
         },
@@ -331,7 +318,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     name: 'البروفايل المهني والاستشارات (Executive Profile & Services)',
     category: 'محاماة، عيادات، استشارات، تصميم وبرمجة',
     description: 'قالب مهني راقٍ مخصص للمستشارين، مكاتب المحاماة، العيادات، والمستقلين لعرض خبراتهم وحجز خدماتهم مباشرة.',
-    thumbnail: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&auto=format&fit=crop&q=80',
+    thumbnail: '',
     config: {
       presetId: 'service-expert',
       storeType: 'SERVICE',
@@ -374,15 +361,8 @@ export const THEME_PRESETS: ThemePreset[] = [
           settings: {
             bannerTitle: 'حلول واستشارات مهنية احترافية وموثوقة',
             bannerSubtitle: 'نقدم لك أفضل الخدمات المتخصصة بأعلى معايير الدقة والسرية لضمان نجاح أعمالك',
-            bannerImageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&auto=format&fit=crop&q=80',
-            heroSlides: [
-              {
-                image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&auto=format&fit=crop&q=80',
-                title: 'حلول واستشارات مهنية متخصصة',
-                subtitle: 'خبرة موثوقة في تقديم الاستشارات والخدمات المتميزة',
-                ctaText: 'احجز استشارتك الآن 📅'
-              }
-            ],
+            bannerImageUrl: '',
+            heroSlides: [],
             ctaText: 'حجز استشارة أو خدمة',
           },
         },
@@ -431,7 +411,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     name: 'المستشار القانوني واستشارات الأعمال (Legal & Consulting Prestige)',
     category: 'محاماة، استشارات قانونية، إدارة أعمال، ضرائب',
     description: 'قالب كلاسيكي فاخر يوحي بالهيبة والوقار مع ألوان الكحلي الداكن والذهبي، مخصص لمكاتب المحاماة والمستشارين الماليين.',
-    thumbnail: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop&q=80',
+    thumbnail: '',
     config: {
       presetId: 'service-legal-consulting',
       storeType: 'SERVICE',
@@ -460,7 +440,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     name: 'المصمم والمطور الرقمي (Creative & Tech Portfolio)',
     category: 'برمجة، تصميم، تسويق، كتابة محتوى',
     description: 'قالب تقني وإبداعي حديث بألوان أرجوانية ونيون مخصص للمستقلين (Freelancers)، المصممين، والمبرمجين لعرض باقاتهم وحجز خدماتهم.',
-    thumbnail: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=600&auto=format&fit=crop&q=80',
+    thumbnail: '',
     config: {
       presetId: 'service-digital-freelancer',
       storeType: 'SERVICE',

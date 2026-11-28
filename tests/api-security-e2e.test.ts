@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import 'dotenv/config';
+import { prisma } from '../lib/prisma';
 
 const BASE_URL = process.env.TEST_BASE_URL || 'http://127.0.0.1:3000';
 
@@ -78,6 +80,42 @@ test('API security: /api/upload blocks dangerous extensions (.html, .svg)', asyn
     body: svgForm,
   });
   assert.equal(resSvg.status, 400);
+});
+
+test('API digital upload: accepts Word (.docx), persists to PostgreSQL, serves download, and cleans up', async () => {
+  let createdKey: string | null = null;
+  try {
+    const sampleBytes = Buffer.from('PK\x03\x04SEEN-DOCX-INTEGRATION-TEST');
+    const docxForm = new FormData();
+    const docxBlob = new Blob([sampleBytes], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+    docxForm.append('file', docxBlob, 'دليل_اختبار.docx');
+
+    const upRes = await fetch(`${BASE_URL}/api/upload`, {
+      method: 'POST',
+      body: docxForm,
+    });
+    assert.equal(upRes.status, 200);
+    const upJson = await upRes.json();
+    assert.equal(upJson.success, true);
+    assert.ok(typeof upJson.url === 'string' && upJson.url.startsWith('/api/digital/'));
+
+    const assetId = upJson.url.replace('/api/digital/', '');
+    createdKey = `digital_asset_${assetId}`;
+
+    const dlRes = await fetch(`${BASE_URL}${upJson.url}`);
+    assert.equal(dlRes.status, 200);
+    assert.equal(dlRes.headers.get('x-content-type-options'), 'nosniff');
+    assert.ok((dlRes.headers.get('content-disposition') || '').includes('attachment'));
+    const dlBuf = Buffer.from(await dlRes.arrayBuffer());
+    assert.deepEqual(dlBuf, sampleBytes);
+  } finally {
+    if (createdKey) {
+      await prisma.siteContent.delete({ where: { key: createdKey } }).catch(() => {});
+    }
+    await prisma.$disconnect();
+  }
 });
 
 test('Auth & Middleware: protected routes redirect unauthenticated and forged cookie callers', async () => {

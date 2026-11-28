@@ -196,11 +196,23 @@ export interface ThemeSection {
   };
 }
 
+export interface PortfolioItem {
+  id: string;
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  fileUrl?: string;
+  fileName?: string;
+  externalUrl?: string;
+}
+
 export interface ThemeConfig {
   presetId: 'fashion-luxury' | 'tech-modern' | 'yemen-roastery' | 'minimal-clean' | 'perfume-beauty' | 'sweets-delights' | 'service-expert' | string;
   storeType?: 'PHYSICAL' | 'SERVICE' | 'DIGITAL';
   professionalTitle?: string;
   bio?: string;
+  showPortfolio?: boolean;
+  portfolioItems?: PortfolioItem[];
   colors: {
     primary: string;       // Primary brand button & active color
     secondary: string;     // Accent & highlight

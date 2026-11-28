@@ -56,6 +56,7 @@ export async function createStoreOfferAction(data: {
   productIds: string[];
   startDate?: string | null;
   endDate?: string | null;
+  activateSidebar?: boolean;
 }) {
   try {
     await requireStoreOwner(data.storeId);
@@ -91,6 +92,11 @@ export async function createStoreOfferAction(data: {
     };
 
     config.offers = [newOffer, ...currentOffers];
+    if (data.activateSidebar !== undefined) {
+      config.offersSidebarEnabled = Boolean(data.activateSidebar);
+    } else if (config.offersSidebarEnabled === undefined) {
+      config.offersSidebarEnabled = true;
+    }
 
     await prisma.store.update({
       where: { id: store.id },
@@ -194,5 +200,46 @@ export async function toggleStoreOfferAction(storeId: string, offerId: string) {
   } catch (error: any) {
     console.error('Error toggling offer:', error);
     return { success: false, error: error.message || 'حدث خطأ أثناء تحديث حالة العرض' };
+  }
+}
+
+export async function setOffersSidebarEnabledAction(storeId: string, enabled: boolean) {
+  try {
+    await requireStoreOwner(storeId);
+    const store = await prisma.store.findFirst({
+      where: { OR: [{ id: storeId }, { slug: storeId }] },
+    });
+
+    if (!store) {
+      return { success: false, error: 'المتجر غير موجود' };
+    }
+
+    let config: any = {};
+    try {
+      config = typeof store.themeConfig === 'string' ? JSON.parse(store.themeConfig) : (store.themeConfig || {});
+    } catch {
+      config = {};
+    }
+
+    config.offersSidebarEnabled = Boolean(enabled);
+
+    await prisma.store.update({
+      where: { id: store.id },
+      data: {
+        themeConfig: JSON.stringify(config),
+      },
+    });
+
+    await invalidateStoreCache(store.slug);
+    await invalidateStoreCache(store.id);
+    try {
+      revalidatePath(`/merchant/${store.slug}/offers`, 'page');
+      revalidatePath(`/store/${store.slug}`, 'page');
+    } catch {}
+
+    return { success: true, enabled: config.offersSidebarEnabled };
+  } catch (error: any) {
+    console.error('Error updating offers sidebar setting:', error);
+    return { success: false, error: error.message || 'تعذر تحديث إعداد الشريط الجانبي' };
   }
 }

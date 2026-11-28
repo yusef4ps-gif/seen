@@ -76,8 +76,8 @@ export async function POST(req: Request) {
         city: city || 'عدن',
         baseCurrency: baseCurrency || 'SAR',
         description: `المتجر الإلكتروني الرسمي لـ ${name}. تسوق أفضل المنتجات بأفضل الأسعار.`,
-        logo: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=200&auto=format&fit=crop&q=80',
-        banner: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&auto=format&fit=crop&q=80',
+        logo: body.logo || '',
+        banner: body.banner || '',
         primaryColor: '#0d9488',
         whatsapp: phone.replace(/[^0-9]/g, ''),
         customRates: JSON.stringify({

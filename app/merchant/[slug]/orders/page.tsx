@@ -466,11 +466,17 @@ export default function MerchantOrdersPage() {
 
             <div className="p-6 space-y-4 text-xs">
               <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
-                <img 
-                  src={selectedOrder.paymentProofUrl || 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600'} 
-                  alt="Receipt" 
-                  className="w-full h-64 object-contain" 
-                />
+                {selectedOrder.paymentProofUrl ? (
+                  <img
+                    src={selectedOrder.paymentProofUrl}
+                    alt="Receipt"
+                    className="w-full h-64 object-contain"
+                  />
+                ) : (
+                  <div className="h-40 flex items-center justify-center text-slate-400 font-bold text-xs">
+                    لم يتم إرفاق صورة سند التحويل مع هذا الطلب
+                  </div>
+                )}
               </div>
 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 space-y-1">

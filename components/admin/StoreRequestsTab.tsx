@@ -202,7 +202,13 @@ export default function StoreRequestsTab() {
               return (
                 <div key={store.id} className="bg-white dark:bg-slateDark-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6 text-right">
                   <div className="flex items-start gap-4">
-                    <img src={store.logo || 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=200'} alt={store.name} className="w-16 h-16 rounded-2xl object-cover bg-slate-100 border border-slate-200 dark:border-slate-700 shrink-0" />
+                    {store.logo ? (
+                      <img src={store.logo} alt={store.name} className="w-16 h-16 rounded-2xl object-cover bg-slate-100 border border-slate-200 dark:border-slate-700 shrink-0" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-2xl bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800 flex items-center justify-center font-black text-xl shrink-0">
+                        {store.name?.charAt(0) || 'م'}
+                      </div>
+                    )}
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
                         <h3 className="font-black text-lg text-slate-900 dark:text-white">{store.name}</h3>
